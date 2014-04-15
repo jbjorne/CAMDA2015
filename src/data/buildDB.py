@@ -20,26 +20,28 @@ def defineColumns(header, columnTypes, defaultType="text"):
                 columns.append((header[i], defaultType))
     return columns
 
-def defineTable(name, columns):
+def defineTable(tableName, columns):
     return "create table " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns]) + ")"
 
-def defineInsert(name, columns):
+def defineInsert(tableName, columns):
     return "insert into " + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
 
-con = sqlite3.connect(dataPath + "BRCA-US.sqlite")
-data = csv.reader(open(dataPath + "clinical.BRCA-US.tsv"), delimiter='\t')
-header = data.next()
-
-tableName = "clinical"
-columns = defineColumns(header, {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"})
-con.execute("DROP TABLE IF EXISTS " + tableName + ";")
-con.execute(defineTable(tableName, columns))
-insert = defineInsert(tableName, columns)
-#print insert
-con.executemany(insert, data)
-
-con.commit()
-con.close()
-
-#con.execute("create table person(firstname, lastname)")
-#con.executemany("insert into person(firstname, lastname) values (?, ?)", persons)
+def tableFromCSV(dbName, tableName, csvFileName, columnTypes):  
+    con = sqlite3.connect(dbName)
+    data = csv.reader(open(csvFileName), delimiter='\t')
+    header = data.next()
+    
+    columns = defineColumns(header, columnTypes)
+    con.execute("DROP TABLE IF EXISTS " + tableName + ";")
+    con.execute(defineTable(tableName, columns))
+    insert = defineInsert(tableName, columns)
+    #print insert
+    con.executemany(insert, data)
+    
+    con.commit()
+    con.close()
+    
+tableFromCSV(dataPath + "BRCA-US.sqlite", "clinical", dataPath + "clinical.BRCA-US.tsv",
+             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"})
+tableFromCSV(dataPath + "BRCA-US.sqlite", "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
+             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"})
