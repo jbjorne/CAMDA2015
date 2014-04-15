@@ -21,23 +21,28 @@ def defineColumns(header, columnTypes, defaultType="text"):
     return columns
 
 def defineTable(tableName, columns, primaryKey = None):
-    s = "create table " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns])
+    s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns])
     if primaryKey != None:
         s += ", PRIMARY KEY (" + ",".join(primaryKey) + ")"
     s += ");"
-    print s
+    #print s
     return s
 
-def defineInsert(tableName, columns):
-    return "insert into " + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
+def defineInsert(tableName, columns, ignoreExisting=True):
+    if ignoreExisting:
+        s = "INSERT OR IGNORE INTO "
+    else:
+        s = "INSERT INTO "
+    return s + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
 
-def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None):  
+def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, drop=False):  
     con = sqlite3.connect(dbName)
     data = csv.reader(open(csvFileName), delimiter='\t')
     header = data.next()
     
     columns = defineColumns(header, columnTypes)
-    con.execute("DROP TABLE IF EXISTS " + tableName + ";")
+    if drop:
+        con.execute("DROP TABLE IF EXISTS " + tableName + ";")
     con.execute(defineTable(tableName, columns, primaryKey))
     insert = defineInsert(tableName, columns)
     #print insert
@@ -52,3 +57,6 @@ tableFromCSV(dataPath + "BRCA-US.sqlite", "clinical", dataPath + "clinical.BRCA-
 tableFromCSV(dataPath + "BRCA-US.sqlite", "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
              {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"},
              ["icgc_sample_id"])
+tableFromCSV(dataPath + "BRCA-US.sqlite", "simple_somatic_mutation_open", dataPath + "simple_somatic_mutation.open.BRCA-US.tsv",
+             {re.compile("chromosome.*"):"int"},
+             ["icgc_mutation_id"])
