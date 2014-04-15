@@ -21,6 +21,7 @@ from sklearn.cross_validation import StratifiedKFold
 # Data IO and generation
 
 # import some data to play with
+print "Loading data"
 iris = datasets.load_iris()
 X = iris.data
 y = iris.target
@@ -28,12 +29,14 @@ X, y = X[y != 2], y[y != 2]
 n_samples, n_features = X.shape
 
 # Add noisy features
+print "Adding noisy features"
 X = np.c_[X, np.random.randn(n_samples, 200 * n_features)]
 
 ###############################################################################
 # Classification and ROC analysis
 
 # Run classifier with crossvalidation and plot ROC curves
+print "Initializing classifier"
 cv = StratifiedKFold(y, k=6)
 classifier = svm.SVC(kernel='linear', probability=True)
 
@@ -41,7 +44,9 @@ mean_tpr = 0.0
 mean_fpr = np.linspace(0, 1, 100)
 all_tpr = []
 
+print "Running iterations"
 for i, (train, test) in enumerate(cv):
+    print "Iteration", i
     probas_ = classifier.fit(X[train], y[train]).predict_proba(X[test])
     # Compute ROC curve and area the curve
     fpr, tpr, thresholds = roc_curve(y[test], probas_[:, 1])
