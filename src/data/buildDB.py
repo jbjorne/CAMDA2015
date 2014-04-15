@@ -20,20 +20,25 @@ def defineColumns(header, columnTypes, defaultType="text"):
                 columns.append((header[i], defaultType))
     return columns
 
-def defineTable(tableName, columns):
-    return "create table " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns]) + ")"
+def defineTable(tableName, columns, primaryKey = None):
+    s = "create table " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns])
+    if primaryKey != None:
+        s += ", PRIMARY KEY (" + ",".join(primaryKey) + ")"
+    s += ");"
+    print s
+    return s
 
 def defineInsert(tableName, columns):
     return "insert into " + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
 
-def tableFromCSV(dbName, tableName, csvFileName, columnTypes):  
+def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None):  
     con = sqlite3.connect(dbName)
     data = csv.reader(open(csvFileName), delimiter='\t')
     header = data.next()
     
     columns = defineColumns(header, columnTypes)
     con.execute("DROP TABLE IF EXISTS " + tableName + ";")
-    con.execute(defineTable(tableName, columns))
+    con.execute(defineTable(tableName, columns, primaryKey))
     insert = defineInsert(tableName, columns)
     #print insert
     con.executemany(insert, data)
@@ -42,6 +47,8 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes):
     con.close()
     
 tableFromCSV(dataPath + "BRCA-US.sqlite", "clinical", dataPath + "clinical.BRCA-US.tsv",
-             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"})
+             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"},
+             ["icgc_specimen_id"])
 tableFromCSV(dataPath + "BRCA-US.sqlite", "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
-             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"})
+             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"},
+             ["icgc_sample_id"])
