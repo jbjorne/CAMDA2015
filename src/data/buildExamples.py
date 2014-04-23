@@ -13,4 +13,11 @@ def enumerateValues(dbName, table, column):
     #result = con.execute()
     #print result
 
-enumerateValues(dataPath + "BRCA-US.sqlite", "clinical", "specimen_type")
+def getCancerClasses(specimenTypeValues):
+    classes = {}
+    for className in specimenTypeValues:
+        classes[className] = 1 if "tumour" in className else -1
+    return classes
+
+dbName = dataPath + "BRCA-US.sqlite"
+print getCancerClasses(enumerateValues(dbName, "clinical", "specimen_type"))
