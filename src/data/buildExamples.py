@@ -32,11 +32,12 @@ def predefineFeatures(con, table, columns, features):
     con = connect(con)
     for column in columns:
         for value in enumerateValues(con, table, column):
-            addFeature(column + "=" + value, features)
+            addFeature((column, value), features)
     return features
 
 dbName = dataPath + "BRCA-US.sqlite"
 con = sqlite3.connect(dbName)
 print getCancerClasses(enumerateValues(con, "clinical", "specimen_type"))
-print predefineFeatures(con, "simple_somatic_mutation_open", 
-                        ["mutation_type"], {})
+features = predefineFeatures(con, "simple_somatic_mutation_open", 
+                        ["chromosome", "mutation_type", "consequence_type", "gene_affected"], {})
+print len(features)
