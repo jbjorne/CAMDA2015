@@ -6,8 +6,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 dataPath = settings.DATA_PATH
 
-def enumerateValues(dbName, table, column):
-    con = sqlite3.connect(dbName)
+def connect(con):
+    if isinstance(con, basestring):
+        con = sqlite3.connect(con)
+    return con
+
+def enumerateValues(con, table, column):
+    con = connect(con)
     values = con.execute("SELECT DISTINCT " + column + " FROM " + table)
     return [x[0] for x in values]
     #result = con.execute()
@@ -19,5 +24,19 @@ def getCancerClasses(specimenTypeValues):
         classes[className] = 1 if "tumour" in className else -1
     return classes
 
+def addFeature(value, features):
+    if value not in features:
+        features[value] = len(features)
+        
+def predefineFeatures(con, table, columns, features):
+    con = connect(con)
+    for column in columns:
+        for value in enumerateValues(con, table, column):
+            addFeature(column + "=" + value, features)
+    return features
+
 dbName = dataPath + "BRCA-US.sqlite"
-print getCancerClasses(enumerateValues(dbName, "clinical", "specimen_type"))
+con = sqlite3.connect(dbName)
+print getCancerClasses(enumerateValues(con, "clinical", "specimen_type"))
+print predefineFeatures(con, "simple_somatic_mutation_open", 
+                        ["mutation_type"], {})
