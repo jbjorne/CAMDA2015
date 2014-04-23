@@ -1,11 +1,24 @@
 import csv, sqlite3
 import re
 import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import settings
+#dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
+dataPath = settings.DATA_PATH
 
-dataPath = os.path.expanduser("~/data/CAMDA2014/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
+def compileRegExKeys(dictionary):
+    newDict = {}
+    if dictionary != None:
+        for key in dictionary:
+            if key is not int:
+                newDict[re.compile(key)] = dictionary[key]
+            else:
+                newDict[key] = dictionary[key]
+    return newDict
 
 def defineColumns(header, columnTypes, defaultType="text"):
     columns = []
+    columnTypes = compileRegExKeys(columnTypes)
     for i in range(len(header)):
         if i in columnTypes:
             columns += columnTypes[i]
@@ -20,22 +33,31 @@ def defineColumns(header, columnTypes, defaultType="text"):
                 columns.append((header[i], defaultType))
     return columns
 
-def defineTable(tableName, columns, primaryKey = None):
+def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
     s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns])
     if primaryKey != None:
         s += ", PRIMARY KEY (" + ",".join(primaryKey) + ")"
+    if foreignKeys != None:
+        for key in sorted(foreignKeys.keys()):
+            if isinstance(foreignKeys[key], basestring):
+                foreignTable = foreignKeys[key]
+                foreignColumn = key
+            else:
+                foreignTable = foreignKeys[key][0]
+                foreignColumn = foreignKeys[key][1]
+            s += ", FOREIGN KEY(" + key + ") REFERENCES " + foreignTable + "(" + foreignColumn + ")"
     s += ");"
     #print s
     return s
 
-def defineInsert(tableName, columns, ignoreExisting=True):
+def defineSQLInsert(tableName, columns, ignoreExisting=True):
     if ignoreExisting:
         s = "INSERT OR IGNORE INTO "
     else:
         s = "INSERT INTO "
     return s + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
 
-def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, drop=False):  
+def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, foreignKeys=None, drop=False):  
     con = sqlite3.connect(dbName)
     data = csv.reader(open(csvFileName), delimiter='\t')
     header = data.next()
@@ -43,8 +65,8 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, d
     columns = defineColumns(header, columnTypes)
     if drop:
         con.execute("DROP TABLE IF EXISTS " + tableName + ";")
-    con.execute(defineTable(tableName, columns, primaryKey))
-    insert = defineInsert(tableName, columns)
+    con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys))
+    insert = defineSQLInsert(tableName, columns)
     #print insert
     con.executemany(insert, data)
     
@@ -52,11 +74,13 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, d
     con.close()
     
 tableFromCSV(dataPath + "BRCA-US.sqlite", "clinical", dataPath + "clinical.BRCA-US.tsv",
-             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"},
+             {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
              ["icgc_specimen_id"])
 tableFromCSV(dataPath + "BRCA-US.sqlite", "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
-             {re.compile(".*_age.*"):"int", re.compile(".*_time.*"):"int", re.compile(".*_interval.*"):"int"},
-             ["icgc_sample_id"])
+             {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+             ["icgc_sample_id"], 
+             {"icgc_specimen_id":"clinical"})
 tableFromCSV(dataPath + "BRCA-US.sqlite", "simple_somatic_mutation_open", dataPath + "simple_somatic_mutation.open.BRCA-US.tsv",
-             {re.compile("chromosome.*"):"int"},
-             ["icgc_mutation_id"])
+             {"chromosome.*":"int"},
+             ["icgc_mutation_id"], 
+             {"icgc_specimen_id":"clinical"})
