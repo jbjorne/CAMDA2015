@@ -42,15 +42,12 @@ def getExamples(dbName, sql, classColumn, featureColumns, classIds, featureIds):
     con.row_factory = sqlite3.Row
     classes = []
     features = []
-    featureVectorColumns = sorted(featureIds.keys())
     for row in con.execute(sql):
         classes.append(classIds[row[classColumn]])
-        featureVector = []
-        for featureVectorColumn in featureVectorColumns:
-            #print "ASDAS", column, row[column]
-            rowColumn = featureVectorColumn[0]
-            rowValue = row[rowColumn]
-            featureVector.append(featureIds[(rowColumn, rowValue)])
+        featureVector = {}
+        for column in featureColumns:
+            value = row[column]
+            featureVector[featureIds[(column, value)]] = 1
         features.append(featureVector)
     return classes, features
 
