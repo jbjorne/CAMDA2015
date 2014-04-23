@@ -51,6 +51,20 @@ def getExamples(dbName, sql, classColumn, featureColumns, classIds, featureIds):
         features.append(featureVector)
     return classes, features
 
+def expandVectors(features, featureIds):
+    maxIndex = max(featureIds.values())
+    arrays = []
+    for vector in features:
+        array = []
+        for i in range(maxIndex):
+            if i in vector:
+                array.append(vector[i])
+            else:
+                array.append(0)
+        arrays.append(array)
+    return arrays
+        
+
 dbName = dataPath + "BRCA-US.sqlite"
 con = sqlite3.connect(dbName)
 classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
@@ -61,3 +75,4 @@ print "Features IDs:", featureIds
 X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
 print X
 print y
+print expandVectors(y, featureIds)
