@@ -18,26 +18,49 @@ def enumerateValues(con, table, column):
     #result = con.execute()
     #print result
 
-def getCancerClasses(specimenTypeValues):
+def getCancerClassIds(specimenTypeValues):
     classes = {}
     for className in specimenTypeValues:
         classes[className] = 1 if "tumour" in className else -1
     return classes
 
-def addFeature(value, features):
-    if value not in features:
-        features[value] = len(features)
+def addFeatureId(value, featureIds):
+    if value not in featureIds:
+        featureIds[value] = len(featureIds)
         
-def predefineFeatures(con, table, columns, features):
+def predefineFeatureIds(con, table, columns, featureIds=None):
     con = connect(con)
+    if featureIds == None:
+        featureIds = {}
     for column in columns:
         for value in enumerateValues(con, table, column):
-            addFeature((column, value), features)
-    return features
+            addFeatureId((column, value), featureIds)
+    return featureIds
+
+def getExamples(dbName, sql, classColumn, featureColumns, classIds, featureIds):
+    con = connect(dbName)
+    con.row_factory = sqlite3.Row
+    classes = []
+    features = []
+    featureVectorColumns = sorted(featureIds.keys())
+    for row in con.execute(sql):
+        classes.append(classIds[row[classColumn]])
+        featureVector = []
+        for featureVectorColumn in featureVectorColumns:
+            #print "ASDAS", column, row[column]
+            rowColumn = featureVectorColumn[0]
+            rowValue = row[rowColumn]
+            featureVector.append(featureIds[(rowColumn, rowValue)])
+        features.append(featureVector)
+    return classes, features
 
 dbName = dataPath + "BRCA-US.sqlite"
 con = sqlite3.connect(dbName)
-print getCancerClasses(enumerateValues(con, "clinical", "specimen_type"))
-features = predefineFeatures(con, "simple_somatic_mutation_open", 
-                        ["chromosome", "mutation_type", "consequence_type", "gene_affected"], {})
-print len(features)
+classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
+featureColumns = ["chromosome", "mutation_type", "consequence_type"]
+featureIds = predefineFeatureIds(con, "simple_somatic_mutation_open", featureColumns)
+print "Class IDs:", classIds
+print "Features IDs:", featureIds
+X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
+print X
+print y
