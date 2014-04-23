@@ -1,6 +1,7 @@
 import csv, sqlite3
 import re
 import os, sys
+import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -70,8 +71,8 @@ con = sqlite3.connect(dbName)
 classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
 featureColumns = ["chromosome", "mutation_type", "consequence_type"]
 featureIds = predefineFeatureIds(con, "simple_somatic_mutation_open", featureColumns)
-print "Class IDs:", classIds
-print "Features IDs:", featureIds
+print "Class IDs:", json.dumps({str(k):v for k,v in classIds.items()})
+print "Feature IDs:", json.dumps({str(k):v for k,v in featureIds.items()})
 X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
 print X
 print y
