@@ -1,5 +1,6 @@
 import os, sys
 from ftplib import FTP
+import csv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 
@@ -31,13 +32,37 @@ def getProjectCodes(ftp, projectDirs):
         if projectCode == None:
             print "no project code found"
     return codeToDir
+
+def downloadProjectCodes():    
+    ftp = connectFTP(settings.ICGC_FTP)
+    projectDirs = getProjectDirectories(ftp)
+    projectCodes = getProjectCodes(ftp, projectDirs)
+    ftp.quit()
+    f = open("project_codes.tsv", "wt")
+    f.write("Project_Code\tProject_FTP_Directory\n")
+    for key in sorted(projectCodes.keys()):
+        f.write(key + "\t" + projectCodes[key] + "\n")
+    f.close()
+
+def downloadProject(projectCode):
+    with open('project_codes.tsv', mode='rt') as infile:
+        reader = csv.reader(infile, delimiter='\t')
+        codeToDir = dict((rows[0],rows[1]) for rows in reader)
+    if projectCode not in codeToDir:
+        print "Unknown project:", projectCode
+        return
+    ftp = connectFTP(settings.ICGC_FTP)
+    projectDirFTP = settings.ICGC_VERSION + "/" + codeToDir[projectCode]
+    projectDirLocal = os.path.join(settings.DATA_PATH, codeToDir[projectCode])
+    if not os.path.exists(projectDirLocal):
+        os.makedirs(projectDirLocal)
+    for table in sorted(settings.TABLE_FILES.keys()):
+        filenameFTP = projectDirFTP + "/" + settings.TABLE_FILES[table].replace("%c", projectCode)
+        filenameLocal = os.path.join(projectDirLocal, settings.TABLE_FILES[table].replace("%c", projectCode))
+        if (not os.path.exists(filenameLocal)) and ftp.size(filenameFTP) != None:
+            print "Downloading", filenameFTP
+            ftp.retrbinary("RETR " + filenameFTP, open(filenameLocal, 'wb').write)
+    ftp.quit()
     
-ftp = connectFTP(settings.ICGC_FTP)
-projectDirs = getProjectDirectories(ftp)
-projectCodes = getProjectCodes(ftp, projectDirs)
-f = open("project_codes.tsv", "wt")
-f.write("Project_Code\tProject_FTP_Directory\n")
-for key in sorted(projectCodes.keys()):
-    f.write(key + "\t" + projectCodes[key] + "\n")
-f.close()
+downloadProject("BOCA-UK")
     
