@@ -73,10 +73,11 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
     
     con.commit()
     con.close()
-    
-def linkProjectsToFTP(dbName):
-    con = sqlite3.connect(dbName)
-    print 
+
+tableFromCSV(dataPath + dbName, "project_ftp_directory", 
+             os.path.join(os.path.dirname(os.path.abspath(__file__)), "project_codes.tsv"),
+             None,
+             ["Project_Code"])
     
 tableFromCSV(dataPath + dbName, "project", 
              os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
