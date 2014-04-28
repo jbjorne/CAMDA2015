@@ -1,5 +1,4 @@
-import csv, sqlite3
-import re
+import sqlite3
 import os, sys
 import json
 
