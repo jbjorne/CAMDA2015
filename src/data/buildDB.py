@@ -74,15 +74,17 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
     con.commit()
     con.close()
 
-tableFromCSV(dataPath + dbName, "project_ftp_directory", 
-             os.path.join(os.path.dirname(os.path.abspath(__file__)), "project_codes.tsv"),
-             None,
-             ["Project_Code"])
-    
-tableFromCSV(dataPath + dbName, "project", 
-             os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
-             {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
-             ["Project_Code"])
+def initDB(dbName):
+    tableFromCSV(dbName, "project_ftp_directory", 
+                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "project_codes.tsv"),
+                 None,
+                 ["Project_Code"])     
+    tableFromCSV(dbName, "project", 
+                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
+                 {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
+                 ["Project_Code"])
+
+initDB(dataPath + dbName)
     
 # tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
 #              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},

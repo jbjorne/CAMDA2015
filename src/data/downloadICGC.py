@@ -1,4 +1,5 @@
 import os, sys
+import ftplib
 from ftplib import FTP
 import csv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,9 +60,13 @@ def downloadProject(projectCode):
     for table in sorted(settings.TABLE_FILES.keys()):
         filenameFTP = projectDirFTP + "/" + settings.TABLE_FILES[table].replace("%c", projectCode)
         filenameLocal = os.path.join(projectDirLocal, settings.TABLE_FILES[table].replace("%c", projectCode))
-        if (not os.path.exists(filenameLocal)) and ftp.size(filenameFTP) != None:
+        if not os.path.exists(filenameLocal):
             print "Downloading", filenameFTP
-            ftp.retrbinary("RETR " + filenameFTP, open(filenameLocal, 'wb').write)
+            try:
+                ftp.retrbinary("RETR " + filenameFTP, open(filenameLocal, 'wb').write)
+            except ftplib.error_perm:
+                print "File", filenameFTP, "does not exist"
+                os.remove(filenameLocal)
     ftp.quit()
     
 downloadProject("BOCA-UK")
