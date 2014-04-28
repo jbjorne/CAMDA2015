@@ -69,5 +69,5 @@ def downloadProject(projectCode):
                 os.remove(filenameLocal)
     ftp.quit()
     
-downloadProject("BOCA-UK")
+#downloadProject("BOCA-UK")
     
