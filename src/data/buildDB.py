@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 dataPath = settings.DATA_PATH
+dbName = settings.DB_NAME
 
 def compileRegExKeys(dictionary):
     newDict = {}
@@ -21,16 +22,16 @@ def defineColumns(header, columnTypes, defaultType="text"):
     columnTypes = compileRegExKeys(columnTypes)
     for i in range(len(header)):
         if i in columnTypes:
-            columns += columnTypes[i]
+            columns.append((header[i].replace(" ", "_"), columnTypes[i]))
         else:
             matched = False
             for key in columnTypes:
                 if key is not int and key.match(header[i]):
-                    columns.append((header[i], columnTypes[key]))
+                    columns.append((header[i].replace(" ", "_"), columnTypes[key]))
                     matched = True
                     break
             if not matched:
-                columns.append((header[i], defaultType))
+                columns.append((header[i].replace(" ", "_"), defaultType))
     return columns
 
 def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
@@ -73,14 +74,23 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
     con.commit()
     con.close()
     
-tableFromCSV(dataPath + "BRCA-US.sqlite", "clinical", dataPath + "clinical.BRCA-US.tsv",
-             {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-             ["icgc_specimen_id"])
-tableFromCSV(dataPath + "BRCA-US.sqlite", "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
-             {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-             ["icgc_sample_id"], 
-             {"icgc_specimen_id":"clinical"})
-tableFromCSV(dataPath + "BRCA-US.sqlite", "simple_somatic_mutation_open", dataPath + "simple_somatic_mutation.open.BRCA-US.tsv",
-             {"chromosome.*":"int"},
-             ["icgc_mutation_id"], 
-             {"icgc_specimen_id":"clinical"})
+def linkProjectsToFTP(dbName):
+    con = sqlite3.connect(dbName)
+    print 
+    
+tableFromCSV(dataPath + dbName, "project", 
+             os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
+             {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
+             ["Project_Code"])
+    
+# tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
+#              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+#              ["icgc_specimen_id"])
+# tableFromCSV(dataPath + dbName, "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
+#              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+#              ["icgc_sample_id"], 
+#              {"icgc_specimen_id":"clinical"})
+# tableFromCSV(dataPath + dbName, "simple_somatic_mutation_open", dataPath + "simple_somatic_mutation.open.BRCA-US.tsv",
+#              {"chromosome.*":"int"},
+#              ["icgc_mutation_id"], 
+#              {"icgc_specimen_id":"clinical"})
