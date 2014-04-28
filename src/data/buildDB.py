@@ -1,8 +1,10 @@
 import csv, sqlite3
 import re
+import gzip
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
+import downloadICGC
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 dataPath = settings.DATA_PATH
 dbName = settings.DB_NAME
@@ -60,7 +62,11 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
 
 def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, foreignKeys=None, drop=False):  
     con = sqlite3.connect(dbName)
-    data = csv.reader(open(csvFileName), delimiter='\t')
+    if csvFileName.endswith(".gz"):
+        csvFile = gzip.open(csvFileName, 'rb')
+    else:
+        csvFile = open(csvFileName, 'rb')
+    data = csv.reader(csvFile, delimiter='\t')
     header = data.next()
     
     columns = defineColumns(header, columnTypes)
@@ -71,6 +77,7 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
     #print insert
     con.executemany(insert, data)
     
+    csvFile.close()
     con.commit()
     con.close()
 
@@ -84,7 +91,19 @@ def initDB(dbName):
                  {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
 
+def addProject(dbName, projectCode):
+    print "Adding project", projectCode, "to database", dbName
+    downloadICGC.downloadProject(projectCode) # Update the local files
+    for table in sorted(settings.TABLE_FORMAT.keys()):
+        format = settings.TABLE_FORMAT[table]
+        tableFile = downloadICGC.getProjectPath(projectCode, table=table)
+        if not os.path.exists(tableFile):
+            continue
+        print "Updating table", table, "from", tableFile
+        tableFromCSV(dbName, table, tableFile, format["columns"], format["primary_key"], format["foreign_keys"])
+
 initDB(dataPath + dbName)
+addProject(dataPath + dbName, "BOCA-UK")
     
 # tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
 #              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},

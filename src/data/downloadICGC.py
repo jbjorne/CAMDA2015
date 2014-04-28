@@ -45,6 +45,21 @@ def downloadProjectCodes():
         f.write(key + "\t" + projectCodes[key] + "\n")
     f.close()
 
+def getProjectPath(projectCode, local=True, codeToDir=None, table=None):
+    if codeToDir == None:
+        with open('project_codes.tsv', mode='rt') as infile:
+            reader = csv.reader(infile, delimiter='\t')
+            codeToDir = dict((rows[0],rows[1]) for rows in reader)
+    if local:
+        path = os.path.join(settings.DATA_PATH, codeToDir[projectCode])
+        if table != None:
+            path = os.path.join(path, settings.TABLE_FILES[table].replace("%c", projectCode))
+    else: # ftp
+        path = settings.ICGC_VERSION + "/" + codeToDir[projectCode]
+        if table != None:
+            path += "/" + settings.TABLE_FILES[table].replace("%c", projectCode)
+    return path
+
 def downloadProject(projectCode):
     with open('project_codes.tsv', mode='rt') as infile:
         reader = csv.reader(infile, delimiter='\t')

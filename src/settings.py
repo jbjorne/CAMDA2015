@@ -13,3 +13,18 @@ TABLE_FILES = {
     "protein_expression":"protein_expression.%c.tsv.gz",
     "simple_somatic_mutation_open":"simple_somatic_mutation.open.%c.tsv.gz"
 }
+
+TABLE_FORMAT = {
+    "clinical":{
+        "columns":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "primary_key":["icgc_specimen_id"],
+        "foreign_keys":None},
+    "clinicalsample":{
+        "columns":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "primary_key":["icgc_sample_id"],
+        "foreign_keys":{"icgc_specimen_id":"clinical"}},
+    "simple_somatic_mutation_open":{
+        "columns":{"chromosome.*":"int"},
+        "primary_key":["icgc_mutation_id"], 
+        "foreign_keys":{"icgc_specimen_id":"clinical"}}
+}
