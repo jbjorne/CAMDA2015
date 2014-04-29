@@ -4,15 +4,55 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import settings
 from data.buildExamples import *
 
-def getSamples(dbName, projectCode, mutatedGeneId):
+def getSpecimens(dbName, projectCode, mutatedGeneId):
     con = connect(dbName)
-    sampleIds = set()
-    for row in con.execute("SELECT DISTINCT icgc_sample_id FROM simple_somatic_mutation_open WHERE project_code='"+projectCode+"' AND gene_affected='"+mutatedGeneId+"';"):
-        sampleIds.add(row[0])
-    return sorted(list(sampleIds))
+    specimenIds = set()
+    for row in con.execute("SELECT DISTINCT icgc_specimen_id FROM simple_somatic_mutation_open WHERE project_code='"+projectCode+"' AND gene_affected='"+mutatedGeneId+"';"):
+        specimenIds.add(row[0])
+    return sorted(list(specimenIds))
 
-def getExpressionLevels(dbName, sampleIds):
+def execute(dbName, sql):
     con = connect(dbName)
+    con.row_factory = sqlite3.Row
+    return con.execute(sql)
+
+def getExpressionLevels(dbName, specimenIds):
+    con = connect(dbName)
+    con.row_factory = sqlite3.Row
+    specimenMatch = "('" + "','".join(specimenIds) + "')"
+    currentSpecimen = None
+    currentVector = {}
+    featureVectors = [currentVector]
+    featureIds = {}
+    for row in con.execute("SELECT * FROM gene_expression WHERE icgc_specimen_id IN " + specimenMatch):
+        if currentSpecimen != row["icgc_specimen_id"]:
+            if currentSpecimen != None:
+                currentVector = {}
+                featureVectors.append(currentVector)
+            currentSpecimen = row["icgc_specimen_id"]
+        if row["gene_stable_id"] not in featureIds:
+            featureIds[row["gene_stable_id"]] = len(featureIds)
+        currentVector[featureIds[row["gene_stable_id"]]] = row["normalized_expression_level"]
+    #con = connect(dbName)
+
+def getMutations(dbName, specimenIds, aaForGenes):
+    specimenMatch = "('" + "','".join(specimenIds) + "')"
+    mutatedGenes = {}
+    mutatedAAs = {}
+    for row in execute(dbName, "SELECT icgc_specimen_id,aa_mutation,gene_affected FROM simple_somatic_mutation_open WHERE icgc_specimen_id IN " + specimenMatch):
+        specimenId = row["icgc_specimen_id"]
+        if specimenId not in mutatedGenes:
+            mutatedGenes[specimenId] = set()
+        mutatedGenes[specimenId].add(row["gene_affected"])
+        
+        gene = row["gene_affected"]
+        if gene in aaForGenes:
+            if specimenId not in mutatedAAs:
+                mutatedAAs[specimenId] = {}
+            if gene not in mutatedAAs[specimenId]:
+                mutatedAAs[specimenId][gene] = set()
+            mutatedAAs[specimenId][gene].add(row["aa_mutation"])
+    return mutatedGenes, mutatedAAs
 
 def getExpression(dbName, sql, classColumn, featureColumns, classIds, featureIds):
     con = connect(dbName)
@@ -30,5 +70,13 @@ def getExpression(dbName, sql, classColumn, featureColumns, classIds, featureIds
     return classes, features
 
 dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)
-sampleIds = getSamples(dbPath, "SKCM-US", "ENSG00000178568")
-print sampleIds
+specimenIds = getSpecimens(dbPath, "SKCM-US", "ENSG00000178568")
+print specimenIds
+#getExpressionLevels(dbPath, specimenIds)
+mutatedGenes, mutatedAAs = getMutations(dbPath, specimenIds, set(["ENSG00000178568"]))
+print mutatedAAs
+allMutatedGenes = set()
+for specimenId in mutatedGenes:
+    for gene in mutatedGenes[specimenId]:
+        allMutatedGenes.add(gene)
+print len(allMutatedGenes)
