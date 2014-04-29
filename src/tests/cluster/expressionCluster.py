@@ -39,7 +39,7 @@ def getMutations(dbName, specimenIds, aaForGenes):
     specimenMatch = "('" + "','".join(specimenIds) + "')"
     mutatedGenes = {}
     mutatedAAs = {}
-    for row in execute(dbName, "SELECT icgc_specimen_id,aa_mutation,gene_affected FROM simple_somatic_mutation_open WHERE icgc_specimen_id IN " + specimenMatch):
+    for row in execute(dbName, "SELECT icgc_specimen_id,aa_mutation,gene_affected FROM simple_somatic_mutation_open WHERE aa_mutation != '' AND icgc_specimen_id IN " + specimenMatch):
         specimenId = row["icgc_specimen_id"]
         if specimenId not in mutatedGenes:
             mutatedGenes[specimenId] = set()
@@ -69,14 +69,28 @@ def getExpression(dbName, sql, classColumn, featureColumns, classIds, featureIds
         features.append(featureVector)
     return classes, features
 
+def getCrossSpecimenMutationCounts(mutatedGenes, cutoff=2):
+    geneMutations = {}
+    for specimenId in mutatedGenes:
+        for gene in mutatedGenes[specimenId]:
+            if gene not in geneMutations:
+                geneMutations[gene] = 0
+            geneMutations[gene] += 1
+    for gene in geneMutations.keys():
+        if geneMutations[gene] < cutoff:
+            del geneMutations[gene]
+    return geneMutations
+
 dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)
 specimenIds = getSpecimens(dbPath, "SKCM-US", "ENSG00000178568")
 print specimenIds
 #getExpressionLevels(dbPath, specimenIds)
 mutatedGenes, mutatedAAs = getMutations(dbPath, specimenIds, set(["ENSG00000178568"]))
 print mutatedAAs
+print "Cross-specimen mutations:", getCrossSpecimenMutationCounts(mutatedGenes, 20)
 allMutatedGenes = set()
 for specimenId in mutatedGenes:
     for gene in mutatedGenes[specimenId]:
         allMutatedGenes.add(gene)
-print len(allMutatedGenes)
+    mutatedGenes[specimenId] = len(mutatedGenes[specimenId])
+print mutatedGenes, len(allMutatedGenes)
