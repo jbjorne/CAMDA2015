@@ -6,8 +6,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import downloadICGC
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
-dataPath = settings.DATA_PATH
-dbName = settings.DB_NAME
+#dataPath = settings.DATA_PATH
+#dbName = settings.DB_NAME
+dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)
 
 def compileRegExKeys(dictionary):
     newDict = {}
@@ -102,8 +103,15 @@ def addProject(dbName, projectCode):
         print "Updating table", table, "from", tableFile
         tableFromCSV(dbName, table, tableFile, format["columns"], format["primary_key"], format["foreign_keys"])
 
-initDB(dataPath + dbName)
-addProject(dataPath + dbName, "BOCA-UK")
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Import ICGC data')
+    parser.add_argument('-p','--project', help='ICGC project code', default=None)
+    args = parser.parse_args()
+    
+    initDB(dbPath)
+    if args.project != None:
+        addProject(dbPath, args.project)
     
 # tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
 #              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
