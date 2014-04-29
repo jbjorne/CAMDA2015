@@ -43,7 +43,8 @@ def getExamples(dbName, sql, classColumn, featureColumns, classIds, featureIds):
     classes = []
     features = []
     for row in con.execute(sql):
-        classes.append(classIds[row[classColumn]])
+        if classColumn != None:
+            classes.append(classIds[row[classColumn]])
         featureVector = {}
         for column in featureColumns:
             value = row[column]
@@ -63,16 +64,20 @@ def expandVectors(features, featureIds):
                 array.append(0)
         arrays.append(array)
     return arrays
-        
 
-dbName = dataPath + "BRCA-US.sqlite"
-con = sqlite3.connect(dbName)
-classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
-featureColumns = ["chromosome", "mutation_type", "consequence_type"]
-featureIds = predefineFeatureIds(con, "simple_somatic_mutation_open", featureColumns)
-print "Class IDs:", json.dumps({str(k):v for k,v in classIds.items()})
-print "Feature IDs:", json.dumps({str(k):v for k,v in featureIds.items()})
-X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
-print X
-print y
-print expandVectors(y, featureIds)
+def getExpressionExamples():
+    pass
+
+dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)        
+
+# dbName = dataPath + "BRCA-US.sqlite"
+# con = sqlite3.connect(dbName)
+# classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
+# featureColumns = ["chromosome", "mutation_type", "consequence_type"]
+# featureIds = predefineFeatureIds(con, "simple_somatic_mutation_open", featureColumns)
+# print "Class IDs:", json.dumps({str(k):v for k,v in classIds.items()})
+# print "Feature IDs:", json.dumps({str(k):v for k,v in featureIds.items()})
+# X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
+# print X
+# print y
+# print expandVectors(y, featureIds)
