@@ -28,7 +28,7 @@ def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=Non
         # Column types and selection
         column = None
         if selectedColumns and header[i] not in selectedColumns: # filter
-            columns.append(None)
+            column = None
         elif i in columnTypes:
             column = (header[i].replace(" ", "_"), columnTypes[i], None)
         else:
@@ -42,7 +42,7 @@ def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=Non
                 column = (header[i].replace(" ", "_"), defaultType, None)
         # Preprocessing
         for key in preprocess:
-            if key.match(header[i]):
+            if column != None and key.match(header[i]):
                 column = (column[0], column[1], preprocess[key])
                 matched = True
                 break
@@ -79,6 +79,7 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
 def processLines(csvReader, columns):
     indicesToDelete = []
     indicesToPreprocess = []
+    print columns
     if columns != None:
         for i in range(len(columns)):
             if columns[i] == None:
@@ -86,6 +87,7 @@ def processLines(csvReader, columns):
             elif columns[i][2]:
                 indicesToPreprocess.append((i, columns[i][2]))
     indicesToDelete.sort(reverse=True) # remove from the end
+    print indicesToDelete
     for line in csvReader:
         for targetIndex, function in indicesToPreprocess: 
             line[targetIndex] = function(line[targetIndex])
