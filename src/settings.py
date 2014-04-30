@@ -12,7 +12,7 @@ TABLE_FILES = {
     "clinical":"clinical.%c.tsv.gz",
     "clinicalsample":"clinicalsample.%c.tsv.gz",
     "copy_number_somatic_mutation":"copy_number_somatic_mutation.%c.tsv.gz",
-    #"gene_expression":"gene_expression.%c.tsv.gz",
+    "gene_expression":"gene_expression.%c.tsv.gz",
     "mirna_expression":"mirna_expression.%c.tsv.gz",
     "protein_expression":"protein_expression.%c.tsv.gz",
     "simple_somatic_mutation_open":"simple_somatic_mutation.open.%c.tsv.gz"
@@ -40,6 +40,7 @@ TABLE_FORMAT = {
         "primary_key":["icgc_mutation_id"], 
         "foreign_keys":{"icgc_specimen_id":"clinical"}},
     "gene_expression":{
+        "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "icgc_sample_id", "gene_stable_id", "normalized_expression_level"],
         "types":{
             "analysis_id|gene_chromosome|gene_strand|gene_start|gene_end|normalized_read_count|raw_read_count":"int",
             "normalized_expression_level|fold_change|quality_score|probability":"REAL"},
