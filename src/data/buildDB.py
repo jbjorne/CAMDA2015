@@ -20,27 +20,39 @@ def compileRegExKeys(dictionary):
                 newDict[key] = dictionary[key]
     return newDict
 
-def defineColumns(header, selectedColumns=None, columnTypes=None, defaultType="text"):
+def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=None, defaultType="text"):
     columns = []
     columnTypes = compileRegExKeys(columnTypes)
+    preprocess = compileRegExKeys(preprocess)
     for i in range(len(header)):
+        # Column types and selection
+        column = None
         if selectedColumns and header[i] not in selectedColumns: # filter
-            continue
-        if i in columnTypes:
-            columns.append((header[i].replace(" ", "_"), columnTypes[i]))
+            columns.append(None)
+        elif i in columnTypes:
+            column = (header[i].replace(" ", "_"), columnTypes[i], None)
         else:
             matched = False
             for key in columnTypes:
                 if key is not int and key.match(header[i]):
-                    columns.append((header[i].replace(" ", "_"), columnTypes[key]))
+                    column = (header[i].replace(" ", "_"), columnTypes[key], None)
                     matched = True
                     break
             if not matched:
-                columns.append((header[i].replace(" ", "_"), defaultType))
+                column = (header[i].replace(" ", "_"), defaultType, None)
+        # Preprocessing
+        for key in preprocess:
+            if key.match(header[i]):
+                column = (column[0], column[1], preprocess[key])
+                matched = True
+                break
+        # add to list
+        columns.append(column)
     return columns
 
 def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
-    s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in columns])
+    includedColumns = filter(lambda a: a != None, columns)
+    s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in includedColumns])
     if primaryKey != None:
         s += ", PRIMARY KEY (" + ",".join(primaryKey) + ")"
     if foreignKeys != None:
@@ -61,15 +73,30 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
         s = "INSERT OR IGNORE INTO "
     else:
         s = "INSERT INTO "
-    return s + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
+    includedColumns = filter(lambda a: a != None, columns)
+    return s + tableName + "(" + ",".join([x[0] for x in includedColumns]) + ")" + " values (" + ",".join(["?"]*len(includedColumns)) + ")"
 
-def processLine(csvReader):
+def processLines(csvReader, columns):
+    indicesToDelete = []
+    indicesToPreprocess = []
+    if columns != None:
+        for i in range(len(columns)):
+            if columns[i] == None:
+                indicesToDelete.append(i)
+            elif columns[i][2]:
+                indicesToPreprocess.append((i, columns[i][2]))
+    indicesToDelete.sort(reverse=True) # remove from the end
     for line in csvReader:
-        print line
+        for targetIndex, function in indicesToPreprocess: 
+            line[targetIndex] = function(line[targetIndex])
+        for i in indicesToDelete:
+            del line[i]
+        #print line
         yield line
 
-def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, drop=False):  
+def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, preprocess=None, drop=False):  
     con = sqlite3.connect(dbName)
+    con.row_factory = sqlite3.Row
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
     else:
@@ -77,13 +104,14 @@ def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTyp
     data = csv.reader(csvFile, delimiter='\t')
     header = data.next()
     
-    columns = defineColumns(header, selectedColumns, columnTypes)
+    columns = defineColumns(header, selectedColumns, columnTypes, preprocess)
+    #print columns
     if drop:
         con.execute("DROP TABLE IF EXISTS " + tableName + ";")
     con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys))
     insert = defineSQLInsert(tableName, columns)
     #print insert
-    con.executemany(insert, processLine(data))
+    con.executemany(insert, processLines(data, columns))
     
     csvFile.close()
     con.commit()
@@ -109,7 +137,12 @@ def addProject(dbName, projectCode):
             if not os.path.exists(tableFile):
                 continue
             print "Updating table", table, "from", tableFile
-            tableFromCSV(dbName, table, tableFile, format.get("columns", None), format.get("types", None), format.get("primary_key", None), format.get("foreign_keys", None))
+            tableFromCSV(dbName, table, tableFile, 
+                         format.get("columns", None), 
+                         format.get("types", None), 
+                         format.get("primary_key", None), 
+                         format.get("foreign_keys", None),
+                         format.get("preprocess", None))
 
 if __name__ == "__main__":
     import argparse

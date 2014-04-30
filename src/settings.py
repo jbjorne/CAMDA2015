@@ -1,4 +1,5 @@
 import os
+import re
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data/ICGC/")
 DB_STORAGE = os.path.expanduser("~/data/CAMDA2014-cache/ICGC/")
@@ -17,17 +18,24 @@ TABLE_FILES = {
     "simple_somatic_mutation_open":"simple_somatic_mutation.open.%c.tsv.gz"
 }
 
+#reCode = re.compile("icgc_.*_id")
+def preprocessICGCCode(cell):
+    return int(cell[2:])
+
 TABLE_FORMAT = {
     "clinical":{
-        "types":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "types":{"icgc_.*_id":"int", ".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_specimen_id"],
         "foreign_keys":None},
     "clinicalsample":{
-        "types":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "types":{"icgc_.*_id":"int", ".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_sample_id"],
         "foreign_keys":{"icgc_specimen_id":"clinical"}},
     "simple_somatic_mutation_open":{
-        "types":{"chromosome.*":"int"},
+        "types":{"icgc_.*_id":"int", "chromosome.*":"int"},
+        "preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_mutation_id"], 
         "foreign_keys":{"icgc_specimen_id":"clinical"}},
     "gene_expression":{
