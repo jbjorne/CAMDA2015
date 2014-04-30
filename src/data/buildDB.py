@@ -8,7 +8,7 @@ import downloadICGC
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 #dataPath = settings.DATA_PATH
 #dbName = settings.DB_NAME
-dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)
+#dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)
 
 def compileRegExKeys(dictionary):
     newDict = {}
@@ -20,10 +20,12 @@ def compileRegExKeys(dictionary):
                 newDict[key] = dictionary[key]
     return newDict
 
-def defineColumns(header, columnTypes, defaultType="text"):
+def defineColumns(header, selectedColumns=None, columnTypes=None, defaultType="text"):
     columns = []
     columnTypes = compileRegExKeys(columnTypes)
     for i in range(len(header)):
+        if selectedColumns and header[i] not in selectedColumns: # filter
+            continue
         if i in columnTypes:
             columns.append((header[i].replace(" ", "_"), columnTypes[i]))
         else:
@@ -61,7 +63,12 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
         s = "INSERT INTO "
     return s + tableName + "(" + ",".join([x[0] for x in columns]) + ")" + " values (" + ",".join(["?"]*len(columns)) + ")"
 
-def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, foreignKeys=None, drop=False):  
+def processLine(csvReader):
+    for line in csvReader:
+        print line
+        yield line
+
+def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, drop=False):  
     con = sqlite3.connect(dbName)
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
@@ -70,13 +77,13 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
     data = csv.reader(csvFile, delimiter='\t')
     header = data.next()
     
-    columns = defineColumns(header, columnTypes)
+    columns = defineColumns(header, selectedColumns, columnTypes)
     if drop:
         con.execute("DROP TABLE IF EXISTS " + tableName + ";")
     con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys))
     insert = defineSQLInsert(tableName, columns)
     #print insert
-    con.executemany(insert, data)
+    con.executemany(insert, processLine(data))
     
     csvFile.close()
     con.commit()
@@ -85,30 +92,43 @@ def tableFromCSV(dbName, tableName, csvFileName, columnTypes, primaryKey=None, f
 def initDB(dbName):
     tableFromCSV(dbName, "project_ftp_directory", 
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "project_codes.tsv"),
-                 None,
+                 None, None,
                  ["Project_Code"])     
     tableFromCSV(dbName, "project", 
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
-                 {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
+                 None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
 
 def addProject(dbName, projectCode):
     print "Adding project", projectCode, "to database", dbName
     downloadICGC.downloadProject(projectCode) # Update the local files
-    for table in sorted(settings.TABLE_FORMAT.keys()):
-        format = settings.TABLE_FORMAT[table]
-        tableFile = downloadICGC.getProjectPath(projectCode, table=table)
-        if not os.path.exists(tableFile):
-            continue
-        print "Updating table", table, "from", tableFile
-        tableFromCSV(dbName, table, tableFile, format["columns"], format["primary_key"], format["foreign_keys"])
+    for table in sorted(settings.TABLE_FILES.keys()):
+        if table in settings.TABLE_FORMAT:
+            format = settings.TABLE_FORMAT[table]
+            tableFile = downloadICGC.getProjectPath(projectCode, table=table)
+            if not os.path.exists(tableFile):
+                continue
+            print "Updating table", table, "from", tableFile
+            tableFromCSV(dbName, table, tableFile, format.get("columns", None), format.get("types", None), format.get("primary_key", None), format.get("foreign_keys", None))
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
     parser.add_argument('-p','--project', help='ICGC project code', default=None)
+    parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
+    parser.add_argument('-d','--database', help='Database location', default=None)
     args = parser.parse_args()
     
+    if args.database == None:
+        if not os.path.exists(settings.DB_CACHE):
+            os.makedirs(settings.DB_CACHE)
+        dbPath = os.path.join(settings.DB_CACHE, args.project + ".sqlite")
+    else:
+        dbPath = args.database
+    if args.clear and os.path.exists(dbPath):
+        os.remove(dbPath)
+    if not os.path.exists(os.path.dirname(dbPath)):
+        os.makedirs(os.path.dirname(dbPath))
     initDB(dbPath)
     if args.project != None:
         addProject(dbPath, args.project)
