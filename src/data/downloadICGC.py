@@ -45,37 +45,32 @@ def downloadProjectCodes():
         f.write(key + "\t" + projectCodes[key] + "\n")
     f.close()
 
-def getProjectPath(projectCode, local=True, codeToDir=None, table=None):
-    if codeToDir == None:
-        with open('project_codes.tsv', mode='rt') as infile:
-            reader = csv.reader(infile, delimiter='\t')
-            codeToDir = dict((rows[0],rows[1]) for rows in reader)
-    if local:
-        path = os.path.join(settings.DATA_PATH, codeToDir[projectCode])
-        if table != None:
-            path = os.path.join(path, settings.TABLE_FILES[table].replace("%c", projectCode))
-    else: # ftp
-        path = settings.ICGC_VERSION + "/" + codeToDir[projectCode]
-        if table != None:
-            path += "/" + settings.TABLE_FILES[table].replace("%c", projectCode)
-    return path
-
-def downloadProject(projectCode):
+def getCodeToDir():
     with open('project_codes.tsv', mode='rt') as infile:
         reader = csv.reader(infile, delimiter='\t')
         codeToDir = dict((rows[0],rows[1]) for rows in reader)
+    return codeToDir
+
+def getProjectPath(projectCode, directory, table=None, codeToDir=None):
+    if codeToDir == None:
+        codeToDir = getCodeToDir()
+    path = os.path.join(directory, codeToDir[projectCode])
+    if table != None:
+        path = os.path.join(path, settings.TABLE_FILES[table].replace("%c", projectCode))
+    return path
+
+def downloadProject(projectCode, downloadDir):
+    codeToDir = getCodeToDir()
     if projectCode not in codeToDir:
         print "Unknown project:", projectCode
         return
     ftp = connectFTP(settings.ICGC_FTP)
-    projectDirFTP = settings.ICGC_VERSION + "/" + codeToDir[projectCode]
-    projectDirLocal = os.path.join(settings.DATA_PATH, codeToDir[projectCode])
-    if not os.path.exists(projectDirLocal):
-        os.makedirs(projectDirLocal)
     for table in sorted(settings.TABLE_FILES.keys()):
-        filenameFTP = projectDirFTP + "/" + settings.TABLE_FILES[table].replace("%c", projectCode)
-        filenameLocal = os.path.join(projectDirLocal, settings.TABLE_FILES[table].replace("%c", projectCode))
+        filenameFTP = getProjectPath(projectCode, settings.ICGC_VERSION, table, codeToDir)
+        filenameLocal = getProjectPath(projectCode, downloadDir, table, codeToDir)
         if not os.path.exists(filenameLocal):
+            if not os.path.exists(os.path.dirname(filenameLocal)):
+                os.makedirs(os.path.dirname(filenameLocal))
             print "Downloading", filenameFTP
             try:
                 ftp.retrbinary("RETR " + filenameFTP, open(filenameLocal, 'wb').write)

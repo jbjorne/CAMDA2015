@@ -24,19 +24,21 @@ def preprocessICGCCode(cell):
 
 TABLE_FORMAT = {
     "clinical":{
-        "types":{"icgc_.*_id":"int", ".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-        "preprocess":{"icgc_.*_id":preprocessICGCCode},
+        #"columns":["REVERSE", "digital_image_of_stained_section"],
+        "types":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        #"preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_specimen_id"],
         "foreign_keys":None},
     "clinicalsample":{
-        "types":{"icgc_.*_id":"int", ".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-        "preprocess":{"icgc_.*_id":preprocessICGCCode},
+        #"columns":["REVERSE", "submitted_sample_id", "submitted_specimen_id"],
+        "types":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        #"preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_sample_id"],
         "foreign_keys":{"icgc_specimen_id":"clinical"}},
     "simple_somatic_mutation_open":{
         "columns":["icgc_mutation_id", "icgc_donor_id", "project_code", "icgc_specimen_id", "icgc_sample_id", "chromosome", "chromosome_start", "chromosome_end", "chromosome_strand", "mutation_type", "mutated_from_allele", "mutated_to_allele", "consequence_type", "aa_mutation", "cds_mutation", "gene_affected", "transcript_affected"],
         "types":{"icgc_.*_id":"int", "chromosome.*":"int"},
-        "preprocess":{"icgc_.*_id":preprocessICGCCode},
+        #"preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_mutation_id"], 
         "foreign_keys":{"icgc_specimen_id":"clinical"}},
     "gene_expression":{

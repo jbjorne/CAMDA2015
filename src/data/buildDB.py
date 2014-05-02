@@ -5,6 +5,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import downloadICGC
+import buildExamples
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 #dataPath = settings.DATA_PATH
 #dbName = settings.DB_NAME
@@ -20,8 +21,20 @@ def compileRegExKeys(dictionary):
                 newDict[key] = dictionary[key]
     return newDict
 
+def prepareColumnSelection(selectedColumns, header):
+    if selectedColumns != None and selectedColumns[0] == "REVERSE":
+        selectedColumns = selectedColumns[1:]
+        final = []
+        for column in header:
+            if column not in selectedColumns:
+                final.append(column)
+        return final
+    else:
+        return selectedColumns
+
 def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=None, defaultType="text"):
     columns = []
+    selectedColumns = prepareColumnSelection(selectedColumns, header)
     columnTypes = compileRegExKeys(columnTypes)
     preprocess = compileRegExKeys(preprocess)
     for i in range(len(header)):
@@ -79,7 +92,7 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
 def processLines(csvReader, columns):
     indicesToDelete = []
     indicesToPreprocess = []
-    print columns
+    #print columns
     if columns != None:
         for i in range(len(columns)):
             if columns[i] == None:
@@ -87,7 +100,7 @@ def processLines(csvReader, columns):
             elif columns[i][2]:
                 indicesToPreprocess.append((i, columns[i][2]))
     indicesToDelete.sort(reverse=True) # remove from the end
-    print indicesToDelete
+    #print indicesToDelete
     for line in csvReader:
         for targetIndex, function in indicesToPreprocess: 
             line[targetIndex] = function(line[targetIndex])
@@ -129,13 +142,15 @@ def initDB(dbName):
                  None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
 
-def addProject(dbName, projectCode):
+def addProject(dbName, projectCode, downloadDir=None):
     print "Adding project", projectCode, "to database", dbName
-    downloadICGC.downloadProject(projectCode) # Update the local files
+    if downloadDir == None:
+        downloadDir = os.path.dirname(dbName)
+    downloadICGC.downloadProject(projectCode, downloadDir) # Update the local files
     for table in sorted(settings.TABLE_FILES.keys()):
         if table in settings.TABLE_FORMAT:
             format = settings.TABLE_FORMAT[table]
-            tableFile = downloadICGC.getProjectPath(projectCode, table=table)
+            tableFile = downloadICGC.getProjectPath(projectCode, downloadDir, table)
             if not os.path.exists(tableFile):
                 continue
             print "Updating table", table, "from", tableFile
@@ -149,24 +164,40 @@ def addProject(dbName, projectCode):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
+    parser.add_argument('-d','--directory', default=settings.DATA_PATH)
     parser.add_argument('-p','--project', help='ICGC project code', default=None)
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
-    parser.add_argument('-d','--database', help='Database location', default=None)
+    parser.add_argument('-b','--database', help='Database location', default=None)
     args = parser.parse_args()
     
+    # Define locations
+    if args.directory != None:
+        args.directory = os.path.expanduser(args.directory)
     if args.database == None:
-        if not os.path.exists(settings.DB_CACHE):
-            os.makedirs(settings.DB_CACHE)
-        dbPath = os.path.join(settings.DB_CACHE, args.project + ".sqlite")
-    else:
-        dbPath = args.database
+        args.database = os.path.join(args.directory, settings.DB_NAME)
+    dbPath = args.database
+    if args.directory != None and not os.path.exists(args.directory):
+        os.makedirs(args.directory)
+    
+    # Initialize the database
     if args.clear and os.path.exists(dbPath):
+        print "Removing existing database", dbPath
         os.remove(dbPath)
     if not os.path.exists(os.path.dirname(dbPath)):
         os.makedirs(os.path.dirname(dbPath))
     initDB(dbPath)
+    
+    # Add projects
     if args.project != None:
-        addProject(dbPath, args.project)
+        if args.project == "ALL":
+            projects = buildExamples.enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
+        else:
+            projects = [args.project]
+        count = 1
+        for project in projects:
+            print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"
+            addProject(dbPath, project)
+            count += 1
     
 # tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
 #              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
