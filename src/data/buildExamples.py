@@ -1,7 +1,8 @@
 import sqlite3
 import os, sys
+from collections import OrderedDict
 import json
-import re
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -93,6 +94,7 @@ def compileTemplate(template, key):
     return eval(s)
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None):
+    con = connect(con)
     experiment = getExperiment(experimentName).copy()
     for key in experiment:
         if isinstance(experiment[key], basestring):
@@ -127,8 +129,12 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     if (metaDataFileName != None):
         f = open(metaDataFileName, "wt")
         template = getExperiment(experimentName).copy()
-        template["name"] = experimentName
-        output = {"experiment":template, "class":clsIds, "feature":featureIds}
+        experimentMeta = {}
+        experimentMeta["name"] = experimentName
+        experimentMeta["time"] = time.strftime("%c")
+        experimentMeta["dbFile"] = [x["file"] for x in con.execute("PRAGMA database_list;")][0]
+        experimentMeta["dbModified"] = time.strftime("%c", time.localtime(os.path.getmtime(experimentMeta["dbFile"])))
+        output = OrderedDict((("experiment",experimentMeta), ("template",template), ("class",clsIds), ("feature",featureIds)))
         if len(meta) > 0:
             output["meta"] = meta
         json.dump(output, f, indent=1)#, separators=(',\n', ':'))
