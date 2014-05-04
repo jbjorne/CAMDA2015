@@ -87,7 +87,7 @@ def compileTemplate(template):
     else:
         return eval("lambda con, example: con.execute(\"" + template.replace("{","\" + ").replace("}"," + \"") + "\")")
 
-def getExamples(con, experiment, callback, callbackArgs):
+def getExamples(con, experiment, callback, callbackArgs, idFileName=None):
     experiment = getExperiment(experiment).copy()
     for key in experiment:
         if isinstance(experiment[key], basestring):
@@ -116,6 +116,10 @@ def getExamples(con, experiment, callback, callbackArgs):
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
         count += 1
+    if (idFileName != None):
+        f = open(idFileName, "wt")
+        json.dump({"class":clsIds, "feature":featureIds}, f, indent=1)#, separators=(',\n', ':'))
+        f.close()
 
 # def getExamples2(con, experiment):
 #     experiment = getExperiment("TEST_EXPERIMENT_COMPLETE")
@@ -152,7 +156,7 @@ def getExamples(con, experiment, callback, callbackArgs):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
-    parser.add_argument('-d','--directory', default=settings.DATA_PATH)
+    parser.add_argument('-d','--ids', default=None)
     parser.add_argument('-o','--output', default=None)
     parser.add_argument('-e','--experiment', help='', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
@@ -168,8 +172,11 @@ if __name__ == "__main__":
         writer = writeSVMLight
         writerArgs = {"f":outFile}
     
+    if options.ids != None and not os.path.exists(os.path.dirname(options.ids)):
+        os.makedirs(os.path.dirname(options.ids))
+    
     con = connect(options.database)
-    getExamples(con, options.experiment, writer, writerArgs)
+    getExamples(con, options.experiment, writer, writerArgs, options.ids)
     #getExamples2(con, options.experiment)
     
     if outFile != None:
