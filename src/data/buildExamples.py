@@ -71,18 +71,32 @@ def getExperiment(experiment):
     else:
         return experiment
 
-def getExamples(con, experiment):
+def getId(name, dictionary):
+    if name not in dictionary:
+        dictionary[name] = len(dictionary)
+    return dictionary[name]
+
+def writeSVMLight(f, example, cls, features):
+    f.write(str(cls) + " ".join([str(key) + ":" + str(features[key]) for key in sorted(features.keys())]))
+
+def getExamples(con, experiment, callback, callbackArgs):
     experiment = getExperiment(experiment)
     examples = [x[0] for x in con.execute(experiment["example"])]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
+    clsIds = {}
+    featureIds = {}
     for example in examples:
-        cls = con.execute(experiment["class"].replace("{example}", example))
-        print "Processing example", cls, str(count) + "/" + str(numExamples)
-        for featureGroup in experiment["features"]:
+        if count % 10 == 0:
+            print "Processing example", example, str(count) + "/" + str(numExamples)
+        cls = getId(con.execute(experiment["class"].replace("{example}", example)), clsIds)
+        features = {}
+        for featureGroup in experiment.get("features", []):
             for feature in con.execute(featureGroup.replace("{example}", example)):
-                pass
+                features[getId(feature[0], featureIds)] = feature[1]
+        if callback != None:
+            callback(example=example, cls=cls, features=features, **callbackArgs)
         count += 1
 
 #dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)        
@@ -103,9 +117,23 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
     parser.add_argument('-d','--directory', default=settings.DATA_PATH)
+    parser.add_argument('-o','--output', default=None)
     parser.add_argument('-e','--experiment', help='', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
     options = parser.parse_args()
     
+    outFile = None
+    writer = None
+    writerArgs = None
+    if options.output != None:
+        if not os.path.exists(os.path.dirname(options.output)):
+            os.makedirs(os.path.dirname(options.output))
+        outFile = open(options.output, "wt")
+        writer = writeSVMLight
+        writerArgs = {"f":outFile}
+    
     con = connect(options.database)
-    getExamples(con, options.experiment)
+    getExamples(con, options.experiment, writer, writerArgs)
+    
+    if outFile != None:
+        outFile.close()

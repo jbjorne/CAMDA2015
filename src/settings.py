@@ -54,7 +54,7 @@ TABLE_FORMAT = {
 TEST_EXPERIMENT = {
     "example":"SELECT DISTINCT icgc_specimen_id FROM clinical WHERE project_code='BRCA-US'",
     "class":"SELECT DISTINCT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
+    #"features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
 }
 
 TEST_EXPERIMENT_COMPLEX = {
