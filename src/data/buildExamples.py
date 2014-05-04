@@ -96,7 +96,7 @@ def compileTemplate(template, key):
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None):
     con = connect(con)
     experiment = getExperiment(experimentName).copy()
-    for key in experiment:
+    for key in ["example", "class", "features", "meta"]:
         if isinstance(experiment[key], basestring):
             experiment[key] = compileTemplate(experiment[key], key)
         elif isinstance(experiment[key], list):
@@ -106,7 +106,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
-    clsIds = {True:1, False:-1}
+    clsIds = experiment.get("classIds", {})
     featureIds = {}
 #     clsRules = {}
 #     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
@@ -126,6 +126,9 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         if "meta" in experiment:
             meta.append(experiment["meta"](con, example))
         count += 1
+    saveMetaData(metaDataFileName, experimentName, clsIds, featureIds, meta)
+
+def saveMetaData(metaDataFileName, experimentName, clsIds, featureIds, meta):
     if (metaDataFileName != None):
         f = open(metaDataFileName, "wt")
         template = getExperiment(experimentName).copy()
@@ -137,7 +140,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         output = OrderedDict((("experiment",experimentMeta), ("template",template), ("class",clsIds), ("feature",featureIds)))
         if len(meta) > 0:
             output["meta"] = meta
-        json.dump(output, f, indent=1)#, separators=(',\n', ':'))
+        json.dump(output, f, indent=4)#, separators=(',\n', ':'))
         f.close()
 
 # def getExamples2(con, experiment):
