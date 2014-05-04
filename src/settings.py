@@ -47,5 +47,19 @@ TABLE_FORMAT = {
             "analysis_id|gene_chromosome|gene_strand|gene_start|gene_end|normalized_read_count|raw_read_count":"int",
             "normalized_expression_level|fold_change|quality_score|probability":"REAL"},
         "primary_key":["icgc_sample_id","gene_stable_id"], 
-        "foreign_keys":{"icgc_specimen_id":"clinical"}}
+        "foreign_keys":{"icgc_specimen_id":"clinical"},
+        "indices":["icgc_specimen_id"]}
+}
+
+TEST_EXPERIMENT = {
+    "example":"SELECT DISTINCT icgc_specimen_id FROM clinical WHERE project_code='BRCA-US'",
+    "class":"SELECT DISTINCT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
+    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
+}
+
+TEST_EXPERIMENT_COMPLEX = {
+    "example":"SELECT DISTINCT icgc_donor_id FROM clinical WHERE project_code='BRCA-US'",
+    "class":"SELECT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
+    "specimen":"SELECT icgc_specimen_id FROM clinical WHERE icgc_donor_id='{example}'",
+    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{specimen}'"]
 }

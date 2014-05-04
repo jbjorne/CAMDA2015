@@ -63,7 +63,7 @@ def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=Non
         columns.append(column)
     return columns
 
-def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
+def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None, indices=None):
     includedColumns = filter(lambda a: a != None, columns)
     s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in includedColumns])
     if primaryKey != None:
@@ -78,6 +78,9 @@ def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
                 foreignColumn = foreignKeys[key][1]
             s += ", FOREIGN KEY(" + key + ") REFERENCES " + foreignTable + "(" + foreignColumn + ")"
     s += ");"
+    if indices != None:
+        for index in indices:
+            s += "\nCREATE INDEX IF NOT EXISTS " + index + "_index ON " + tableName + "(" + index + ");"
     #print s
     return s
 
@@ -109,7 +112,7 @@ def processLines(csvReader, columns):
         #print line
         yield line
 
-def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, preprocess=None, drop=False):  
+def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, preprocess=None, indices=None, drop=False):  
     con = sqlite3.connect(dbName)
     con.row_factory = sqlite3.Row
     if csvFileName.endswith(".gz"):
@@ -123,7 +126,7 @@ def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTyp
     #print columns
     if drop:
         con.execute("DROP TABLE IF EXISTS " + tableName + ";")
-    con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys))
+    con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys, indices))
     insert = defineSQLInsert(tableName, columns)
     #print insert
     con.executemany(insert, processLines(data, columns))
@@ -159,7 +162,8 @@ def addProject(dbName, projectCode, downloadDir=None):
                          format.get("types", None), 
                          format.get("primary_key", None), 
                          format.get("foreign_keys", None),
-                         format.get("preprocess", None))
+                         format.get("preprocess", None),
+                         format.get("indices", None))
 
 if __name__ == "__main__":
     import argparse
