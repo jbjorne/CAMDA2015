@@ -51,10 +51,29 @@ TABLE_FORMAT = {
         "indices":["icgc_specimen_id"]}
 }
 
+TEST_EXPERIMENT_COMPLETE = {
+    "all":"""
+        SELECT clinical.icgc_specimen_id,clinical.disease_status_last_followup,
+        gene_expression.gene_stable_id,gene_expression.normalized_expression_level
+        FROM clinical 
+        JOIN gene_expression 
+        ON clinical.icgc_specimen_id = gene_expression.icgc_specimen_id
+        WHERE clinical.project_code = "BRCA-US"
+        AND clinical.specimen_type NOT LIKE '%control%'
+    """
+}
+
+TEST_EXPERIMENT_2 = {
+    "example":"SELECT icgc_specimen_id,disease_status_last_followup FROM clinical WHERE project_code='BRCA-US'",
+    "class":"{example['disease_status_last_followup']}",
+    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example['icgc_specimen_id']}'"]
+}
+
+
 TEST_EXPERIMENT = {
     "example":"SELECT DISTINCT icgc_specimen_id FROM clinical WHERE project_code='BRCA-US'",
     "class":"SELECT DISTINCT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
-    #"features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
+    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
 }
 
 TEST_EXPERIMENT_COMPLEX = {

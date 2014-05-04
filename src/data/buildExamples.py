@@ -1,6 +1,7 @@
 import sqlite3
 import os, sys
 import json
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -9,6 +10,7 @@ dataPath = settings.DATA_PATH
 def connect(con):
     if isinstance(con, basestring):
         con = sqlite3.connect(con)
+        con.row_factory = sqlite3.Row
     return con
 
 def enumerateValues(con, table, column):
@@ -79,14 +81,26 @@ def getId(name, dictionary):
 def writeSVMLight(f, example, cls, features):
     f.write(str(cls) + " ".join([str(key) + ":" + str(features[key]) for key in sorted(features.keys())]))
 
+def compileTemplate(template):  
+    return eval("lambda: \"" + template.replace("{","\" + ").replace("}"," + \"") + "\"")
+
 def getExamples(con, experiment, callback, callbackArgs):
-    experiment = getExperiment(experiment)
-    examples = [x[0] for x in con.execute(experiment["example"])]
+    experiment = getExperiment(experiment).copy()
+    for key in experiment:
+        if isinstance(experiment[key], basestring):
+            experiment[key] = compileTemplate(experiment[key])
+        elif isinstance(experiment[key], list):
+            experiment[key] = [compileTemplate(x) for x in experiment[key]]
+    print "Compiled experiment"
+    examples = [x[0] for x in con.execute(experiment["example"]())]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
     clsIds = {}
     featureIds = {}
+#     clsRules = {}
+#     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
+#         clsRules[rule] = 
     for example in examples:
         if count % 10 == 0:
             print "Processing example", example, str(count) + "/" + str(numExamples)
@@ -98,6 +112,24 @@ def getExamples(con, experiment, callback, callbackArgs):
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
         count += 1
+
+# def getExamples2(con, experiment):
+#     experiment = getExperiment("TEST_EXPERIMENT_COMPLETE")
+#     example = None
+#     cls = None
+#     clsIds = {}
+#     featureIds = {}
+#     count = 1
+#     for row in con.execute(experiment["all"]):
+#         if row[0] != example:
+#             example = row[0]
+#             cls = clsIds.setdefault(row[1], len(clsIds))
+#             features = {}
+#             if count % 10 == 0:
+#                 print "Processing example", example, str(count)
+#             count += 1
+#         #features[featureIds.setdefault(row[2], len(featureIds))] = row[3]
+        
 
 #dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)        
 
@@ -122,18 +154,19 @@ if __name__ == "__main__":
     parser.add_argument('-b','--database', help='Database location', default=None)
     options = parser.parse_args()
     
-    outFile = None
+#     outFile = None
     writer = None
     writerArgs = None
-    if options.output != None:
-        if not os.path.exists(os.path.dirname(options.output)):
-            os.makedirs(os.path.dirname(options.output))
-        outFile = open(options.output, "wt")
-        writer = writeSVMLight
-        writerArgs = {"f":outFile}
+#     if options.output != None:
+#         if not os.path.exists(os.path.dirname(options.output)):
+#             os.makedirs(os.path.dirname(options.output))
+#         outFile = open(options.output, "wt")
+#         writer = writeSVMLight
+#         writerArgs = {"f":outFile}
     
     con = connect(options.database)
     getExamples(con, options.experiment, writer, writerArgs)
+    getExamples2(con, options.experiment)
     
-    if outFile != None:
-        outFile.close()
+#     if outFile != None:
+#         outFile.close()
