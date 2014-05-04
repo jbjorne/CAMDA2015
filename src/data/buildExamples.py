@@ -81,19 +81,24 @@ def getId(name, dictionary):
 def writeSVMLight(f, example, cls, features):
     f.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
 
-def compileTemplate(template):
-    if template[0] == "{" and template[-1] == "}":
-        return eval("lambda con, example: \"" + template.replace("{","\" + ").replace("}"," + \"") + "\"")
-    else:
-        return eval("lambda con, example: con.execute(\"" + template.replace("{","\" + ").replace("}"," + \"") + "\")")
+def compileTemplate(template, key):
+    template = template.replace("/{", "BRACKET_OPEN").replace("/}", "BRACKET_CLOSE")
+    s = "\"" + template.replace("{","\" + ").replace("}"," + \"") + "\""
+    if template[0] != "{" and template[-1] != "}":
+        s = "con.execute(" + s + ")"
+    template = template.replace("BRACKET_OPEN", "{").replace("BRACKET_CLOSE", "}")
+    s = s.replace("\"\" + ", "").replace(" + \"\"", "")
+    s = "lambda con, example: " + s
+    print "Compiled template", [key, s]
+    return eval(s)
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None):
     experiment = getExperiment(experimentName).copy()
     for key in experiment:
         if isinstance(experiment[key], basestring):
-            experiment[key] = compileTemplate(experiment[key])
+            experiment[key] = compileTemplate(experiment[key], key)
         elif isinstance(experiment[key], list):
-            experiment[key] = [compileTemplate(x) for x in experiment[key]]
+            experiment[key] = [compileTemplate(x, key) for x in experiment[key]]
     print "Compiled experiment"
     examples = [x for x in experiment["example"](con, None)]
     numExamples = len(examples)
@@ -104,6 +109,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
 #     clsRules = {}
 #     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
 #         clsRules[rule] = 
+    meta = []
     for example in examples:
         cls = getId(experiment["class"](con, example), clsIds)
         #print experiment["class"](con, example)
@@ -115,12 +121,17 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
                 features[getId(feature[0], featureIds)] = feature[1]
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
+        if "meta" in experiment:
+            meta.append(experiment["meta"](con, example))
         count += 1
     if (metaDataFileName != None):
         f = open(metaDataFileName, "wt")
         template = getExperiment(experimentName).copy()
         template["name"] = experimentName
-        json.dump({"experiment":template, "class":clsIds, "feature":featureIds}, f, indent=1)#, separators=(',\n', ':'))
+        output = {"experiment":template, "class":clsIds, "feature":featureIds}
+        if len(meta) > 0:
+            output["meta"] = meta
+        json.dump(output, f, indent=1)#, separators=(',\n', ':'))
         f.close()
 
 # def getExamples2(con, experiment):
