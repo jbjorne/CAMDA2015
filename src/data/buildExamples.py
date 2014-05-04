@@ -87,8 +87,8 @@ def compileTemplate(template):
     else:
         return eval("lambda con, example: con.execute(\"" + template.replace("{","\" + ").replace("}"," + \"") + "\")")
 
-def getExamples(con, experiment, callback, callbackArgs, idFileName=None):
-    experiment = getExperiment(experiment).copy()
+def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None):
+    experiment = getExperiment(experimentName).copy()
     for key in experiment:
         if isinstance(experiment[key], basestring):
             experiment[key] = compileTemplate(experiment[key])
@@ -116,9 +116,11 @@ def getExamples(con, experiment, callback, callbackArgs, idFileName=None):
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
         count += 1
-    if (idFileName != None):
-        f = open(idFileName, "wt")
-        json.dump({"class":clsIds, "feature":featureIds}, f, indent=1)#, separators=(',\n', ':'))
+    if (metaDataFileName != None):
+        f = open(metaDataFileName, "wt")
+        template = getExperiment(experimentName).copy()
+        template["name"] = experimentName
+        json.dump({"experiment":template, "class":clsIds, "feature":featureIds}, f, indent=1)#, separators=(',\n', ':'))
         f.close()
 
 # def getExamples2(con, experiment):
@@ -156,7 +158,7 @@ def getExamples(con, experiment, callback, callbackArgs, idFileName=None):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
-    parser.add_argument('-d','--ids', default=None)
+    parser.add_argument('-m','--meta', default=None)
     parser.add_argument('-o','--output', default=None)
     parser.add_argument('-e','--experiment', help='', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
@@ -172,11 +174,11 @@ if __name__ == "__main__":
         writer = writeSVMLight
         writerArgs = {"f":outFile}
     
-    if options.ids != None and not os.path.exists(os.path.dirname(options.ids)):
-        os.makedirs(os.path.dirname(options.ids))
+    if options.meta != None and not os.path.exists(os.path.dirname(options.meta)):
+        os.makedirs(os.path.dirname(options.meta))
     
     con = connect(options.database)
-    getExamples(con, options.experiment, writer, writerArgs, options.ids)
+    getExamples(con, options.experiment, writer, writerArgs, options.meta)
     #getExamples2(con, options.experiment)
     
     if outFile != None:
