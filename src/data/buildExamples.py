@@ -79,10 +79,13 @@ def getId(name, dictionary):
     return dictionary[name]
 
 def writeSVMLight(f, example, cls, features):
-    f.write(str(cls) + " ".join([str(key) + ":" + str(features[key]) for key in sorted(features.keys())]))
+    f.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
 
-def compileTemplate(template):  
-    return eval("lambda: \"" + template.replace("{","\" + ").replace("}"," + \"") + "\"")
+def compileTemplate(template):
+    if template[0] == "{" and template[-1] == "}":
+        return eval("lambda con, example: \"" + template.replace("{","\" + ").replace("}"," + \"") + "\"")
+    else:
+        return eval("lambda con, example: con.execute(\"" + template.replace("{","\" + ").replace("}"," + \"") + "\")")
 
 def getExamples(con, experiment, callback, callbackArgs):
     experiment = getExperiment(experiment).copy()
@@ -92,22 +95,23 @@ def getExamples(con, experiment, callback, callbackArgs):
         elif isinstance(experiment[key], list):
             experiment[key] = [compileTemplate(x) for x in experiment[key]]
     print "Compiled experiment"
-    examples = [x[0] for x in con.execute(experiment["example"]())]
+    examples = [x for x in experiment["example"](con, None)]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
-    clsIds = {}
+    clsIds = {True:1, False:-1}
     featureIds = {}
 #     clsRules = {}
 #     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
 #         clsRules[rule] = 
     for example in examples:
+        cls = getId(experiment["class"](con, example), clsIds)
+        #print experiment["class"](con, example)
         if count % 10 == 0:
-            print "Processing example", example, str(count) + "/" + str(numExamples)
-        cls = getId(con.execute(experiment["class"].replace("{example}", example)), clsIds)
+            print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in experiment.get("features", []):
-            for feature in con.execute(featureGroup.replace("{example}", example)):
+            for feature in featureGroup(con, example):
                 features[getId(feature[0], featureIds)] = feature[1]
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
@@ -157,16 +161,16 @@ if __name__ == "__main__":
 #     outFile = None
     writer = None
     writerArgs = None
-#     if options.output != None:
-#         if not os.path.exists(os.path.dirname(options.output)):
-#             os.makedirs(os.path.dirname(options.output))
-#         outFile = open(options.output, "wt")
-#         writer = writeSVMLight
-#         writerArgs = {"f":outFile}
+    if options.output != None:
+        if not os.path.exists(os.path.dirname(options.output)):
+            os.makedirs(os.path.dirname(options.output))
+        outFile = open(options.output, "wt")
+        writer = writeSVMLight
+        writerArgs = {"f":outFile}
     
     con = connect(options.database)
     getExamples(con, options.experiment, writer, writerArgs)
-    getExamples2(con, options.experiment)
+    #getExamples2(con, options.experiment)
     
-#     if outFile != None:
-#         outFile.close()
+    if outFile != None:
+        outFile.close()

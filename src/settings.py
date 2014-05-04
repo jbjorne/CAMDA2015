@@ -64,9 +64,9 @@ TEST_EXPERIMENT_COMPLETE = {
 }
 
 TEST_EXPERIMENT_2 = {
-    "example":"SELECT icgc_specimen_id,disease_status_last_followup FROM clinical WHERE project_code='BRCA-US'",
-    "class":"{example['disease_status_last_followup']}",
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example['icgc_specimen_id']}'"]
+    "example":"SELECT icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code='BRCA-US' AND specimen_type IS NOT NULL",
+    "class":"{'control' not in example['specimen_type']}",
+    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example['icgc_specimen_id']}' AND abs(normalized_expression_level)>0.0000001"]
 }
 
 
