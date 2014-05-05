@@ -51,7 +51,8 @@ TABLE_FORMAT = {
         "indices":["icgc_specimen_id"]}
 }
 
-META = "{dict( dict(example), **{'class':str(cls),'features':len(features)} )}"
+TEST_PROJECT="BRCA-US"
+META = "{dict(dict(example), cls=str(cls), features=len(features))}"
 GENE_EXPRESSION = "SELECT ('EXP:'||gene_stable_id),normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 
 REMISSION = {

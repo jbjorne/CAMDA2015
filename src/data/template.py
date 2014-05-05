@@ -1,4 +1,10 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import settings
+
 def compileTemplate(template, arguments, key=None):
+    if not isinstance(template, basestring):
+        return [compileTemplate(x, arguments, key) for x in template]
     if template[0] == "{" and template[-1] == "}": # Python-only statement
         s = "lambda " + ",".join(arguments) + ": " + template[1:-1].replace("/{", "{").replace("/}", "}")
         print "Compiled template", [key, s]
@@ -21,6 +27,12 @@ def compileTemplate(template, arguments, key=None):
         print "Compiled template", [key, sql]
         return eval(sql)
 
+def getFeatureGroups(names, source):
+    groups = []
+    for name in names:
+        groups.append(source[name])
+    return groups
+
 def updateTemplateOptions(template, options):
     if "options" not in template:
         if options != None:
@@ -34,14 +46,24 @@ def updateTemplateOptions(template, options):
     return template["options"]
 
 def parseTemplateOptions(string):
+    #print dir(settings)
     if string == None:
         return None
     options = {}
     for split in string.split(","):
+        #print split
         split = split.strip()
         key, value = split.split("=", 1)
+        #dir(settings)
+        #print sys.modules["settings"]
+        #print settings
+        #print {x:getattr(settings, x) for x in dir(settings)}
+        #print [key, value, eval(value, globals(), settings)]
+        #print "TRYING", eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         try:
-            options[key] = eval(value)
+            #print "TRYING", eval(value, locals={x:getattr(settings, x) for x in dir(settings)})
+            #print value, settings[value]
+            options[key] = eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         except:
             options[key] = value
     return options

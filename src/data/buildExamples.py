@@ -36,7 +36,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     compiled = template.copy()
     compiled["example"] = compileTemplate(compiled["example"], ["con", "options"], "example")
     compiled["class"] = compileTemplate(compiled["class"], ["con", "example", "options"], "class")
-    compiled["features"] = [compileTemplate(x, ["con", "example", "options"], "features") for x in compiled["features"]]
+    compiled["features"] = compileTemplate(compiled["features"], ["con", "example", "options"], "features")
     compiled["meta"] = compileTemplate(compiled["meta"], ["con", "example", "options", "cls", "features"], "meta")
     print "Compiled experiment"
     examples = [x for x in compiled["example"](con, options)]
@@ -113,6 +113,10 @@ if __name__ == "__main__":
     parser.add_argument('-p','--options', help='Experiment template options', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
     options = parser.parse_args()
+    
+    print options.database
+    if not os.path.exists(options.database):
+        raise Exception("No database at " + str(options.database))
     
 #     outFile = None
     writer = None
