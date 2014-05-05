@@ -45,11 +45,12 @@ def updateTemplateOptions(template, options):
             template["options"][key] = options[key]
     return template["options"]
 
-def parseTemplateOptions(string):
+def parseTemplateOptions(string, options):
     #print dir(settings)
+    if options == None:
+        options = {}
     if string == None:
-        return None
-    options = {}
+        return options
     for split in string.split(","):
         #print split
         split = split.strip()

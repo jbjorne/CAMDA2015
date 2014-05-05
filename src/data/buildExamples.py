@@ -30,16 +30,22 @@ def getId(name, dictionary):
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
     template = getExperiment(experimentName).copy()
-    options = updateTemplateOptions(template, options)
+    template = parseTemplateOptions(options, template)
+    #options = updateTemplateOptions(template, options)
     print "Template:", experimentName
     print json.dumps(template, indent=4)
     compiled = template.copy()
-    compiled["example"] = compileTemplate(compiled["example"], ["con", "options"], "example")
-    compiled["class"] = compileTemplate(compiled["class"], ["con", "example", "options"], "class")
-    compiled["features"] = compileTemplate(compiled["features"], ["con", "example", "options"], "features")
-    compiled["meta"] = compileTemplate(compiled["meta"], ["con", "example", "options", "cls", "features"], "meta")
+    lambdaArgs = sorted(template.keys())
+    lambdaArgs.remove("example")
+    lambdaArgs.remove("label")
+    lambdaArgs.remove("features")
+    compiled["example"] = compileTemplate(compiled["example"], ["con"] + lambdaArgs, "example")
+    compiled["label"] = compileTemplate(compiled["label"], ["con", "example"] + lambdaArgs, "label")
+    compiled["features"] = compileTemplate(compiled["features"], ["con", "example"] + lambdaArgs, "features")
+    compiled["meta"] = compileTemplate(compiled["meta"], ["example", "label", "features"] + lambdaArgs, "meta")
+    lambdaArgs = {k:compiled[k] for k in lambdaArgs}
     print "Compiled experiment"
-    examples = [x for x in compiled["example"](con, options)]
+    examples = [x for x in compiled["example"](con=con, **lambdaArgs)]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
@@ -51,13 +57,13 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     meta = []
     featureGroups = compiled.get("features", [])
     for example in examples:
-        cls = getId(compiled["class"](con, example, options), clsIds)
+        cls = getId(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         #print experiment["class"](con, example)
         #if count % 10 == 0:
         print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in featureGroups:
-            for feature in featureGroup(con, example, options):
+            for feature in featureGroup(con=con, example=example, **lambdaArgs):
                 #print example, options, feature
                 features[getId(feature[0], featureIds)] = feature[1]
         if len(features) == 0:
@@ -65,7 +71,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
         if "meta" in compiled:
-            meta.append(compiled["meta"](con, example, options, cls, features))
+            meta.append(compiled["meta"](label=cls, features=features, example=example, **lambdaArgs))
         count += 1
     saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta)
     return featureIds
@@ -139,7 +145,7 @@ if __name__ == "__main__":
         os.makedirs(os.path.dirname(options.meta))
     
     con = connect(options.database)
-    featureIds = getExamples(con, options.experiment, writer, writerArgs, options.meta, parseTemplateOptions(options.options))
+    featureIds = getExamples(con, options.experiment, writer, writerArgs, options.meta, options.options)
     #getExamples2(con, options.experiment)
     
     for outFile in opened.values():
