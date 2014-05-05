@@ -4,6 +4,7 @@ from collections import OrderedDict
 import json
 import time
 from template import *
+from example import *
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -25,26 +26,6 @@ def getId(name, dictionary):
     if name not in dictionary:
         dictionary[name] = len(dictionary)
     return dictionary[name]
-
-def writeSVMLight(fX, fY, example, cls, features):
-    fX.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
-
-def writeNumpyText(fX, fY, example, cls, features):
-    if fY != None: # write class
-        fY.write(str(cls))
-        if fY != fX: # classes go to a separate file
-            fY.write("\n")
-        else: # classes go to the same file
-            fY.write(" ")
-    if fX != None: # write features
-        index = 0
-        for key in sorted(features.keys()):
-            while index < key:
-                fX.write("0 ")
-                index += 1
-            fX.write(str(features[key]) + " ")
-            index = key + 1
-        fX.write("\n")
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
@@ -160,16 +141,4 @@ if __name__ == "__main__":
     for outFile in opened.values():
         outFile.close()
     if options.writer == "writeNumpyText" and options.features != None:
-        import tempfile
-        temp = tempfile.mktemp()
-        filename = os.path.abspath(os.path.expanduser(options.features))
-        os.rename(filename, temp)
-        fI = open(temp, "rt")
-        fO = open(filename, "wt")
-        numFeatures = len(featureIds)
-        for line in fI:
-            line = line.rstrip()
-            fO.write(line + max(0, numFeatures - line.count(" ")) * " 0" + "\n")
-        fI.close()
-        fO.close()
-        os.remove(temp)
+        padNumpyFeatureFile(options.features, len(featureIds))
