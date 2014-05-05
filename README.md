@@ -27,7 +27,7 @@ Using the code
 1. Download the SQLite database from sftp://taito.csc.fi/homeappl/home/jakrbj/wrkdir/CAMDA2014. 
 2. Unpack the database to the local disk
 3. Alternatively, the database can be constructed using src/data/buildDB.py, but this will take several hours.
-4. Generate examples using src/data/buildExamples.py, using a defined experiment. The program will generate an SVM-light format example file and a metadata file containing further information on the examples, class and feature ids etc. For the currently implemented cancer remission example, run the following code `python buildExamples.py -x FEATURE_FILE -y LABEL_FILE -m METADATA_FILE -b DATABASE_FILE -e REMISSION`
+4. Generate examples using src/data/buildExamples.py, using a defined experiment. The program will generate NumPy text format feature and label files and a metadata file containing further information on the examples, class and feature ids etc. For the currently implemented cancer remission example, run the following code `python buildExamples.py -x FEATURE_FILE -y LABEL_FILE -m METADATA_FILE -b DATABASE_FILE -e REMISSION`
 
 Goals for machine learning
 ----------------------------------------
