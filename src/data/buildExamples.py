@@ -26,8 +26,25 @@ def getId(name, dictionary):
         dictionary[name] = len(dictionary)
     return dictionary[name]
 
-def writeSVMLight(f, example, cls, features):
-    f.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
+def writeSVMLight(fX, fY, example, cls, features):
+    fX.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
+
+def writeNumpyText(fX, fY, example, cls, features):
+    if fY != None: # write class
+        fY.write(str(cls))
+        if fY != fX: # classes go to a separate file
+            fY.write("\n")
+        else: # classes go to the same file
+            fY.write(" ")
+    if fX != None: # write features
+        index = 0
+        for key in sorted(features.keys()):
+            while index < key:
+                fX.write("0 ")
+                index += 1
+            fX.write(str(features[key]) + " ")
+            index = key + 1
+        fX.write("\n")
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
@@ -105,7 +122,9 @@ def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Build examples from ICGC data')
-    parser.add_argument('-o','--output', help='SVM-light format examples output file name', default=None)
+    parser.add_argument('-x','--features', help='Output file for feature vectors (X)', default=None)
+    parser.add_argument('-y','--labels', help='Output file for class labels (Y)', default=None)
+    parser.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
     parser.add_argument('-m','--meta', help='Metadata output file name (optional)', default=None)
     parser.add_argument('-e','--experiment', help='Experiment template', default=None)
     parser.add_argument('-p','--options', help='Experiment template options', default=None)
@@ -115,12 +134,19 @@ if __name__ == "__main__":
 #     outFile = None
     writer = None
     writerArgs = None
-    if options.output != None:
-        if not os.path.exists(os.path.dirname(options.output)):
-            os.makedirs(os.path.dirname(options.output))
-        outFile = open(options.output, "wt")
-        writer = writeSVMLight
-        writerArgs = {"f":outFile}
+    opened = {}
+    if options.features != None or options.labels != None:
+        writer = eval(options.writer)
+        writerArgs = {}
+        for argName, filename in [("fX", options.features), ("fY", options.labels)]:
+            if filename != None:
+                parentDir = os.path.dirname(filename)
+                if parentDir != None and not os.path.exists(parentDir):
+                    os.makedirs(parentDir)
+                filename = os.path.abspath(os.path.expanduser(filename))
+                if filename not in opened:
+                    opened[filename] = open(filename, "wt")
+                writerArgs[argName] = opened[filename]
     
     if options.meta != None and not os.path.exists(os.path.dirname(options.meta)):
         os.makedirs(os.path.dirname(options.meta))
@@ -129,5 +155,5 @@ if __name__ == "__main__":
     getExamples(con, options.experiment, writer, writerArgs, options.meta, parseTemplateOptions(options.options))
     #getExamples2(con, options.experiment)
     
-    if outFile != None:
+    for outFile in opened.values():
         outFile.close()
