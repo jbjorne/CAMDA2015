@@ -32,7 +32,9 @@ def writeSVMLight(f, example, cls, features):
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
     template = getExperiment(experimentName).copy()
-    updateTemplateOptions(template)
+    options = updateTemplateOptions(template, options)
+    print "Template:", experimentName
+    print json.dumps(template, indent=4)
     compiled = template.copy()
     for key in ["example", "class", "features", "meta"]:
         if isinstance(compiled[key], basestring):
@@ -54,11 +56,12 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     for example in examples:
         cls = getId(compiled["class"](con, example, options), clsIds)
         #print experiment["class"](con, example)
-        if count % 10 == 0:
-            print "Processing example", example, cls, str(count) + "/" + str(numExamples)
+        #if count % 10 == 0:
+        print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in featureGroups:
             for feature in featureGroup(con, example, options):
+                print example, options, feature
                 features[getId(feature[0], featureIds)] = feature[1]
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
