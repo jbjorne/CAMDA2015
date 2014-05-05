@@ -14,60 +14,6 @@ def connect(con):
         con.row_factory = sqlite3.Row
     return con
 
-def enumerateValues(con, table, column):
-    con = connect(con)
-    values = con.execute("SELECT DISTINCT " + column + " FROM " + table)
-    return [x[0] for x in values]
-    #result = con.execute()
-    #print result
-
-def getCancerClassIds(specimenTypeValues):
-    classes = {}
-    for className in specimenTypeValues:
-        classes[className] = 1 if "tumour" in className else -1
-    return classes
-
-def addFeatureId(value, featureIds):
-    if value not in featureIds:
-        featureIds[value] = len(featureIds)
-        
-def predefineFeatureIds(con, table, columns, featureIds=None):
-    con = connect(con)
-    if featureIds == None:
-        featureIds = {}
-    for column in columns:
-        for value in enumerateValues(con, table, column):
-            addFeatureId((column, value), featureIds)
-    return featureIds
-
-# def getExamples(dbName, sql, classColumn, featureColumns, classIds, featureIds):
-#     con = connect(dbName)
-#     con.row_factory = sqlite3.Row
-#     classes = []
-#     features = []
-#     for row in con.execute(sql):
-#         if classColumn != None:
-#             classes.append(classIds[row[classColumn]])
-#         featureVector = {}
-#         for column in featureColumns:
-#             value = row[column]
-#             featureVector[featureIds[(column, value)]] = 1
-#         features.append(featureVector)
-#     return classes, features
-
-def expandVectors(features, featureIds):
-    maxIndex = max(featureIds.values())
-    arrays = []
-    for vector in features:
-        array = []
-        for i in range(maxIndex):
-            if i in vector:
-                array.append(vector[i])
-            else:
-                array.append(0)
-        arrays.append(array)
-    return arrays
-
 def getExperiment(experiment):
     if isinstance(experiment, basestring):
         return getattr(settings, experiment)
@@ -82,56 +28,80 @@ def getId(name, dictionary):
 def writeSVMLight(f, example, cls, features):
     f.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
 
-def compileTemplate(template, key):
+def compileTemplate(template, arguments, key=None):
     template = template.replace("/{", "BRACKET_OPEN").replace("/}", "BRACKET_CLOSE")
     s = "\"" + template.replace("{","\" + ").replace("}"," + \"") + "\""
     if template[0] != "{" and template[-1] != "}":
         s = "con.execute(" + s + ")"
     template = template.replace("BRACKET_OPEN", "{").replace("BRACKET_CLOSE", "}")
     s = s.replace("\"\" + ", "").replace(" + \"\"", "")
-    s = "lambda con, example: " + s
+    s = "lambda " + ",".join(arguments) + ": " + s
     print "Compiled template", [key, s]
     return eval(s)
 
-def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None):
+def updateTemplateOptions(template, options):
+    if "options" not in template:
+        return None
+    if options == None:
+        return
+    for key in options:
+        template["options"][key] = options[key]
+
+def parseTemplateOptions(string):
+    if string == None:
+        return None
+    options = {}
+    for split in string.split(","):
+        split = split.strip()
+        key, value = split.split("=", 1)
+        try:
+            options[key] = eval(value)
+        except:
+            options[key] = value
+    return options
+
+def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
-    experiment = getExperiment(experimentName).copy()
+    template = getExperiment(experimentName).copy()
+    updateTemplateOptions(template)
+    compiled = template.copy()
     for key in ["example", "class", "features", "meta"]:
-        if isinstance(experiment[key], basestring):
-            experiment[key] = compileTemplate(experiment[key], key)
-        elif isinstance(experiment[key], list):
-            experiment[key] = [compileTemplate(x, key) for x in experiment[key]]
+        if isinstance(compiled[key], basestring):
+            compiled[key] = compileTemplate(compiled[key], ["con", "example", "options"], key)
+        elif isinstance(compiled[key], list):
+            compiled[key] = [compileTemplate(x, ["con", "example", "options"], key) for x in compiled[key]]
     print "Compiled experiment"
-    examples = [x for x in experiment["example"](con, None)]
+    examples = [x for x in compiled["example"](con, None, options)]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
-    clsIds = experiment.get("classIds", {})
+    clsIds = compiled.get("classIds", {})
     featureIds = {}
 #     clsRules = {}
 #     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
 #         clsRules[rule] = 
     meta = []
+    featureGroups = compiled.get("features", [])
     for example in examples:
-        cls = getId(experiment["class"](con, example), clsIds)
+        cls = getId(compiled["class"](con, example, options), clsIds)
         #print experiment["class"](con, example)
         if count % 10 == 0:
             print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
-        for featureGroup in experiment.get("features", []):
-            for feature in featureGroup(con, example):
+        for featureGroup in featureGroups:
+            for feature in featureGroup(con, example, options):
                 features[getId(feature[0], featureIds)] = feature[1]
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
-        if "meta" in experiment:
-            meta.append(experiment["meta"](con, example))
+        if "meta" in compiled:
+            meta.append(compiled["meta"](con, example, options))
         count += 1
-    saveMetaData(metaDataFileName, experimentName, clsIds, featureIds, meta)
+    saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta)
 
-def saveMetaData(metaDataFileName, experimentName, clsIds, featureIds, meta):
+def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta):
     if (metaDataFileName != None):
         f = open(metaDataFileName, "wt")
-        template = getExperiment(experimentName).copy()
+        #template = getExperiment(experimentName).copy()
         experimentMeta = {}
         experimentMeta["name"] = experimentName
         experimentMeta["time"] = time.strftime("%c")
@@ -177,10 +147,11 @@ def saveMetaData(metaDataFileName, experimentName, clsIds, featureIds, meta):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Import ICGC data')
-    parser.add_argument('-m','--meta', default=None)
-    parser.add_argument('-o','--output', default=None)
-    parser.add_argument('-e','--experiment', help='', default=None)
+    parser = argparse.ArgumentParser(description='Build examples from ICGC data')
+    parser.add_argument('-o','--output', help='SVM-light format examples output file name', default=None)
+    parser.add_argument('-m','--meta', help='Metadata output file name (optional)', default=None)
+    parser.add_argument('-e','--experiment', help='Experiment template', default=None)
+    parser.add_argument('-p','--options', help='Experiment template options', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
     options = parser.parse_args()
     
@@ -198,7 +169,7 @@ if __name__ == "__main__":
         os.makedirs(os.path.dirname(options.meta))
     
     con = connect(options.database)
-    getExamples(con, options.experiment, writer, writerArgs, options.meta)
+    getExamples(con, options.experiment, writer, writerArgs, options.meta, parseTemplateOptions(options.options))
     #getExamples2(con, options.experiment)
     
     if outFile != None:
