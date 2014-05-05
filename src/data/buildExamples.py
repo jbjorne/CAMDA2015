@@ -3,6 +3,7 @@ import os, sys
 from collections import OrderedDict
 import json
 import time
+from template import *
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -27,38 +28,6 @@ def getId(name, dictionary):
 
 def writeSVMLight(f, example, cls, features):
     f.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")
-
-def compileTemplate(template, arguments, key=None):
-    template = template.replace("/{", "BRACKET_OPEN").replace("/}", "BRACKET_CLOSE")
-    s = "\"" + template.replace("{","\" + ").replace("}"," + \"") + "\""
-    if template[0] != "{" and template[-1] != "}":
-        s = "con.execute(" + s + ")"
-    template = template.replace("BRACKET_OPEN", "{").replace("BRACKET_CLOSE", "}")
-    s = s.replace("\"\" + ", "").replace(" + \"\"", "")
-    s = "lambda " + ",".join(arguments) + ": " + s
-    print "Compiled template", [key, s]
-    return eval(s)
-
-def updateTemplateOptions(template, options):
-    if "options" not in template:
-        return None
-    if options == None:
-        return
-    for key in options:
-        template["options"][key] = options[key]
-
-def parseTemplateOptions(string):
-    if string == None:
-        return None
-    options = {}
-    for split in string.split(","):
-        split = split.strip()
-        key, value = split.split("=", 1)
-        try:
-            options[key] = eval(value)
-        except:
-            options[key] = value
-    return options
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
     con = connect(con)
@@ -129,21 +98,6 @@ def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds,
 #                 print "Processing example", example, str(count)
 #             count += 1
 #         #features[featureIds.setdefault(row[2], len(featureIds))] = row[3]
-        
-
-#dbPath = os.path.join(settings.DATA_PATH, settings.DB_NAME)        
-
-# dbName = dataPath + "BRCA-US.sqlite"
-# con = sqlite3.connect(dbName)
-# classIds = getCancerClassIds(enumerateValues(con, "clinicalsample", "analyzed_sample_type"))
-# featureColumns = ["chromosome", "mutation_type", "consequence_type"]
-# featureIds = predefineFeatureIds(con, "simple_somatic_mutation_open", featureColumns)
-# print "Class IDs:", json.dumps({str(k):v for k,v in classIds.items()})
-# print "Feature IDs:", json.dumps({str(k):v for k,v in featureIds.items()})
-# X, y = getExamples(dbName, "SELECT * FROM clinicalsample NATURAL JOIN simple_somatic_mutation_open LIMIT 15;", "analyzed_sample_type", featureColumns, classIds, featureIds)
-# print X
-# print y
-# print expandVectors(y, featureIds)
 
 if __name__ == "__main__":
     import argparse
