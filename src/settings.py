@@ -56,7 +56,7 @@ REMISSION = {
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={options['project']} AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'",
     "class":"{'remission' in example['disease_status_last_followup']}",
     "classIds":{True:1, False:-1},
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level)>{options['expressionCutoff']}"],
+    "features":["SELECT ('EXP:'||gene_stable_id),normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level)>{options['expressionCutoff']}"],
     "meta":"{dict( dict(example), **{'class':str(cls),'features':len(features)} )}"
 }
 
