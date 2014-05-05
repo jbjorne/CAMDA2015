@@ -53,13 +53,12 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     print "Template:", experimentName
     print json.dumps(template, indent=4)
     compiled = template.copy()
-    for key in ["example", "class", "features", "meta"]:
-        if isinstance(compiled[key], basestring):
-            compiled[key] = compileTemplate(compiled[key], ["con", "example", "options"], key)
-        elif isinstance(compiled[key], list):
-            compiled[key] = [compileTemplate(x, ["con", "example", "options"], key) for x in compiled[key]]
+    compiled["example"] = compileTemplate(compiled["example"], ["con", "options"], "example")
+    compiled["class"] = compileTemplate(compiled["class"], ["con", "example", "options"], "class")
+    compiled["features"] = [compileTemplate(x, ["con", "example", "options"], "features") for x in compiled["features"]]
+    compiled["meta"] = compileTemplate(compiled["meta"], ["con", "example", "options", "cls", "features"], "meta")
     print "Compiled experiment"
-    examples = [x for x in compiled["example"](con, None, options)]
+    examples = [x for x in compiled["example"](con, options)]
     numExamples = len(examples)
     print "Examples", numExamples
     count = 1
@@ -80,12 +79,15 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
             for feature in featureGroup(con, example, options):
                 #print example, options, feature
                 features[getId(feature[0], featureIds)] = feature[1]
+        if len(features) == 0:
+            print "WARNING: example has no features"
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
         if "meta" in compiled:
-            meta.append(compiled["meta"](con, example, options))
+            meta.append(compiled["meta"](con, example, options, cls, features))
         count += 1
     saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta)
+    return featureIds
 
 def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta):
     if (metaDataFileName != None):
@@ -152,8 +154,22 @@ if __name__ == "__main__":
         os.makedirs(os.path.dirname(options.meta))
     
     con = connect(options.database)
-    getExamples(con, options.experiment, writer, writerArgs, options.meta, parseTemplateOptions(options.options))
+    featureIds = getExamples(con, options.experiment, writer, writerArgs, options.meta, parseTemplateOptions(options.options))
     #getExamples2(con, options.experiment)
     
     for outFile in opened.values():
         outFile.close()
+    if options.writer == "writeNumpyText" and options.features != None:
+        import tempfile
+        temp = tempfile.mktemp()
+        filename = os.path.abspath(os.path.expanduser(options.features))
+        os.rename(filename, temp)
+        fI = open(temp, "rt")
+        fO = open(filename, "wt")
+        numFeatures = len(featureIds)
+        for line in fI:
+            line = line.rstrip()
+            fO.write(line + max(0, numFeatures - line.count(" ")) * " 0" + "\n")
+        fI.close()
+        fO.close()
+        os.remove(temp)

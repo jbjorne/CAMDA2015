@@ -1,6 +1,6 @@
 def compileTemplate(template, arguments, key=None):
     if template[0] == "{" and template[-1] == "}": # Python-only statement
-        s = "lambda " + ",".join(arguments) + ": " + template[1:-1]
+        s = "lambda " + ",".join(arguments) + ": " + template[1:-1].replace("/{", "{").replace("/}", "}")
         print "Compiled template", [key, s]
         return eval(s)
     else: # SQL statement
