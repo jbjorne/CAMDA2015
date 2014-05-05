@@ -61,7 +61,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         features = {}
         for featureGroup in featureGroups:
             for feature in featureGroup(con, example, options):
-                print example, options, feature
+                #print example, options, feature
                 features[getId(feature[0], featureIds)] = feature[1]
         if callback != None:
             callback(example=example, cls=cls, features=features, **callbackArgs)
