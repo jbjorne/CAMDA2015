@@ -51,6 +51,16 @@ TABLE_FORMAT = {
         "indices":["icgc_specimen_id"]}
 }
 
+REMISSION = {
+    "options":{"project":"BRCA-US", "expressionCutoff":"0"},
+    "example":["SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code=? AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'", lambda o:o['project']],
+    "class":lambda e:'Remission' in e['disease_status_last_followup'],
+    "classIds":{True:1, False:-1},
+    "features":[["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id=? AND abs(normalized_expression_level)>?", lambda e:e['icgc_specimen_id'], lambda o:o['expressionCutoff']]],
+    "meta":"{dict(example)}"
+}
+
+
 TEST_EXPERIMENT_COMPLETE = {
     "all":"""
         SELECT clinical.icgc_specimen_id,clinical.disease_status_last_followup,
