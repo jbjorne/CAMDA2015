@@ -84,15 +84,16 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
             callback(example=example, cls=cls, features=features, **callbackArgs)
         if "meta" in compiled:
             meta.append(compiled["meta"](label=cls, features=features, example=example, **lambdaArgs))
-    saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta)
+    saveMetaData(metaDataFileName, template, experimentName, options, clsIds, featureIds, meta)
     return featureIds
 
-def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta):
+def saveMetaData(metaDataFileName, template, experimentName, experimentOptions, clsIds, featureIds, meta):
     if (metaDataFileName != None):
         f = open(metaDataFileName, "wt")
         #template = getExperiment(experimentName).copy()
         experimentMeta = {}
         experimentMeta["name"] = experimentName
+        experimentMeta["options"] = experimentOptions
         experimentMeta["time"] = time.strftime("%c")
         experimentMeta["dbFile"] = [x["file"] for x in con.execute("PRAGMA database_list;")][0]
         experimentMeta["dbModified"] = time.strftime("%c", time.localtime(os.path.getmtime(experimentMeta["dbFile"])))

@@ -13,13 +13,14 @@ def writeNumpyText(fX, fY, example, cls, features):
             fY.write(" ")
     if fX != None: # write features
         index = 0
+        line = ""
         for key in sorted(features.keys()):
             while index < key:
-                fX.write("0 ")
+                line += "0 "
                 index += 1
-            fX.write(str(features[key]) + " ")
+            line += str(features[key]) + " "
             index = key + 1
-        fX.write("\n")
+        fX.write(line[:-1] + "\n") # remove trailing space before writing the line
 
 def padNumpyFeatureFile(filename, numFeatures):
     temp = tempfile.mktemp()
@@ -28,8 +29,13 @@ def padNumpyFeatureFile(filename, numFeatures):
     fI = open(temp, "rt")
     fO = open(filename, "wt")
     for line in fI:
-        line = line.rstrip()
-        fO.write(line + max(0, numFeatures - line.count(" ")) * " 0" + "\n")
+        line = line.strip()
+        if line == "":
+            line = " 0" * numFeatures
+        else:
+            line = line + ((numFeatures - line.count(" ") - 1) * " 0")
+        line = line.strip()
+        fO.write(line + "\n")
     fI.close()
     fO.close()
     os.remove(temp)
