@@ -27,43 +27,15 @@ def compileTemplate(template, arguments, key=None):
         print "Compiled template", [key, sql]
         return eval(sql)
 
-def getFeatureGroups(names, source):
-    groups = []
-    for name in names:
-        groups.append(source[name])
-    return groups
-
-def updateTemplateOptions(template, options):
-    if "options" not in template:
-        if options != None:
-            raise Exception("Template does not support options")
-        return None
-    if options != None:
-        for key in options:
-            if key not in template["options"]:
-                raise Exception("Template does not support option '" + str(key) + "'")
-            template["options"][key] = options[key]
-    return template["options"]
-
 def parseTemplateOptions(string, options):
-    #print dir(settings)
     if options == None:
         options = {}
     if string == None:
         return options
     for split in string.split(","):
-        #print split
         split = split.strip()
         key, value = split.split("=", 1)
-        #dir(settings)
-        #print sys.modules["settings"]
-        #print settings
-        #print {x:getattr(settings, x) for x in dir(settings)}
-        #print [key, value, eval(value, globals(), settings)]
-        #print "TRYING", eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         try:
-            #print "TRYING", eval(value, locals={x:getattr(settings, x) for x in dir(settings)})
-            #print value, settings[value]
             options[key] = eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         except:
             options[key] = value
