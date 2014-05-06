@@ -21,6 +21,7 @@ def compileTemplate(template):
 def compileTemplateOption(template, arguments, key=None):
     if not isinstance(template, basestring):
         return [compileTemplateOption(x, arguments, key) for x in template]
+    template = template.replace("\n", " ")
     if template[0] == "{" and template[-1] == "}": # Python-only statement
         s = "lambda " + ",".join(arguments) + ": " + template[1:-1].replace("/{", "{").replace("/}", "}")
         print "Compiled template", [key, s]

@@ -31,7 +31,7 @@ def preprocessMicroRNA(cell):
 TABLE_FORMAT = {
     "clinical":{
         #"columns":["REVERSE", "digital_image_of_stained_section"],
-        "types":{".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
+        "types":{".*_age.*":"int", ".*_time":"int", ".*_interval.*":"int"},
         #"preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_specimen_id"],
         "foreign_keys":None},
@@ -94,7 +94,7 @@ REMISSION = {
     "project":"BRCA-US",
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'",
     "label":"{'remission' in example['disease_status_last_followup']}",
-    "classIds":{True:1, False:-1},
+    "classes":{True:1, False:-1},
     "features":[EXP,SSM],
     "hidden":0.3,
     "meta":META
@@ -104,7 +104,23 @@ CANCER_OR_CONTROL = {
     "project":"BRCA-US",
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL",
     "label":"{'control' not in example['specimen_type']}",
-    "classIds":{True:1, False:-1},
+    "classes":{True:1, False:-1},
+    "features":[EXP,SSM],
+    "hidden":0.3,
+    "meta":META
+}
+
+SURVIVAL = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT donor_age_at_diagnosis,donor_vital_status,icgc_donor_id,donor_survival_time,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        FROM clinical 
+        WHERE project_code={project} AND 
+            specimen_type IS NOT NULL AND 
+            specimen_type NOT LIKE '%control%' AND 
+            ((length(donor_survival_time) > 0 AND donor_vital_status IS 'deceased') OR disease_status_last_followup LIKE '%remission%')
+    """,
+    "label":"{0 if 'remission' in example['disease_status_last_followup'] else 1.0/(int(example['donor_survival_time'])+1)}",
     "features":[EXP,SSM],
     "hidden":0.3,
     "meta":META

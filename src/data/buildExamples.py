@@ -28,10 +28,19 @@ def getExperiment(experiment):
     else:
         return experiment
 
-def getId(name, dictionary):
-    if name not in dictionary:
-        dictionary[name] = len(dictionary)
-    return dictionary[name]
+def getId(value, dictionary):
+    if value not in dictionary:
+        dictionary[value] = len(dictionary)
+    return dictionary[value]
+
+def getIdOrValue(value, dictionary=None):
+    if dictionary != None:
+        if value not in dictionary:
+            dictionary[value] = len(dictionary)
+        else:
+            return dictionary[value]
+    else:
+        return value
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, hiddenRule="skip"):
     con = connect(con)
@@ -47,18 +56,19 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     numExamples = len(examples)
     print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
     count = 0
-    clsIds = compiled.get("classIds", {})
+    clsIds = compiled.get("classes", None)
     featureIds = {}
     meta = []
     featureGroups = compiled.get("features", [])
     for example in examples:
         count += 1
-        cls = getId(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
             continue
         #print experiment["class"](con, example)
         #if count % 10 == 0:
-        print "Processing example", example, cls, str(count) + "/" + str(numExamples)
+        print "Processing example", example,
+        cls = getIdOrValue(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
+        print cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in featureGroups:
             for row in featureGroup(con=con, example=example, **lambdaArgs):
@@ -86,7 +96,9 @@ def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds,
         experimentMeta["time"] = time.strftime("%c")
         experimentMeta["dbFile"] = [x["file"] for x in con.execute("PRAGMA database_list;")][0]
         experimentMeta["dbModified"] = time.strftime("%c", time.localtime(os.path.getmtime(experimentMeta["dbFile"])))
-        output = OrderedDict((("experiment",experimentMeta), ("template",template), ("class",clsIds), ("feature",featureIds)))
+        if clsIds == None:
+            clsIds = {}
+        output = OrderedDict((("experiment",experimentMeta), ("template",template), ("classes",clsIds), ("features",featureIds)))
         if len(meta) > 0:
             output["meta"] = meta
         json.dump(output, f, indent=4)#, separators=(',\n', ':'))
