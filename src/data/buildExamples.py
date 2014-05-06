@@ -5,6 +5,7 @@ import json
 import time
 from template import *
 from example import *
+import itertools
 from numbers import Number
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,12 +65,13 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in featureGroups:
-            for feature in zip(*[iter(featureGroup(con=con, example=example, **lambdaArgs))] * 2): # iterate over each consecutive key,value columns pair
-                if not isinstance(feature[0], basestring):
-                    raise Exception("Non-string key for feature " + str(feature) + " in feature group " + str(featureGroups.index(featureGroup)))
-                if not isinstance(feature[1], Number):
-                    raise Exception("Non-number value for feature " + str(feature) + " in feature group " + str(featureGroups.index(featureGroup)))
-                features[getId(feature[0], featureIds)] = feature[1]
+            for row in featureGroup(con=con, example=example, **lambdaArgs):
+                for key, value in itertools.izip(*[iter(row)] * 2): # iterate over each consecutive key,value columns pair
+                    if not isinstance(key, basestring):
+                        raise Exception("Non-string feature key '" + str(key) + "' in feature group " + str(featureGroups.index(featureGroup)))
+                    if not isinstance(value, Number):
+                        raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(featureGroups.index(featureGroup)))
+                    features[getId(key, featureIds)] = value
         if len(features) == 0:
             print "WARNING: example has no features"
         if callback != None:
