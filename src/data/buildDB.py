@@ -5,7 +5,6 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import downloadICGC
-import buildExamples
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 #dataPath = settings.DATA_PATH
 #dbName = settings.DB_NAME
@@ -63,7 +62,7 @@ def defineColumns(header, selectedColumns=None, columnTypes=None, preprocess=Non
         columns.append(column)
     return columns
 
-def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None, indices=None):
+def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None):
     includedColumns = filter(lambda a: a != None, columns)
     s = "CREATE TABLE IF NOT EXISTS " + tableName + "(" + ",".join([x[0] + " " + x[1] for x in includedColumns])
     if primaryKey != None:
@@ -78,10 +77,6 @@ def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None, indi
                 foreignColumn = foreignKeys[key][1]
             s += ", FOREIGN KEY(" + key + ") REFERENCES " + foreignTable + "(" + foreignColumn + ")"
     s += ");"
-    if indices != None:
-        for index in indices:
-            s += "\nCREATE INDEX IF NOT EXISTS " + tableName + "_" + index + "_index ON " + tableName + "(" + index + ");"
-    #print s
     return s
 
 def defineSQLInsert(tableName, columns, ignoreExisting=True):
@@ -92,6 +87,12 @@ def defineSQLInsert(tableName, columns, ignoreExisting=True):
     includedColumns = filter(lambda a: a != None, columns)
     return s + tableName + "(" + ",".join([x[0] for x in includedColumns]) + ")" + " values (" + ",".join(["?"]*len(includedColumns)) + ")"
 
+def addIndices(con, tableName, indices):
+    con = connect(con)
+    if indices != None:
+        for index in indices:
+            con.execute("CREATE INDEX IF NOT EXISTS " + tableName + "_" + index + "_index ON " + tableName + "(" + index + ");")
+    
 def processLines(csvReader, columns):
     indicesToDelete = []
     indicesToPreprocess = []
@@ -112,9 +113,19 @@ def processLines(csvReader, columns):
         #print line
         yield line
 
+def connect(con):
+    if isinstance(con, basestring):
+        con = sqlite3.connect(con)
+        con.row_factory = sqlite3.Row
+    return con
+
+def enumerateValues(con, table, column):
+    con = connect(con)
+    values = con.execute("SELECT DISTINCT " + column + " FROM " + table)
+    return [x[0] for x in values]
+
 def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTypes=None, primaryKey=None, foreignKeys=None, preprocess=None, indices=None, drop=False):  
-    con = sqlite3.connect(dbName)
-    con.row_factory = sqlite3.Row
+    con = connect(dbName)
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
     else:
@@ -126,8 +137,9 @@ def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTyp
     #print columns
     if drop:
         con.execute("DROP TABLE IF EXISTS " + tableName + ";")
-    con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys, indices))
+    con.execute(defineSQLTable(tableName, columns, primaryKey, foreignKeys))
     insert = defineSQLInsert(tableName, columns)
+    addIndices(con, tableName, indices)
     #print insert
     con.executemany(insert, processLines(data, columns))
     
@@ -145,12 +157,16 @@ def initDB(dbName):
                  None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
 
-def addProject(dbName, projectCode, downloadDir=None):
+def addProject(dbName, projectCode, downloadDir=None, tables = None):
     print "Adding project", projectCode, "to database", dbName
     if downloadDir == None:
         downloadDir = os.path.dirname(dbName)
     downloadICGC.downloadProject(projectCode, downloadDir) # Update the local files
+    if tables != None:
+        tables = set(tables.split(","))
     for table in sorted(settings.TABLE_FILES.keys()):
+        if tables != None and table not in tables:
+            continue
         if table in settings.TABLE_FORMAT:
             format = settings.TABLE_FORMAT[table]
             tableFile = downloadICGC.getProjectPath(projectCode, downloadDir, table)
@@ -172,6 +188,7 @@ if __name__ == "__main__":
     parser.add_argument('-p','--project', help='ICGC project code', default=None)
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     parser.add_argument('-b','--database', help='Database location', default=None)
+    parser.add_argument('-t','--tables', help='Add only tables in this comma-separated list', default=None)
     args = parser.parse_args()
     
     # Define locations
@@ -194,13 +211,13 @@ if __name__ == "__main__":
     # Add projects
     if args.project != None:
         if args.project == "ALL":
-            projects = buildExamples.enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
+            projects = enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
         else:
             projects = [args.project]
         count = 1
         for project in projects:
             print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"
-            addProject(dbPath, project)
+            addProject(dbPath, project, args.directory, args.tables)
             count += 1
     
 # tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",

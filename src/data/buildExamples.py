@@ -46,12 +46,13 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     numHidden = hidden.setHiddenValues(examples, compiled)
     numExamples = len(examples)
     print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
-    count = 1
+    count = 0
     clsIds = compiled.get("classIds", {})
     featureIds = {}
     meta = []
     featureGroups = compiled.get("features", [])
     for example in examples:
+        count += 1
         cls = getId(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
             continue
@@ -73,7 +74,6 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
             callback(example=example, cls=cls, features=features, **callbackArgs)
         if "meta" in compiled:
             meta.append(compiled["meta"](label=cls, features=features, example=example, **lambdaArgs))
-        count += 1
     saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds, meta)
     return featureIds
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument('-e','--experiment', help='Experiment template', default=None)
     parser.add_argument('-p','--options', help='Experiment template options', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
-    parser.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only', default="skip")
+    parser.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only (default=skip)', default="skip")
     options = parser.parse_args()
     
     print options.database
