@@ -3,6 +3,7 @@ import json
 from sklearn import svm
 from sklearn.cross_validation import StratifiedKFold
 import sklearn.cross_validation
+import sklearn.ensemble
 
 def test(XPath, yPath, metaPath):
     y = numpy.loadtxt(yPath)
@@ -13,8 +14,9 @@ def test(XPath, yPath, metaPath):
 
     # Run classifier with crossvalidation
     print "Initializing classifier"
-    cv = StratifiedKFold(y, n_folds=5)
-    classifier = svm.SVC(kernel='linear', probability=True)
+    cv = StratifiedKFold(y, n_folds=10)
+    #classifier = svm.SVC(kernel='linear', probability=True)
+    classifier = sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
     print sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc")
 
 if __name__ == "__main__":
