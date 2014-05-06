@@ -1,3 +1,6 @@
+"""
+For building examples from the ICGC database.
+"""
 import sqlite3
 import os, sys
 from collections import OrderedDict
@@ -30,20 +33,6 @@ def getId(name, dictionary):
         dictionary[name] = len(dictionary)
     return dictionary[name]
 
-def getInclude(example, templateHidden, hiddenRule):
-    if hiddenRule not in ("skip", "include", "only"):
-        raise Exception("Unknown hidden set rule '" + str(hiddenRule) + "'")
-    if templateHidden == None:
-        return True
-    if hiddenRule == "skip" and example["hidden"] < templateHidden:
-        print "Skipping example from hidden donor", example["icgc_donor_id"]
-        return False
-    elif hiddenRule == "only" and example["hidden"] >= templateHidden:
-        print "Skipping example " + str(example) + " from non-hidden donor", example["icgc_donor_id"]
-        return False
-    else:
-        return True
-
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, hiddenRule="skip"):
     con = connect(con)
     template = getExperiment(experimentName).copy()
@@ -51,37 +40,20 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     #options = updateTemplateOptions(template, options)
     print "Template:", experimentName
     print json.dumps(template, indent=4)
-    compiled = template.copy()
-    lambdaArgs = sorted(template.keys())
-    lambdaArgs.remove("example")
-    lambdaArgs.remove("label")
-    lambdaArgs.remove("features")
-    compiled["example"] = compileTemplate(compiled["example"], ["con"] + lambdaArgs, "example")
-    compiled["label"] = compileTemplate(compiled["label"], ["con", "example"] + lambdaArgs, "label")
-    compiled["features"] = compileTemplate(compiled["features"], ["con", "example"] + lambdaArgs, "features")
-    compiled["meta"] = compileTemplate(compiled["meta"], ["example", "label", "features"] + lambdaArgs, "meta")
-    lambdaArgs = {k:compiled[k] for k in lambdaArgs}
+    compiled, lambdaArgs = compileTemplate(template)
     print "Compiled experiment"
     examples = [dict(x) for x in compiled["example"](con=con, **lambdaArgs)]
-    numHidden = 0
-    if "hidden" in compiled:
-        for example in examples:
-            example["hidden"] = hidden.getDonorHidden(example["icgc_donor_id"])
-            if example["hidden"] < compiled["hidden"]:
-                numHidden += 1
+    numHidden = hidden.setHiddenValues(examples, compiled)
     numExamples = len(examples)
     print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
     count = 1
     clsIds = compiled.get("classIds", {})
     featureIds = {}
-#     clsRules = {}
-#     for rule in re.search(r"\[(\w+)\]", experiment["class"]):
-#         clsRules[rule] = 
     meta = []
     featureGroups = compiled.get("features", [])
     for example in examples:
         cls = getId(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
-        if not getInclude(example, compiled.get("hidden", None), hiddenRule):
+        if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
             continue
         #print experiment["class"](con, example)
         #if count % 10 == 0:
@@ -119,23 +91,6 @@ def saveMetaData(metaDataFileName, template, experimentName, clsIds, featureIds,
             output["meta"] = meta
         json.dump(output, f, indent=4)#, separators=(',\n', ':'))
         f.close()
-
-# def getExamples2(con, experiment):
-#     experiment = getExperiment("TEST_EXPERIMENT_COMPLETE")
-#     example = None
-#     cls = None
-#     clsIds = {}
-#     featureIds = {}
-#     count = 1
-#     for row in con.execute(experiment["all"]):
-#         if row[0] != example:
-#             example = row[0]
-#             cls = clsIds.setdefault(row[1], len(clsIds))
-#             features = {}
-#             if count % 10 == 0:
-#                 print "Processing example", example, str(count)
-#             count += 1
-#         #features[featureIds.setdefault(row[2], len(featureIds))] = row[3]
 
 if __name__ == "__main__":
     import argparse

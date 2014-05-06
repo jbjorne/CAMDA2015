@@ -1,10 +1,26 @@
+"""
+For processing experiment templates.
+"""
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 
-def compileTemplate(template, arguments, key=None):
+def compileTemplate(template):
+    compiled = template.copy()
+    lambdaArgs = sorted(template.keys())
+    lambdaArgs.remove("example")
+    lambdaArgs.remove("label")
+    lambdaArgs.remove("features")
+    compiled["example"] = compileTemplateOption(compiled["example"], ["con"] + lambdaArgs, "example")
+    compiled["label"] = compileTemplateOption(compiled["label"], ["con", "example"] + lambdaArgs, "label")
+    compiled["features"] = compileTemplateOption(compiled["features"], ["con", "example"] + lambdaArgs, "features")
+    compiled["meta"] = compileTemplateOption(compiled["meta"], ["example", "label", "features"] + lambdaArgs, "meta")
+    lambdaArgs = {k:compiled[k] for k in lambdaArgs}
+    return compiled, lambdaArgs
+
+def compileTemplateOption(template, arguments, key=None):
     if not isinstance(template, basestring):
-        return [compileTemplate(x, arguments, key) for x in template]
+        return [compileTemplateOption(x, arguments, key) for x in template]
     if template[0] == "{" and template[-1] == "}": # Python-only statement
         s = "lambda " + ",".join(arguments) + ": " + template[1:-1].replace("/{", "{").replace("/}", "}")
         print "Compiled template", [key, s]
