@@ -6,6 +6,7 @@ import time
 from template import *
 from example import *
 import itertools
+import hidden
 from numbers import Number
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,7 +30,21 @@ def getId(name, dictionary):
         dictionary[name] = len(dictionary)
     return dictionary[name]
 
-def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None):
+def getInclude(example, templateHidden, hiddenRule):
+    if hiddenRule not in ("skip", "include", "only"):
+        raise Exception("Unknown hidden set rule '" + str(hiddenRule) + "'")
+    if templateHidden == None:
+        return True
+    if hiddenRule == "skip" and example["hidden"] < templateHidden:
+        print "Skipping example from hidden donor", example["icgc_donor_id"]
+        return False
+    elif hiddenRule == "only" and example["hidden"] >= templateHidden:
+        print "Skipping example " + str(example) + " from non-hidden donor", example["icgc_donor_id"]
+        return False
+    else:
+        return True
+
+def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, hiddenRule="skip"):
     con = connect(con)
     template = getExperiment(experimentName).copy()
     template = parseTemplateOptions(options, template)
@@ -47,9 +62,15 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     compiled["meta"] = compileTemplate(compiled["meta"], ["example", "label", "features"] + lambdaArgs, "meta")
     lambdaArgs = {k:compiled[k] for k in lambdaArgs}
     print "Compiled experiment"
-    examples = [x for x in compiled["example"](con=con, **lambdaArgs)]
+    examples = [dict(x) for x in compiled["example"](con=con, **lambdaArgs)]
+    numHidden = 0
+    if "hidden" in compiled:
+        for example in examples:
+            example["hidden"] = hidden.getDonorHidden(example["icgc_donor_id"])
+            if example["hidden"] < compiled["hidden"]:
+                numHidden += 1
     numExamples = len(examples)
-    print "Examples", numExamples
+    print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
     count = 1
     clsIds = compiled.get("classIds", {})
     featureIds = {}
@@ -60,6 +81,8 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     featureGroups = compiled.get("features", [])
     for example in examples:
         cls = getId(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
+        if not getInclude(example, compiled.get("hidden", None), hiddenRule):
+            continue
         #print experiment["class"](con, example)
         #if count % 10 == 0:
         print "Processing example", example, cls, str(count) + "/" + str(numExamples)
@@ -124,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('-e','--experiment', help='Experiment template', default=None)
     parser.add_argument('-p','--options', help='Experiment template options', default=None)
     parser.add_argument('-b','--database', help='Database location', default=None)
+    parser.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only', default="skip")
     options = parser.parse_args()
     
     print options.database

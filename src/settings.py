@@ -1,5 +1,4 @@
 import os
-import re
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data/ICGC/")
 DB_STORAGE = os.path.expanduser("~/data/CAMDA2014-cache/ICGC/")
@@ -18,9 +17,9 @@ TABLE_FILES = {
     "simple_somatic_mutation_open":"simple_somatic_mutation.open.%c.tsv.gz"
 }
 
-#reCode = re.compile("icgc_.*_id")
-def preprocessICGCCode(cell):
-    return int(cell[2:])
+# #reCode = re.compile("icgc_.*_id")
+# def preprocessICGCCode(cell):
+#     return int(cell[2:])
 
 TABLE_FORMAT = {
     "clinical":{
@@ -62,48 +61,12 @@ REMISSION = {
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classIds":{True:1, False:-1},
     "features":[EXP,SSM],
+    "hidden":0.3,
     "meta":META
-}
-
-
-TEST_EXPERIMENT_COMPLETE = {
-    "all":"""
-        SELECT clinical.icgc_specimen_id,clinical.disease_status_last_followup,
-        gene_expression.gene_stable_id,gene_expression.normalized_expression_level
-        FROM clinical 
-        JOIN gene_expression 
-        ON clinical.icgc_specimen_id = gene_expression.icgc_specimen_id
-        WHERE clinical.project_code = "BRCA-US"
-        AND clinical.specimen_type NOT LIKE '%control%'
-    """
 }
 
 TEST_EXPERIMENT_BOCA = {
     "example":"SELECT icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code='BOCA-UK' AND specimen_type IS NOT NULL",
     "class":"{'control' not in example['specimen_type']}",
     "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example['icgc_specimen_id']}' AND abs(normalized_expression_level)>0.0000001"]
-}
-
-
-TEST_EXPERIMENT_2 = {
-    "options":{"project":"BRCA-US"},
-    "example":"SELECT icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code='{options['project']}' AND specimen_type IS NOT NULL",
-    "class":"{'control' not in example['specimen_type']}",
-    "classIds":{True:1, False:-1},
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example['icgc_specimen_id']}' AND abs(normalized_expression_level)>0.0000001"],
-    "meta":"{dict(example)}"
-}
-
-
-TEST_EXPERIMENT = {
-    "example":"SELECT DISTINCT icgc_specimen_id FROM clinical WHERE project_code='BRCA-US'",
-    "class":"SELECT DISTINCT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{example}'"]
-}
-
-TEST_EXPERIMENT_COMPLEX = {
-    "example":"SELECT DISTINCT icgc_donor_id FROM clinical WHERE project_code='BRCA-US'",
-    "class":"SELECT disease_status_last_followup FROM clinical WHERE icgc_donor_id='{example}'",
-    "specimen":"SELECT icgc_specimen_id FROM clinical WHERE icgc_donor_id='{example}'",
-    "features":["SELECT gene_stable_id,normalized_expression_level FROM gene_expression WHERE icgc_specimen_id='{specimen}'"]
 }
