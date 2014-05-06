@@ -32,9 +32,16 @@ def parseTemplateOptions(string, options):
         options = {}
     if string == None:
         return options
-    for split in string.split(","):
-        split = split.strip()
-        key, value = split.split("=", 1)
+    # Separate key and values into a list, allowing commas within values
+    splits = []
+    phase = False
+    for split in string.split("="):
+        if phase: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
+            splits.extend(split.rsplit(",", 1))
+        else:
+            splits.append(split)
+        phase = not phase
+    for key, value in zip(*[iter(splits)] * 2):
         try:
             options[key] = eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         except:
