@@ -40,7 +40,8 @@ TABLE_FORMAT = {
         "types":{"icgc_.*_id":"int", "chromosome.*":"int"},
         #"preprocess":{"icgc_.*_id":preprocessICGCCode},
         "primary_key":["icgc_mutation_id"], 
-        "foreign_keys":{"icgc_specimen_id":"clinical"}},
+        "foreign_keys":{"icgc_specimen_id":"clinical"},
+        "indices":["icgc_specimen_id"]},
     "gene_expression":{
         "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "icgc_sample_id", "gene_stable_id", "normalized_expression_level"],
         "types":{
@@ -52,14 +53,15 @@ TABLE_FORMAT = {
 }
 
 META = "{dict(dict(example), label=str(label), features=len(features))}"
-GENE_EXPRESSION = "SELECT ('EXP:'||gene_stable_id),normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+EXP = "SELECT ('EXP:'||gene_stable_id),normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
 
 REMISSION = {
     "project":"BRCA-US",
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'",
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classIds":{True:1, False:-1},
-    "features":[GENE_EXPRESSION],
+    "features":[EXP,SSM],
     "meta":META
 }
 

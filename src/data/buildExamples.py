@@ -5,6 +5,7 @@ import json
 import time
 from template import *
 from example import *
+from numbers import Number
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -63,8 +64,11 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         print "Processing example", example, cls, str(count) + "/" + str(numExamples)
         features = {}
         for featureGroup in featureGroups:
-            for feature in featureGroup(con=con, example=example, **lambdaArgs):
-                #print example, options, feature
+            for feature in zip(*[iter(featureGroup(con=con, example=example, **lambdaArgs))] * 2): # iterate over each consecutive key,value columns pair
+                if not isinstance(feature[0], basestring):
+                    raise Exception("Non-string key for feature " + str(feature) + " in feature group " + str(featureGroups.index(featureGroup)))
+                if not isinstance(feature[1], Number):
+                    raise Exception("Non-number value for feature " + str(feature) + " in feature group " + str(featureGroups.index(featureGroup)))
                 features[getId(feature[0], featureIds)] = feature[1]
         if len(features) == 0:
             print "WARNING: example has no features"

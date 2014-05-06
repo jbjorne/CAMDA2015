@@ -80,7 +80,7 @@ def defineSQLTable(tableName, columns, primaryKey = None, foreignKeys=None, indi
     s += ");"
     if indices != None:
         for index in indices:
-            s += "\nCREATE INDEX IF NOT EXISTS " + index + "_index ON " + tableName + "(" + index + ");"
+            s += "\nCREATE INDEX IF NOT EXISTS " + tableName + "_" + index + "_index ON " + tableName + "(" + index + ");"
     #print s
     return s
 
