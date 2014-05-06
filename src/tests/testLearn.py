@@ -1,5 +1,8 @@
 import numpy
 import json
+from sklearn import svm
+from sklearn.cross_validation import StratifiedKFold
+import sklearn.cross_validation
 
 def test(XPath, yPath, metaPath):
     y = numpy.loadtxt(yPath)
@@ -7,6 +10,12 @@ def test(XPath, yPath, metaPath):
     meta = {}
     if metaPath != None:
         meta = json.load(metaPath)
+
+    # Run classifier with crossvalidation
+    print "Initializing classifier"
+    cv = StratifiedKFold(y, n_folds=5)
+    classifier = svm.SVC(kernel='linear', probability=True)
+    print sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc")
 
 if __name__ == "__main__":
     import argparse
