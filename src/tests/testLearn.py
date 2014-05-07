@@ -1,4 +1,4 @@
-import numpy
+from numpy import loadtxt
 import json
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,10 +11,13 @@ import sklearn.cross_validation
 import sklearn.ensemble
 
 def test(XPath, yPath, metaPath):
-    y = numpy.loadtxt(yPath)
-    X = numpy.loadtxt(XPath)
+    print "Loading labels from", yPath
+    y = loadtxt(yPath)
+    print "Loading features from", XPath
+    X = loadtxt(XPath)
     meta = {}
     if metaPath != None:
+        print "Loading metadata from", metaPath
         f = open(metaPath, "rt")
         meta = json.load(f)
         f.close()
@@ -24,6 +27,7 @@ def test(XPath, yPath, metaPath):
     cv = StratifiedKFold(y, n_folds=10)
     #classifier = svm.SVC(kernel='linear', probability=True)
     classifier = sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
+    print "Cross-validating"
     print sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc")
 
 if __name__ == "__main__":

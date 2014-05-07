@@ -118,15 +118,13 @@ def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, feature
     featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, {"X":featureFilePath,"y":labelFilePath}, hiddenRule)
     closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
 
-def getCached(dbPath, experimentName, experimentOptions, metaFilePath, verbose=False):
-    if metaFilePath == None or not os.path.exists(metaFilePath): # nothing to compare with
+def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):
+    if meta == None or (isinstance(meta, basestring) and not os.path.exists(meta)): # nothing to compare with
         if verbose:
-            print "No existing metadata file", [metaFilePath]
+            print "No existing metadata file", [meta]
         return None
     # Load previous experiment
-    f = open(metaFilePath, "rt")
-    meta = json.load(f)
-    f.close()
+    meta = getPartialMeta(meta, ["experiment", "template"])
     # Load current experiment
     template = getExperiment(experimentName).copy()
     template = parseTemplateOptions(experimentOptions, template)

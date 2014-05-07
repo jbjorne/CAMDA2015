@@ -9,6 +9,35 @@ import json, hashlib
 def getTemplateId(template):
     return hashlib.md5(json.dumps(template)).hexdigest()
 
+def getPartialMeta(meta, filter):
+    if not isinstance(meta, basestring):
+        return meta
+    f = open(meta, "rt")
+    meta = json.load(f)
+    f.close()
+    return meta
+
+#     elements = {}
+#     currentElement = None
+#     for line in f:
+#         if line.startswith("    ") and line[4] != " ": # top level element
+#             splits = line.split("\"")
+#             if len(splits) == 1 and currentElement != None:
+#                 elements[currentElement] += line.rstrip().rstrip(",")
+#                 currentElement = None
+#             elif len(splits) == 3 and splits[1] in filter:
+#                 currentElement = splits[1]
+#                 elements[currentElement] = line
+#         elif currentElement != None:
+#             elements[currentElement] += line
+#     f.close()
+#     meta = {}
+#     print elements
+#     for key in elements.keys():
+#         print key
+#         meta[key] = json.loads(elements[key])
+#     return meta
+
 def compileTemplate(template):
     compiled = template.copy()
     lambdaArgs = sorted(template.keys())
