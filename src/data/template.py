@@ -56,11 +56,9 @@ def compileTemplateOption(template, arguments, key=None):
         print "Compiled template", [key, sql]
         return eval(sql)
 
-def parseTemplateOptions(string, options):
-    if options == None:
-        options = {}
+def parseOptionString(string):
     if string == None:
-        return options
+        return {}
     # Separate key and values into a list, allowing commas within values
     splits = []
     phase = False
@@ -70,9 +68,19 @@ def parseTemplateOptions(string, options):
         else:
             splits.append(split)
         phase = not phase
+    options = {}
     for key, value in zip(*[iter(splits)] * 2):
         try:
             options[key] = eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
         except:
             options[key] = value
+    return options
+
+def parseTemplateOptions(string, options):
+    if options == None:
+        options = {}
+    if string == None:
+        return options
+    for key, value in parseOptionString(string).items():
+        options[key] = value
     return options
