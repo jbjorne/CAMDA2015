@@ -124,7 +124,7 @@ def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):
             print "No existing metadata file", [meta]
         return None
     # Load previous experiment
-    meta = getPartialMeta(meta, ["experiment", "template"])
+    meta = getMeta(meta)
     # Load current experiment
     template = getExperiment(experimentName).copy()
     template = parseTemplateOptions(experimentOptions, template)

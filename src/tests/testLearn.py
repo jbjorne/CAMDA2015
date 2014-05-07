@@ -1,4 +1,4 @@
-from numpy import loadtxt
+import numpy
 import json
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,9 +12,9 @@ import sklearn.ensemble
 
 def test(XPath, yPath, metaPath):
     print "Loading labels from", yPath
-    y = loadtxt(yPath)
+    y = numpy.loadtxt(yPath)
     print "Loading features from", XPath
-    X = loadtxt(XPath)
+    X = numpy.loadtxt(XPath)
     meta = {}
     if metaPath != None:
         print "Loading metadata from", metaPath
@@ -24,11 +24,14 @@ def test(XPath, yPath, metaPath):
 
     # Run classifier with crossvalidation
     print "Initializing classifier"
-    cv = StratifiedKFold(y, n_folds=10)
+    numFolds = 10
+    cv = StratifiedKFold(y, n_folds=numFolds)
     #classifier = svm.SVC(kernel='linear', probability=True)
     classifier = sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
     print "Cross-validating"
-    print sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc")
+    scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
+    print "Scores:", scores
+    print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 if __name__ == "__main__":
     import argparse
@@ -55,6 +58,7 @@ if __name__ == "__main__":
                 options.labels = os.path.join(options.cacheDir, tId + "-y")
             if options.meta == None:
                 options.meta = os.path.join(options.cacheDir, tId + "-meta.json")
+            print "Comparing to cached experiment", options.meta
             cached = buildExamples.getCached(options.database, options.experiment, options.options, options.meta)
     
     if cached != None:
