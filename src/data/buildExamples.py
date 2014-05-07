@@ -10,6 +10,7 @@ from template import *
 from example import *
 import itertools
 import hidden
+import math
 from numbers import Number
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +21,7 @@ def connect(con):
     if isinstance(con, basestring):
         con = sqlite3.connect(con)
         con.row_factory = sqlite3.Row
+        con.create_function("log", 1, math.log)
     return con
 
 def getExperiment(experiment):
