@@ -1,5 +1,35 @@
 import sys, os
 import tempfile
+import argparse
+
+exampleOptions = argparse.ArgumentParser(add_help=False)
+exampleOptions.add_argument('-e','--experiment', help='Experiment template', default=None)
+exampleOptions.add_argument('-p','--options', help='Experiment template options', default=None)
+exampleOptions.add_argument('-b','--database', help='Database location', default=None)
+exampleOptions.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only (default=skip)', default="skip")
+
+def openOutputFiles(featureFilePath, labelFilePath, makeDirs=True):
+    writerArgs = None
+    opened = {}
+    if featureFilePath != None or labelFilePath != None:
+        writerArgs = {}
+        for argName, filename in [("fX", featureFilePath), ("fY", labelFilePath)]:
+            if filename != None:
+                if makeDirs:
+                    parentDir = os.path.dirname(filename)
+                    if parentDir != None and not os.path.exists(parentDir):
+                        os.makedirs(parentDir)
+                filename = os.path.abspath(os.path.expanduser(filename))
+                if filename not in opened:
+                    opened[filename] = open(filename, "wt")
+                writerArgs[argName] = opened[filename]
+    return writerArgs, opened
+
+def closeOutputFiles(opened, writer, featureFilePath, numFeatures):
+    for outFile in opened.values():
+        outFile.close()
+    if writer == writeNumpyText and featureFilePath != None:
+        padNumpyFeatureFile(featureFilePath, numFeatures)
 
 def writeSVMLight(fX, fY, example, cls, features):
     fX.write(str(cls) + " " + " ".join([str(key) + ":" + '{0:f}'.format(features[key]) for key in sorted(features.keys())]) + "\n")

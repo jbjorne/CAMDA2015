@@ -94,7 +94,7 @@ REMISSION = {
     "project":"BRCA-US",
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'",
     "label":"{'remission' in example['disease_status_last_followup']}",
-    "classes":{True:1, False:-1},
+    "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
     "hidden":0.3,
     "meta":META
@@ -104,7 +104,7 @@ CANCER_OR_CONTROL = {
     "project":"BRCA-US",
     "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL",
     "label":"{'control' not in example['specimen_type']}",
-    "classes":{True:1, False:-1},
+    "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
     "hidden":0.3,
     "meta":META

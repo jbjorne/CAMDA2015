@@ -4,6 +4,10 @@ For processing experiment templates.
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
+import json, hashlib
+
+def getTemplateId(template):
+    return hashlib.md5(json.dumps(template)).hexdigest()
 
 def compileTemplate(template):
     compiled = template.copy()

@@ -185,10 +185,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
     parser.add_argument('-d','--directory', default=settings.DATA_PATH)
-    parser.add_argument('-p','--project', help='ICGC project code', default=None)
+    parser.add_argument('-p','--project', help='ICGC project code(s) in a comma-separated list or ALL for all projects', default=None)
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     parser.add_argument('-b','--database', help='Database location', default=None)
-    parser.add_argument('-t','--tables', help='Add only tables in this comma-separated list', default=None)
+    parser.add_argument('-t','--tables', help='Add project data only from the tables in this comma-separated list (optional)', default=None)
     args = parser.parse_args()
     
     # Define locations
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         if args.project == "ALL":
             projects = enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
         else:
-            projects = [args.project]
+            projects = args.project.split(",")
         count = 1
         for project in projects:
             print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"

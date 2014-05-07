@@ -35,6 +35,7 @@ def getId(value, dictionary):
 
 def getIdOrValue(value, dictionary=None):
     if dictionary != None:
+        value = str(value)
         if value not in dictionary:
             dictionary[value] = len(dictionary)
         else:
@@ -42,7 +43,7 @@ def getIdOrValue(value, dictionary=None):
     else:
         return value
 
-def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, hiddenRule="skip"):
+def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None, hiddenRule="skip"):
     con = connect(con)
     template = getExperiment(experimentName).copy()
     template = parseTemplateOptions(options, template)
@@ -84,14 +85,17 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
             callback(example=example, cls=cls, features=features, **callbackArgs)
         if "meta" in compiled:
             meta.append(compiled["meta"](label=cls, features=features, example=example, **lambdaArgs))
-    saveMetaData(metaDataFileName, template, experimentName, options, clsIds, featureIds, meta)
+    saveMetaData(metaDataFileName, con, template, experimentName, options, clsIds, featureIds, meta, experimentMeta)
     return featureIds
 
-def saveMetaData(metaDataFileName, template, experimentName, experimentOptions, clsIds, featureIds, meta):
+def saveMetaData(metaDataFileName, con, template, experimentName, experimentOptions, clsIds, featureIds, meta, experimentMeta):
     if (metaDataFileName != None):
+        if not os.path.exists(os.path.dirname(metaDataFileName)):
+            os.makedirs(os.path.dirname(metaDataFileName))
         f = open(metaDataFileName, "wt")
         #template = getExperiment(experimentName).copy()
-        experimentMeta = {}
+        if experimentMeta == None:
+            experimentMeta = {}
         experimentMeta["name"] = experimentName
         experimentMeta["options"] = experimentOptions
         experimentMeta["time"] = time.strftime("%c")
@@ -105,48 +109,52 @@ def saveMetaData(metaDataFileName, template, experimentName, experimentOptions, 
         json.dump(output, f, indent=4)#, separators=(',\n', ':'))
         f.close()
 
+def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, featureFilePath, labelFilePath, metaFilePath, writer=writeNumpyText):
+    if not os.path.exists(dbPath):
+        raise Exception("No database at " + str(dbPath))
+    print "Using database at", dbPath
+    con = connect(dbPath)
+    writerArgs, opened = openOutputFiles(featureFilePath, labelFilePath) 
+    featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, {"X":featureFilePath,"y":labelFilePath}, hiddenRule)
+    closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
+
+def getCached(dbPath, experimentName, experimentOptions, metaFilePath, verbose=False):
+    if metaFilePath == None or not os.path.exists(metaFilePath): # nothing to compare with
+        if verbose:
+            print "No existing metadata file", [metaFilePath]
+        return None
+    # Load previous experiment
+    f = open(metaFilePath, "rt")
+    meta = json.load(f)
+    f.close()
+    # Load current experiment
+    template = getExperiment(experimentName).copy()
+    template = parseTemplateOptions(experimentOptions, template)
+    # Get database information
+    dbPath = os.path.abspath(os.path.expanduser(dbPath))
+    dbModified = time.strftime("%c", time.localtime(os.path.getmtime(dbPath)))
+    # Compare settings
+    metaExp = meta["experiment"]
+    if verbose:
+        print dbPath
+        print metaExp["dbFile"]
+        print dbModified
+        print metaExp["dbModified"]
+        print json.dumps(template)
+        print json.dumps(meta["template"])
+    if metaExp["dbFile"] == dbPath and metaExp["dbModified"] == dbModified and template == meta["template"]:
+        return meta # is the same experiment
+    else:
+        return None # previous experiment differs
+
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Build examples from ICGC data')
+    parser = argparse.ArgumentParser(parents=[exampleOptions], description='Build examples from ICGC data')
     parser.add_argument('-x','--features', help='Output file for feature vectors (X)', default=None)
     parser.add_argument('-y','--labels', help='Output file for class labels (Y)', default=None)
     parser.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
     parser.add_argument('-m','--meta', help='Metadata output file name (optional)', default=None)
-    parser.add_argument('-e','--experiment', help='Experiment template', default=None)
-    parser.add_argument('-p','--options', help='Experiment template options', default=None)
-    parser.add_argument('-b','--database', help='Database location', default=None)
-    parser.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only (default=skip)', default="skip")
     options = parser.parse_args()
     
-    print options.database
-    if not os.path.exists(options.database):
-        raise Exception("No database at " + str(options.database))
-    
-#     outFile = None
-    writer = None
-    writerArgs = None
-    opened = {}
-    if options.features != None or options.labels != None:
-        writer = eval(options.writer)
-        writerArgs = {}
-        for argName, filename in [("fX", options.features), ("fY", options.labels)]:
-            if filename != None:
-                parentDir = os.path.dirname(filename)
-                if parentDir != None and not os.path.exists(parentDir):
-                    os.makedirs(parentDir)
-                filename = os.path.abspath(os.path.expanduser(filename))
-                if filename not in opened:
-                    opened[filename] = open(filename, "wt")
-                writerArgs[argName] = opened[filename]
-    
-    if options.meta != None and not os.path.exists(os.path.dirname(options.meta)):
-        os.makedirs(os.path.dirname(options.meta))
-    
-    con = connect(options.database)
-    featureIds = getExamples(con, options.experiment, writer, writerArgs, options.meta, options.options)
-    #getExamples2(con, options.experiment)
-    
-    for outFile in opened.values():
-        outFile.close()
-    if options.writer == "writeNumpyText" and options.features != None:
-        padNumpyFeatureFile(options.features, len(featureIds))
+    writeExamples(dbPath=options.database, experimentName=options.experiment, experimentOptions=options.options, 
+        hiddenRule=options.hidden, writer=eval(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
