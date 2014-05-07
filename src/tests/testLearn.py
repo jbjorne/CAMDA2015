@@ -5,6 +5,7 @@ from data.example import exampleOptions, evalWriter
 from data import buildExamples
 from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
+from sklearn.grid_search import GridSearchCV
 import sklearn.cross_validation
 from collections import defaultdict
 
@@ -31,12 +32,26 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10):
     # Run classifier with crossvalidation
     print "Initializing classifier"
     #classifier = svm.SVC(kernel='linear', probability=True)
-    classifier = classifier(**classifierArgs) #sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
+    #classifier = classifier(**classifierArgs) #sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
     print "Cross-validating for", numFolds, "folds"
+    print "Args", classifierArgs
     cv = StratifiedKFold(y, n_folds=numFolds)
-    scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
-    print "Scores:", scores
-    print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    #scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
+    search = GridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=3)
+    #scores = search.fit(X, y) 
+    #print "Scores:", scores
+    #print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    search.fit(X, y) 
+    print()
+    print(search.best_estimator_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    for params, mean_score, scores in search.grid_scores_:
+        print scores
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean_score, scores.std() / 2, params))
+    print()
 
 if __name__ == "__main__":
     import argparse
