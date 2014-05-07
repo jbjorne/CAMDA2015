@@ -7,6 +7,7 @@ exampleOptions.add_argument('-e','--experiment', help='Experiment template', def
 exampleOptions.add_argument('-p','--options', help='Experiment template options', default=None)
 exampleOptions.add_argument('-b','--database', help='Database location', default=None)
 exampleOptions.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only (default=skip)', default="skip")
+exampleOptions.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
 
 def openOutputFiles(featureFilePath, labelFilePath, makeDirs=True):
     writerArgs = None
@@ -24,6 +25,9 @@ def openOutputFiles(featureFilePath, labelFilePath, makeDirs=True):
                     opened[filename] = open(filename, "wt")
                 writerArgs[argName] = opened[filename]
     return writerArgs, opened
+
+def evalWriter(writerName):
+    return eval(writerName)
 
 def closeOutputFiles(opened, writer, featureFilePath, numFeatures):
     for outFile in opened.values():

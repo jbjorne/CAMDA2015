@@ -85,14 +85,20 @@ TABLE_FORMAT = {
 
 # Common settings used in multiple experiments
 META = "{dict(dict(example), label=str(label), features=len(features))}"
-EXP = "SELECT ('EXP:'||gene_stable_id),normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
 
 # Experiments #################################################################
 
 REMISSION = {
     "project":"BRCA-US",
-    "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL AND specimen_type NOT LIKE '%control%'",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        FROM clinical 
+        WHERE project_code={project} AND 
+        length(specimen_type) > 0 AND 
+        specimen_type NOT LIKE '%control%'
+    """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
@@ -100,9 +106,30 @@ REMISSION = {
     "meta":META
 }
 
+TUMOUR_STAGE_AT_DIAGNOSIS = {
+    "project":"NBL-US",
+    "example":"""
+        SELECT icgc_donor_id,donor_tumour_stage_at_diagnosis,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        FROM clinical 
+        WHERE project_code={project} AND 
+        length(specimen_type) > 0 AND 
+        specimen_type NOT LIKE '%control%' AND
+        length(donor_tumour_stage_at_diagnosis)>0
+    """,
+    "label":"{example['donor_tumour_stage_at_diagnosis']}",
+    "classes":{},
+    "features":[EXP,SSM],
+    "hidden":0.3,
+    "meta":META
+}
+
 CANCER_OR_CONTROL = {
     "project":"BRCA-US",
-    "example":"SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type FROM clinical WHERE project_code={project} AND specimen_type IS NOT NULL",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        FROM clinical 
+        WHERE project_code={project} AND length(specimen_type) > 0
+    """,
     "label":"{'control' not in example['specimen_type']}",
     "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
@@ -116,7 +143,7 @@ SURVIVAL = {
         SELECT donor_age_at_diagnosis,donor_vital_status,icgc_donor_id,donor_survival_time,icgc_specimen_id,disease_status_last_followup,specimen_type 
         FROM clinical 
         WHERE project_code={project} AND 
-            specimen_type IS NOT NULL AND 
+            length(specimen_type) > 0 AND 
             specimen_type NOT LIKE '%control%' AND 
             ((length(donor_survival_time) > 0 AND donor_vital_status IS 'deceased') OR disease_status_last_followup LIKE '%remission%')
     """,

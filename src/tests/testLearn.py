@@ -1,12 +1,20 @@
 import numpy
-import json
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.example import *
+from data.example import exampleOptions, evalWriter
 from data import buildExamples
-from data.template import *
+from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
 import sklearn.cross_validation
+from collections import defaultdict
+
+def getClassDistribution(y):
+    counts = defaultdict(int)
+    for value in y:
+        counts[value] += 1
+    return dict(counts)
+    #bincount = numpy.nonzero(numpy.bincount(y))[0]
+    #return zip(bincount,y[bincount])
 
 def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10):
     print "Loading labels from", yPath
@@ -16,9 +24,9 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10):
     meta = {}
     if metaPath != None:
         print "Loading metadata from", metaPath
-        f = open(metaPath, "rt")
-        meta = json.load(f)
-        f.close()
+        meta = getMeta(metaPath)
+    if "classes" in meta:
+        print "Class distribution = ", getClassDistribution(y)
 
     # Run classifier with crossvalidation
     print "Initializing classifier"
@@ -39,7 +47,6 @@ if __name__ == "__main__":
     parser.add_argument('-m','--meta', help='Metadata input file name (optional)', default=None)
     parser.add_argument('--noCache', help='Do not use cache', default=False, action="store_true")
     parser.add_argument('--cacheDir', help='Cache directory, used if x, y or m are undefined (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
-    parser.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
     parser.add_argument('-a','--classifierArguments', help='', default=None)
     parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
@@ -73,16 +80,16 @@ if __name__ == "__main__":
         options.features = cached["experiment"]["X"]
         options.labels = cached["experiment"]["y"]
         print "X:", options.features
-        print "Y:", options.labels
+        print "y:", options.labels
         print "meta:", options.meta
     else:
         print "Building examples for experiment", options.experiment
-        print "cache:", options.cache
+        print "cache directory:", options.cacheDir
         print "X:", options.features
-        print "Y:", options.labels
+        print "y:", options.labels
         print "meta:", options.meta
         buildExamples.writeExamples(dbPath=options.database, experimentName=options.experiment, experimentOptions=options.options, 
-                                    hiddenRule=options.hidden, writer=eval(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
+                                    hiddenRule=options.hidden, writer=evalWriter(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
     classifierArgs=parseOptionString(options.classifierArguments)
     print "Using classifier", options.classifier, "with arguments", classifierArgs
     test(options.features, options.labels, options.meta, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds)

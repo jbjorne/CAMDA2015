@@ -38,8 +38,7 @@ def getIdOrValue(value, dictionary=None):
         value = str(value)
         if value not in dictionary:
             dictionary[value] = len(dictionary)
-        else:
-            return dictionary[value]
+        return dictionary[value]
     else:
         return value
 
@@ -150,7 +149,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(parents=[exampleOptions], description='Build examples from ICGC data')
     parser.add_argument('-x','--features', help='Output file for feature vectors (X)', default=None)
     parser.add_argument('-y','--labels', help='Output file for class labels (Y)', default=None)
-    parser.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
     parser.add_argument('-m','--meta', help='Metadata output file name (optional)', default=None)
     options = parser.parse_args()
     
