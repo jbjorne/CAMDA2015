@@ -104,7 +104,7 @@ MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 REMISSION = {
     "project":"BRCA-US",
     "example":"""
-        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
+        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
         FROM clinical 
         WHERE project_code IN {'project'} AND 
         length(specimen_type) > 0 AND 
