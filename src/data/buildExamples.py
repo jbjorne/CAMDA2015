@@ -98,7 +98,8 @@ def saveMetaData(metaDataFileName, con, template, experimentName, experimentOpti
         if experimentMeta == None:
             experimentMeta = {}
         experimentMeta["name"] = experimentName
-        experimentMeta["options"] = experimentOptions
+        if experimentOptions != None:
+            experimentMeta["options"] = experimentOptions
         experimentMeta["time"] = time.strftime("%c")
         experimentMeta["dbFile"] = [x["file"] for x in con.execute("PRAGMA database_list;")][0]
         experimentMeta["dbModified"] = time.strftime("%c", time.localtime(os.path.getmtime(experimentMeta["dbFile"])))
@@ -115,8 +116,11 @@ def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, feature
         raise Exception("No database at " + str(dbPath))
     print "Using database at", dbPath
     con = connect(dbPath)
-    writerArgs, opened = openOutputFiles(featureFilePath, labelFilePath) 
-    featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, {"X":featureFilePath,"y":labelFilePath}, hiddenRule)
+    writerArgs, opened = openOutputFiles(featureFilePath, labelFilePath, writer)
+    experimentMeta = {"X":featureFilePath,"y":labelFilePath,"writer":writer.__name__}
+    if "fY" not in writerArgs:
+        del experimentMeta["y"]
+    featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, experimentMeta, hiddenRule)
     closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
 
 def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):

@@ -1,7 +1,6 @@
-import numpy
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.example import exampleOptions, evalWriter
+from data.example import exampleOptions, evalWriter, readAuto
 from data import buildExamples
 from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
@@ -17,11 +16,8 @@ def getClassDistribution(y):
     #bincount = numpy.nonzero(numpy.bincount(y))[0]
     #return zip(bincount,y[bincount])
 
-def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10):
-    print "Loading labels from", yPath
-    y = numpy.loadtxt(yPath)
-    print "Loading features from", XPath
-    X = numpy.loadtxt(XPath)
+def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10, verbose=3, parallel=1):
+    X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
         print "Loading metadata from", metaPath
@@ -37,7 +33,7 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10):
     print "Args", classifierArgs
     cv = StratifiedKFold(y, n_folds=numFolds)
     #scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
-    search = GridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=3)
+    search = GridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel)
     #scores = search.fit(X, y) 
     #print "Scores:", scores
     #print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
@@ -65,6 +61,8 @@ if __name__ == "__main__":
     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
     parser.add_argument('-a','--classifierArguments', help='', default=None)
     parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
+    parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
+    parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     options = parser.parse_args()
     
     if "." in options.classifier:
@@ -80,7 +78,8 @@ if __name__ == "__main__":
         template = buildExamples.getExperiment(options.experiment).copy()
         template = buildExamples.parseTemplateOptions(options.options, template)
         project = template.get("project", "")
-        tId = options.experiment + "-" + project + "-" + getTemplateId(template)
+        projectId = "".join([c if c.isalpha() or c.isdigit() or c=="-" else "_" for c in project]).strip()
+        tId = options.experiment + "_" + projectId + "_" + getTemplateId(template)
         if options.features == None:
             options.features = os.path.join(options.cacheDir, tId + "-X")
         if options.labels == None:
@@ -92,8 +91,8 @@ if __name__ == "__main__":
     
     if cached != None:
         print "Using cached examples"
-        options.features = cached["experiment"]["X"]
-        options.labels = cached["experiment"]["y"]
+        options.features = cached["experiment"].get("X", None)
+        options.labels = cached["experiment"].get("y", None)
         print "X:", options.features
         print "y:", options.labels
         print "meta:", options.meta
@@ -107,4 +106,4 @@ if __name__ == "__main__":
                                     hiddenRule=options.hidden, writer=evalWriter(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
     classifierArgs=parseOptionString(options.classifierArguments)
     print "Using classifier", options.classifier, "with arguments", classifierArgs
-    test(options.features, options.labels, options.meta, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds)
+    test(options.features, options.labels, options.meta, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel)

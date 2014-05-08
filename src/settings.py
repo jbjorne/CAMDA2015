@@ -2,10 +2,14 @@ import os
 import hashlib, base64
 import math
 
+def logrange(a, b):
+    return [math.pow(10,x) for x in range(a, b)]
+
 DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data/ICGC/")
 DB_STORAGE = os.path.expanduser("~/data/CAMDA2014-cache/ICGC/")
 DB_CACHE = os.path.expanduser("/tmp/CAMDA2014-cache/ICGC/")
 DB_NAME = "ICGC.sqlite"
+DB_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/ICGC.sqlite")
 ICGC_FTP = "data.dcc.icgc.org"
 ICGC_VERSION = "version_15.1"
 
@@ -84,20 +88,29 @@ TABLE_FORMAT = {
         "indices":["icgc_specimen_id"]},
 }
 
+
 # Common settings used in multiple experiments
+CAMDA_PROJECTS = "HNSC-US','LUAD-US','KIRC-US"
 META = "{dict(dict(example), label=str(label), features=len(features))}"
 EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']};"
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
+CNSM = "SELECT ('CNSM:'||gene_affected||':'||mutation_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
+MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
 # Experiments #################################################################
 
 REMISSION = {
     "project":"BRCA-US",
     "example":"""
-        SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
         FROM clinical 
-        WHERE project_code={project} AND 
+        WHERE project_code IN {'project'} AND 
         length(specimen_type) > 0 AND 
+        length(disease_status_last_followup) > 0 AND
+        ((disease_status_last_followup LIKE '%remission%') OR
+        (donor_vital_status IS 'deceased')) AND
         specimen_type NOT LIKE '%control%'
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
@@ -112,7 +125,7 @@ TUMOUR_STAGE_AT_DIAGNOSIS = {
     "example":"""
         SELECT icgc_donor_id,donor_tumour_stage_at_diagnosis,icgc_specimen_id,disease_status_last_followup,specimen_type 
         FROM clinical 
-        WHERE project_code={project} AND 
+        WHERE project_code IN {'project'} AND 
         length(specimen_type) > 0 AND 
         specimen_type NOT LIKE '%control%' AND
         length(donor_tumour_stage_at_diagnosis)>0
@@ -129,7 +142,7 @@ CANCER_OR_CONTROL = {
     "example":"""
         SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type 
         FROM clinical 
-        WHERE project_code={project} AND length(specimen_type) > 0
+        WHERE project_code IN {'project'} AND length(specimen_type) > 0
     """,
     "label":"{'control' not in example['specimen_type']}",
     "classes":{'True':1, 'False':-1},
@@ -143,7 +156,7 @@ SURVIVAL = {
     "example":"""
         SELECT donor_age_at_diagnosis,donor_vital_status,icgc_donor_id,donor_survival_time,icgc_specimen_id,disease_status_last_followup,specimen_type 
         FROM clinical 
-        WHERE project_code={project} AND 
+        WHERE project_code IN {'project'} AND 
             length(specimen_type) > 0 AND 
             specimen_type NOT LIKE '%control%' AND 
             ((length(donor_survival_time) > 0 AND donor_vital_status IS 'deceased') OR disease_status_last_followup LIKE '%remission%')

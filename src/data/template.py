@@ -48,11 +48,18 @@ def compileTemplateOption(template, arguments, key=None):
             split = split.replace("BRACKET_OPEN", "{").replace("BRACKET_CLOSE", "}")
             if split.startswith("PARAM"):
                 split = split[5:]
-                parameters.append(split)
-                sql += "?"
+                if split.startswith("'") and split.endswith("'"):
+                    sql += "('\" + " + split[1:-1] + " + \"')"
+                else:
+                    parameters.append(split)
+                    sql += "?"
             else:
                 sql += split
-        sql = "lambda " + ",".join(arguments) + ": con.execute(\"" + sql + "\", (" + ", ".join(parameters) + ",))"
+        sql = "lambda " + ",".join(arguments) + ": con.execute(\"" + sql
+        if len(parameters) > 0:
+            sql += "\", (" + ", ".join(parameters) + ",))"
+        else:
+            sql += "\")"
         print "Compiled template", [key, sql]
         return eval(sql)
 
@@ -62,8 +69,9 @@ def parseOptionString(string):
     # Separate key and values into a list, allowing commas within values
     splits = []
     phase = False
-    for split in string.split("="):
-        if phase: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
+    equalSignSplits = string.split("=")
+    for split in equalSignSplits:
+        if phase and (split != equalSignSplits[-1]): # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
             splits.extend(split.rsplit(",", 1))
         else:
             splits.append(split)
