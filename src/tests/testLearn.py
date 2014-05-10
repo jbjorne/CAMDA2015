@@ -5,8 +5,17 @@ from data import buildExamples
 from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
 from sklearn.grid_search import GridSearchCV
-import sklearn.cross_validation
+import sklearn.grid_search
+from sklearn.grid_search import fit_grid_point
 from collections import defaultdict
+
+def fitNew(X, y, base_estimator, parameters, train, test, scorer,
+                   verbose, loss_func=None, **fit_params):
+    print "ASDASDSASD"
+    return fit_grid_point(X, y, base_estimator, parameters, train, test, scorer,
+                   verbose, loss_func, **fit_params)
+
+sklearn.grid_search.fit_grid_point = fitNew
 
 def getClassDistribution(y):
     counts = defaultdict(int)
