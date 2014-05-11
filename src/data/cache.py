@@ -8,7 +8,7 @@ import buildExamples
 from example import evalWriter
 from data.template import getTemplateId, getMeta, parseTemplateOptions
 
-def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCache=True,
+def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCached=True,
                   featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
     """
     Get a cached experiment, or re-calculate if not cached.
@@ -27,7 +27,7 @@ def getExperiment(experiment, experimentOptions, database, hidden='skip', writer
     cacheDir = Where cached experiments are stored.
     """
     cached = None
-    if experiment != None and useCache:
+    if experiment != None and useCached:
         template = buildExamples.parseExperiment(experiment).copy()
         template = buildExamples.parseTemplateOptions(experimentOptions, template)
         project = template.get("project", "")
