@@ -4,18 +4,9 @@ from data.example import exampleOptions, evalWriter, readAuto
 from data import buildExamples
 from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
-from sklearn.grid_search import GridSearchCV
-import sklearn.grid_search
-from sklearn.grid_search import fit_grid_point
+#from sklearn.grid_search import GridSearchCV
+from learn.skext.gridSearch import ExtendedGridSearchCV
 from collections import defaultdict
-
-def fitNew(X, y, base_estimator, parameters, train, test, scorer,
-                   verbose, loss_func=None, **fit_params):
-    print "ASDASDSASD"
-    return fit_grid_point(X, y, base_estimator, parameters, train, test, scorer,
-                   verbose, loss_func, **fit_params)
-
-sklearn.grid_search.fit_grid_point = fitNew
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -42,7 +33,7 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10, verbos
     print "Args", classifierArgs
     cv = StratifiedKFold(y, n_folds=numFolds)
     #scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
-    search = GridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel)
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel)
     #scores = search.fit(X, y) 
     #print "Scores:", scores
     #print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))

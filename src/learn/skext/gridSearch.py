@@ -2,7 +2,8 @@ import numpy as np
 from collections import Sized
 import numbers
 import time
-from sklearn.grid_search import BaseSearchCV, _CVScoreTuple, is_classifier
+import warnings
+from sklearn.grid_search import ParameterGrid, BaseSearchCV, _CVScoreTuple, is_classifier, _check_param_grid
 from sklearn.utils.validation import _num_samples, check_arrays
 from sklearn.metrics.scorer import _deprecate_loss_and_score_funcs
 from sklearn.cross_validation import check_cv
@@ -11,7 +12,7 @@ from sklearn.externals.joblib import Parallel, delayed, logger
 from sklearn.utils import safe_mask
 
 def fit_grid_point_extended(X, y, base_estimator, parameters, train, test, scorer,
-                   verbose, loss_func=None, **fit_params):
+                   verbose, loss_func=None, extraOut="auto", **fit_params):
     """Run fit on one set of parameters.
 
 Parameters
@@ -115,7 +116,23 @@ Number of test samples in this split.
                               logger.short_format_time(time.time() -
                                                        start_time))
         print("[GridSearchCV] %s %s" % ((64 - len(end_msg)) * '.', end_msg))
-    return this_score, parameters, _num_samples(X_test)
+    extraRVs = {}
+    if extraOut != None:
+        if "estimator" in extraOut:
+            extraRVs["estimator"] = clf
+        if extraOut == "auto" or "classes" in extraOut:
+            predictions = clf.predict(X)
+            count = 0
+            predictionByIndex = {}
+            for maskValue, prediction in zip(safe_mask(X, test), predictions):
+                if maskValue:
+                    predictionByIndex[count] = prediction
+                count += 1
+            extraRVs["classes"] = predictionByIndex
+        if (extraOut == "auto" or "importances" in extraOut) and hasattr(clf, "feature_importances_"):
+            extraRVs["importances"] = clf.feature_importances_
+    rvs = [this_score, parameters, _num_samples(X_test), extraRVs]
+    return rvs
 
 class ExtendedBaseSearchCV(BaseSearchCV):
     """Base class for hyper parameter search with cross-validation."""
@@ -165,12 +182,13 @@ class ExtendedBaseSearchCV(BaseSearchCV):
         n_folds = len(cv)
 
         scores = list()
+        extras = list()
         grid_scores = list()
         for grid_start in range(0, n_fits, n_folds):
             n_test_samples = 0
             score = 0
             all_scores = []
-            for this_score, parameters, this_n_test_samples in \
+            for this_score, parameters, this_n_test_samples, extra in \
                     out[grid_start:grid_start + n_folds]:
                 all_scores.append(this_score)
                 if self.iid:
@@ -182,6 +200,7 @@ class ExtendedBaseSearchCV(BaseSearchCV):
             else:
                 score /= float(n_folds)
             scores.append((score, parameters))
+            extras.append(extra)
             # TODO: shall we also store the test_fold_sizes?
             grid_scores.append(_CVScoreTuple(
                 parameters,
@@ -189,6 +208,7 @@ class ExtendedBaseSearchCV(BaseSearchCV):
                 np.array(all_scores)))
         # Store the computed scores
         self.grid_scores_ = grid_scores
+        self.extras_ = extras
 
         # Find the best parameters by comparing on the mean validation score:
         # note that `sorted` is deterministic in the way it breaks ties
@@ -209,3 +229,20 @@ class ExtendedBaseSearchCV(BaseSearchCV):
             self.best_estimator_ = best_estimator
         return self
 
+class ExtendedGridSearchCV(ExtendedBaseSearchCV):
+
+    def __init__(self, estimator, param_grid, scoring=None, loss_func=None,
+                 score_func=None, fit_params=None, n_jobs=1, iid=True,
+                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs'):
+        super(ExtendedGridSearchCV, self).__init__(
+            estimator, scoring, loss_func, score_func, fit_params, n_jobs, iid,
+            refit, cv, verbose, pre_dispatch)
+        self.param_grid = param_grid
+        _check_param_grid(param_grid)
+
+    def fit(self, X, y=None, **params):
+        if params:
+            warnings.warn("Additional parameters to GridSearchCV are ignored!"
+                          " The params argument will be removed in 0.15.",
+                          DeprecationWarning)
+        return self._fit(X, y, ParameterGrid(self.param_grid))
