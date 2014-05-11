@@ -24,7 +24,7 @@ def connect(con):
         con.create_function("log", 1, math.log)
     return con
 
-def getExperiment(experiment):
+def parseExperiment(experiment):
     if isinstance(experiment, basestring):
         return getattr(settings, experiment)
     else:
@@ -46,7 +46,7 @@ def getIdOrValue(value, dictionary=None):
 
 def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None, hiddenRule="skip"):
     con = connect(con)
-    template = getExperiment(experimentName).copy()
+    template = parseExperiment(experimentName).copy()
     template = parseTemplateOptions(options, template)
     #options = updateTemplateOptions(template, options)
     print "Template:", experimentName
@@ -122,33 +122,6 @@ def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, feature
         del experimentMeta["y"]
     featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, experimentMeta, hiddenRule)
     closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
-
-def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):
-    if meta == None or (isinstance(meta, basestring) and not os.path.exists(meta)): # nothing to compare with
-        if verbose:
-            print "No existing metadata file", [meta]
-        return None
-    # Load previous experiment
-    meta = getMeta(meta)
-    # Load current experiment
-    template = getExperiment(experimentName).copy()
-    template = parseTemplateOptions(experimentOptions, template)
-    # Get database information
-    dbPath = os.path.abspath(os.path.expanduser(dbPath))
-    dbModified = time.strftime("%c", time.localtime(os.path.getmtime(dbPath)))
-    # Compare settings
-    metaExp = meta["experiment"]
-    if verbose:
-        print dbPath
-        print metaExp["dbFile"]
-        print dbModified
-        print metaExp["dbModified"]
-        print json.dumps(template)
-        print json.dumps(meta["template"])
-    if metaExp["dbFile"] == dbPath and metaExp["dbModified"] == dbModified and template == meta["template"]:
-        return meta # is the same experiment
-    else:
-        return None # previous experiment differs
 
 if __name__ == "__main__":
     import argparse

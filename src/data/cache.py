@@ -2,9 +2,11 @@
 Functions for caching example generation
 """
 import os, tempfile
+import time
+import json
 import buildExamples
 from example import evalWriter
-from data.template import getTemplateId
+from data.template import getTemplateId, getMeta, parseTemplateOptions
 
 def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCache=True,
                   featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
@@ -26,7 +28,7 @@ def getExperiment(experiment, experimentOptions, database, hidden='skip', writer
     """
     cached = None
     if experiment != None and useCache:
-        template = buildExamples.getExperiment(experiment).copy()
+        template = buildExamples.parseExperiment(experiment).copy()
         template = buildExamples.parseTemplateOptions(experimentOptions, template)
         project = template.get("project", "")
         projectId = "".join([c if c.isalpha() or c.isdigit() or c=="-" else "_" for c in project]).strip()
@@ -39,7 +41,7 @@ def getExperiment(experiment, experimentOptions, database, hidden='skip', writer
             metaFilePath = os.path.join(cacheDir, tId + "-meta.json")
         if os.path.exists(metaFilePath):
             print "Comparing to cached experiment", metaFilePath
-            cached = buildExamples.getCached(database, experiment, experimentOptions, metaFilePath)
+            cached = getCached(database, experiment, experimentOptions, metaFilePath)
     
     if cached != None:
         print "Using cached examples"
@@ -57,3 +59,30 @@ def getExperiment(experiment, experimentOptions, database, hidden='skip', writer
                                     labelFilePath=labelFilePath, metaFilePath=metaFilePath)
     
     return featureFilePath, labelFilePath, metaFilePath
+
+def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):
+    if meta == None or (isinstance(meta, basestring) and not os.path.exists(meta)): # nothing to compare with
+        if verbose:
+            print "No existing metadata file", [meta]
+        return None
+    # Load previous experiment
+    meta = getMeta(meta)
+    # Load current experiment
+    template = buildExamples.parseExperiment(experimentName).copy()
+    template = parseTemplateOptions(experimentOptions, template)
+    # Get database information
+    dbPath = os.path.abspath(os.path.expanduser(dbPath))
+    dbModified = time.strftime("%c", time.localtime(os.path.getmtime(dbPath)))
+    # Compare settings
+    metaExp = meta["experiment"]
+    if verbose:
+        print dbPath
+        print metaExp["dbFile"]
+        print dbModified
+        print metaExp["dbModified"]
+        print json.dumps(template)
+        print json.dumps(meta["template"])
+    if metaExp["dbFile"] == dbPath and metaExp["dbModified"] == dbModified and template == meta["template"]:
+        return meta # is the same experiment
+    else:
+        return None # previous experiment differs
