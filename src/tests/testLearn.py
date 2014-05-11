@@ -7,6 +7,7 @@ from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
 from learn.skext.gridSearch import ExtendedGridSearchCV
 from collections import defaultdict
+import tempfile
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -38,20 +39,64 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10, verbos
     #print "Scores:", scores
     #print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
     search.fit(X, y) 
-    print()
-    print(search.best_estimator_)
-    print()
-    print("Grid scores on development set:")
-    print()
+    print "----------------- Best Estimator ---------------------"
+    print search.best_estimator_
+    print "------------------------------------------------------"
+    print "----------- Grid scores on development set -----------"
     for params, mean_score, scores in search.grid_scores_:
         print scores
-        print("%0.3f (+/-%0.03f) for %r"
-              % (mean_score, scores.std() / 2, params))
-    print()
+        print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+    print "------------------------------------------------------"
+    
+def getClassifier(classifierName, classifierArguments):
+    if "." in classifierName:
+        importCmd = "from sklearn." + classifierName.rsplit(".", 1)[0] + " import " + classifierName.rsplit(".", 1)[1]
+    else:
+        importCmd = "import " + classifierName
+    print importCmd
+    exec importCmd
+    classifier = eval(classifierName.rsplit(".", 1)[1]) 
+    classifierArgs=parseOptionString(classifierArguments)
+    print "Using classifier", classifierName, "with arguments", classifierArgs
+    return classifier, classifierArgs
+    
+def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCache=True,
+                  featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
+    cached = None
+    if experiment != None and useCache:
+        template = buildExamples.getExperiment(experiment).copy()
+        template = buildExamples.parseTemplateOptions(experimentOptions, template)
+        project = template.get("project", "")
+        projectId = "".join([c if c.isalpha() or c.isdigit() or c=="-" else "_" for c in project]).strip()
+        tId = options.experiment + "_" + projectId + "_" + getTemplateId(template)
+        if featureFilePath == None:
+            featureFilePath = os.path.join(cacheDir, tId + "-X")
+        if labelFilePath == None:
+            labelFilePath = os.path.join(cacheDir, tId + "-y")
+        if metaFilePath == None:
+            metaFilePath = os.path.join(cacheDir, tId + "-meta.json")
+        if os.path.exists(metaFilePath):
+            print "Comparing to cached experiment", metaFilePath
+            cached = buildExamples.getCached(database, experiment, experimentOptions, metaFilePath)
+    
+    if cached != None:
+        print "Using cached examples"
+        featureFilePath = cached["experiment"].get("X", None)
+        labelFilePath = cached["experiment"].get("y", None)
+    print "Experiment files"
+    print "X:", featureFilePath
+    print "y:", labelFilePath
+    print "meta:", metaFilePath
+    
+    if cached == None:
+        print "Building examples for experiment", experiment, "at cache directory:", cacheDir
+        buildExamples.writeExamples(dbPath=options.database, experimentName=options.experiment, experimentOptions=options.options, 
+                                    hiddenRule=options.hidden, writer=evalWriter(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
+    
+    return featureFilePath, labelFilePath, metaFilePath
 
 if __name__ == "__main__":
     import argparse
-    import tempfile
     parser = argparse.ArgumentParser(parents=[exampleOptions], description='Learning with examples')
     parser.add_argument('-x','--features', help='Input file for feature vectors (X)', default=None)
     parser.add_argument('-y','--labels', help='Input file for class labels (Y)', default=None)
@@ -65,45 +110,9 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     options = parser.parse_args()
     
-    if "." in options.classifier:
-        importCmd = "from sklearn." + options.classifier.rsplit(".", 1)[0] + " import " + options.classifier.rsplit(".", 1)[1]
-    else:
-        importCmd = "import " + options.classifier
-    print importCmd
-    exec importCmd
-    classifier = eval(options.classifier.rsplit(".", 1)[1])
-    
-    cached = None
-    if options.experiment != None and not options.noCache:
-        template = buildExamples.getExperiment(options.experiment).copy()
-        template = buildExamples.parseTemplateOptions(options.options, template)
-        project = template.get("project", "")
-        projectId = "".join([c if c.isalpha() or c.isdigit() or c=="-" else "_" for c in project]).strip()
-        tId = options.experiment + "_" + projectId + "_" + getTemplateId(template)
-        if options.features == None:
-            options.features = os.path.join(options.cacheDir, tId + "-X")
-        if options.labels == None:
-            options.labels = os.path.join(options.cacheDir, tId + "-y")
-        if options.meta == None:
-            options.meta = os.path.join(options.cacheDir, tId + "-meta.json")
-        print "Comparing to cached experiment", options.meta
-        cached = buildExamples.getCached(options.database, options.experiment, options.options, options.meta)
-    
-    if cached != None:
-        print "Using cached examples"
-        options.features = cached["experiment"].get("X", None)
-        options.labels = cached["experiment"].get("y", None)
-        print "X:", options.features
-        print "y:", options.labels
-        print "meta:", options.meta
-    else:
-        print "Building examples for experiment", options.experiment
-        print "cache directory:", options.cacheDir
-        print "X:", options.features
-        print "y:", options.labels
-        print "meta:", options.meta
-        buildExamples.writeExamples(dbPath=options.database, experimentName=options.experiment, experimentOptions=options.options, 
-                                    hiddenRule=options.hidden, writer=evalWriter(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
-    classifierArgs=parseOptionString(options.classifierArguments)
-    print "Using classifier", options.classifier, "with arguments", classifierArgs
-    test(options.features, options.labels, options.meta, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel)
+    classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
+    featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
+                                                                 database=options.database, hidden=options.hidden, writer=options.writer, 
+                                                                 useCache=not options.noCache, featureFilePath=options.features, 
+                                                                 labelFilePath=options.labels, metaFilePath=options.meta)
+    test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel)
