@@ -5,7 +5,7 @@ from data import buildExamples
 from data.template import parseOptionString, getMeta, getTemplateId
 from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
-from learn.skext.gridSearch import ExtendedGridSearchCV
+from skext.gridSearch import ExtendedGridSearchCV
 from collections import defaultdict
 import tempfile
 
@@ -31,14 +31,14 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10, verbos
     cv = StratifiedKFold(y, n_folds=numFolds)
     search = ExtendedGridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel)
     search.fit(X, y) 
-    print "----------------- Best Estimator ---------------------"
+    print "----------------------------- Best Estimator -----------------------------------"
     print search.best_estimator_
-    print "------------------------------------------------------"
-    print "----------- Grid scores on development set -----------"
+    print "--------------------------------------------------------------------------------"
+    print "---------------------- Grid scores on development set --------------------------"
     for params, mean_score, scores in search.grid_scores_:
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-    print "------------------------------------------------------"
+    print "--------------------------------------------------------------------------------"
     
 def getClassifier(classifierName, classifierArguments):
     if "." in classifierName:
