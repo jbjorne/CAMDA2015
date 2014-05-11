@@ -70,6 +70,6 @@ if __name__ == "__main__":
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
     featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
                                                                  database=options.database, hidden=options.hidden, writer=options.writer, 
-                                                                 useCache=not options.noCache, featureFilePath=options.features, 
+                                                                 useCached=not options.noCache, featureFilePath=options.features, 
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel)
