@@ -5,11 +5,8 @@ import math
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
 
-DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data/ICGC/")
-DB_STORAGE = os.path.expanduser("~/data/CAMDA2014-cache/ICGC/")
-DB_CACHE = os.path.expanduser("/tmp/CAMDA2014-cache/ICGC/")
-DB_NAME = "ICGC.sqlite"
-DB_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/ICGC.sqlite")
+DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/ICGC/")
+DB_PATH = os.path.join(DATA_PATH, "ICGC.sqlite")
 ICGC_FTP = "data.dcc.icgc.org"
 ICGC_VERSION = "version_15.1"
 
@@ -88,15 +85,20 @@ TABLE_FORMAT = {
         "indices":["icgc_specimen_id"]},
 }
 
+TABLE_FORMAT["cosmic_gene_census"] = { 
+    "primary_key":["Symbol"],
+    "file":os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'COSMIC-cancer_gene_census-140510.tsv'))
+}
+
 
 # Common settings used in multiple experiments
 CAMDA_PROJECTS = "HNSC-US','LUAD-US','KIRC-US"
 META = "{dict(dict(example), label=str(label), features=len(features))}"
 EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
-MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']};"
-SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
-CNSM = "SELECT ('CNSM:'||gene_affected||':'||mutation_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']};"
+MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+CNSM = "SELECT ('CNSM:'||gene_affected||':'||mutation_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
 # Experiments #################################################################
