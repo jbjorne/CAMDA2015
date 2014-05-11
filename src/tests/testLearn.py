@@ -26,18 +26,10 @@ def test(XPath, yPath, metaPath, classifier, classifierArgs, numFolds=10, verbos
     if "classes" in meta:
         print "Class distribution = ", getClassDistribution(y)
 
-    # Run classifier with crossvalidation
-    print "Initializing classifier"
-    #classifier = svm.SVC(kernel='linear', probability=True)
-    #classifier = classifier(**classifierArgs) #sklearn.ensemble.RandomForestClassifier(n_jobs=-1)
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
     cv = StratifiedKFold(y, n_folds=numFolds)
-    #scores = sklearn.cross_validation.cross_val_score(classifier, X, y, cv=cv, scoring="roc_auc", verbose=2)
     search = ExtendedGridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel)
-    #scores = search.fit(X, y) 
-    #print "Scores:", scores
-    #print("Mean: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
     search.fit(X, y) 
     print "----------------- Best Estimator ---------------------"
     print search.best_estimator_
@@ -62,6 +54,22 @@ def getClassifier(classifierName, classifierArguments):
     
 def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCache=True,
                   featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
+    """
+    Get a cached experiment, or re-calculate if not cached.
+    
+    experiment = Name of the experiment template in settings.py (such as REMISSION)
+    experimentOptions = comma-separated list of key=value pairs, the keys will replace those
+                        with the same name in the experiment template. Values are evaluated.
+    database = Path to the SQLite database (see data/example.py)
+    hidden = How to process hidden donors (see data/example.py)
+    writer = Output format (see data/example.py)
+    useCache = Whether to use the cache directory. If False, X, y and meta paths must be defined.
+    featureFilePath = X, can be None if useCache == True.
+    labelFilePath = y, can be None if useCache == True.
+    metaFilePath = Meta-data, can be None if useCache == True. If already exists, the experiment
+                   will be compared to this. If they are identical, the cached version is used.
+    cacheDir = Where cached experiments are stored.
+    """
     cached = None
     if experiment != None and useCache:
         template = buildExamples.getExperiment(experiment).copy()
