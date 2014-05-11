@@ -147,6 +147,18 @@ def tableFromCSV(dbName, tableName, csvFileName, selectedColumns=None, columnTyp
     con.commit()
     con.close()
 
+def tableFromDefinition(dbName, tableName, tableFormat, tableFile=None):
+    if tableFile == None:
+        tableFile = tableFormat["file"]
+    print "Updating table", tableName, "from", tableFile
+    tableFromCSV(dbName, tableName, tableFile, 
+                 tableFormat.get("columns", None), 
+                 tableFormat.get("types", None), 
+                 tableFormat.get("primary_key", None), 
+                 tableFormat.get("foreign_keys", None),
+                 tableFormat.get("preprocess", None),
+                 tableFormat.get("indices", None))
+
 def initDB(dbName):
     tableFromCSV(dbName, "project_ftp_directory", 
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "project_codes.tsv"),
@@ -156,6 +168,8 @@ def initDB(dbName):
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
                  None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
+    tableFromDefinition(dbName, "cosmic_gene_census", 
+                        settings.TABLE_FORMAT["cosmic_gene_census"])
 
 def addProject(dbName, projectCode, downloadDir=None, tables = None):
     print "Adding project", projectCode, "to database", dbName
@@ -168,18 +182,11 @@ def addProject(dbName, projectCode, downloadDir=None, tables = None):
         if tables != None and table not in tables:
             continue
         if table in settings.TABLE_FORMAT:
-            format = settings.TABLE_FORMAT[table]
+            tableFormat = settings.TABLE_FORMAT[table]
             tableFile = downloadICGC.getProjectPath(projectCode, downloadDir, table)
             if not os.path.exists(tableFile):
                 continue
-            print "Updating table", table, "from", tableFile
-            tableFromCSV(dbName, table, tableFile, 
-                         format.get("columns", None), 
-                         format.get("types", None), 
-                         format.get("primary_key", None), 
-                         format.get("foreign_keys", None),
-                         format.get("preprocess", None),
-                         format.get("indices", None))
+            tableFromDefinition(dbName, table, tableFormat, tableFile)
 
 if __name__ == "__main__":
     import argparse
@@ -187,15 +194,11 @@ if __name__ == "__main__":
     parser.add_argument('-d','--directory', default=settings.DATA_PATH)
     parser.add_argument('-p','--project', help='ICGC project code(s) in a comma-separated list or ALL for all projects', default=None)
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
-    parser.add_argument('-b','--database', help='Database location', default=None)
+    parser.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
     parser.add_argument('-t','--tables', help='Add project data only from the tables in this comma-separated list (optional)', default=None)
     args = parser.parse_args()
     
     # Define locations
-    if args.directory != None:
-        args.directory = os.path.expanduser(args.directory)
-    if args.database == None:
-        args.database = os.path.join(args.directory, settings.DB_NAME)
     dbPath = args.database
     if args.directory != None and not os.path.exists(args.directory):
         os.makedirs(args.directory)
