@@ -27,8 +27,8 @@ Using the code
 1. Download the SQLite database from sftp://taito.csc.fi/wrk/jakrbj/CAMDA2014. 
 2. Unpack the database to the local disk. If you use the default location (~/data/CAMDA2014-data-local/ICGC/ICGC.sqlite) the programs know where to find the database, otherwise a command line option must be used to tell them its location.
 3. Alternatively, the database can be constructed using src/data/buildDB.py, but this will take several hours.
-4. Generate examples using src/data/buildExamples.py, using a defined experiment. The program will generate NumPy text format feature and label files and a metadata file containing further information on the examples, class and feature ids etc. For the currently implemented cancer remission example, run the following code `python buildExamples.py -x FEATURE_FILE -y LABEL_FILE -m METADATA_FILE -b DATABASE_FILE -e REMISSION -o "project=KIRC-US"`
-5. Alternatively, run directly a machine learning experiment using src/learn/learn.py. Example generation is cached, so output files do not need to be defined. For the currently implemented cancer remission example, run the following code `python learn.py -e REMISSION -o "project=KIRC-US" -c svm.LinearSVC -a "C=logrange(-10,10)" -n 5`
+4. Generate examples using src/data/buildExamples.py, using a defined experiment. The program will generate NumPy text format feature and label files and a metadata file containing further information on the examples, class and feature ids etc. For the currently implemented cancer remission experiment, run the following code `python buildExamples.py -x FEATURE_FILE -y LABEL_FILE -m METADATA_FILE -b DATABASE_FILE -e REMISSION -o "project=KIRC-US"`
+5. Alternatively, run directly a machine learning experiment using src/learn/learn.py. Example generation is cached, so output files do not need to be defined. For the currently implemented cancer remission experiment, run the following code `python learn.py -e REMISSION -o "project=KIRC-US" -c svm.LinearSVC -a "C=logrange(-10,10)" -n 5`
 
 Goals for machine learning
 ----------------------------------------
