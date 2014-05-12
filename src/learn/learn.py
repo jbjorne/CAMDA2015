@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument('--cacheDir', help='Cache directory, used if x, y or m are undefined (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
     parser.add_argument('-a','--classifierArguments', help='', default=None)
-    parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
+    parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     options = parser.parse_args()
