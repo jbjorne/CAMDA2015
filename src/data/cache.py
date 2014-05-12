@@ -1,14 +1,16 @@
 """
 Functions for caching example generation
 """
-import os, tempfile
+import sys, os, tempfile
 import time
 import json
 import buildExamples
 from example import evalWriter
 from data.template import getTemplateId, getMeta, parseTemplateOptions
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import settings
 
-def getExperiment(experiment, experimentOptions, database, hidden='skip', writer='writeNumpyText', useCached=True,
+def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH, hidden='skip', writer='writeNumpyText', useCached=True,
                   featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
     """
     Get a cached experiment, or re-calculate if not cached.
