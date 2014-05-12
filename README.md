@@ -54,6 +54,10 @@ When using learn.py, the examples can be saved to the cache, from where they are
 2. -y = example labels, one for each feature vector, in the format defined by the writer function. By default, these are NumPy text vectors. When using "writeSVMLight" as the writer, the labels are stored with the feature vectors in the -x file, and -y is not used.
 3. -m = metadata. The metadata stores example metadata, including the experiment template and the class and feature names. When using the cache, the metadata is used to determine whether examples need to be regenerated.
 
+Using the cache without learn.py
+----------------------------------------
+For other machine learning implementations, the cache can be utilized by using the function getExperiments from the module data/cache.py. The function is documented, and will return the names of the three output files generated for a given experiment. If the output files already exist and both the database and the experiment template remain unchanged, the files are not regenerated.
+
 Running the programs
 ----------------------------------------
 To generate examples using buildExamples.py, one could use e.g. the following command: `python buildExamples.py -x FEATURE_FILE -y LABEL_FILE -m METADATA_FILE -e REMISSION -o "project=KIRC-US"`. Here the REMISSION experiment template defines how examples are generated. The "project" option overrides the corresponding key in the REMISSION template, running the experiment for the KIRC-US dataset instead of the default one.
