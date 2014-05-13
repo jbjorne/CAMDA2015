@@ -82,8 +82,8 @@ def compareFeatures(a, b):
     elif isinstance(a, int) and isinstance(b, dict):
         return 1
     else:
-        return int(sum(a["importances"].values()) / len(a["importances"]) - 
-                   sum(b["importances"].values()) / len(b["importances"]) )
+        return -cmp(sum(a["importances"].values()) / len(a["importances"]), 
+                    sum(b["importances"].values()) / len(b["importances"]))
                 
 def saveResults(meta, resultPath, results, extras):
     if extras == None:
