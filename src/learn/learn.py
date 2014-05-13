@@ -9,6 +9,7 @@ from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
 from collections import defaultdict
 import tempfile
+from collections import OrderedDict
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -45,17 +46,30 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
     if resultPath != None:
         saveResults(search, meta, resultPath)
 
-def setValue(example, key, value, append=False):
-    if not "classification" in example:
-        example["classification"] = {}
-    classification = example["classification"]
+def setResultValue(target, key, value, parent=None, append=False):
+    if parent != None and not parent in target:
+        target[parent] = {}
+        target = target[parent]
     if append:
         value = [value]
-    if append and key in classification:
-        classification[key].append(value)
+    if append and key in target:
+        target[key].append(value)
     else:
-        classification[key] = value
-        
+        target[key] = value
+
+def compareFeatures(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return a - b
+    elif isinstance(a, dict) and isinstance(b, int):
+        return 1
+    elif isinstance(a, int) and isinstance(b, dict):
+        return -1
+    else:
+        if len(a["importances"]) != len(b["importances"]):
+            return len(a["importances"]) - len(b["importances"])
+        else:
+            return int(sum(a["importances"].values()) - len(b["importances"].values()))
+                
 def saveResults(search, meta, resultPath):
     if not hasattr(search, "extras_"):
         print "No detailed information for cross-validation"
@@ -65,6 +79,10 @@ def saveResults(search, meta, resultPath):
     meta = getMeta(meta)
     # Insert results
     examples = meta["meta"]
+    features = meta["features"]
+    featureByIndex = {}
+    for featureName in features:
+        featureByIndex[features[featureName]] = featureName
     #for i in range(len(examples)):
     #    example = examples[i]
     fold = 0
@@ -73,9 +91,29 @@ def saveResults(search, meta, resultPath):
             predictions = extra["predictions"]
             for index in predictions:
                 example = examples[index]
-                setValue(example, "prediction", predictions[index])
-                setValue(example, "fold", fold)
+                setResultValue(example, "prediction", predictions[index], "classification")
+                setResultValue(example, "fold", fold, "classification")
+        if "importances" in extra:
+            foldImportances = extra["importances"]
+            for i in range(len(foldImportances)):
+                if foldImportances[i] != 0:
+                    name = featureByIndex[i]
+                    if isinstance(features[name], int):
+                        features[name] = {"id":features[name]}
+                    if not "importances" in features[name]:
+                        features[name]["importances"] = {}
+                    featureImportances = features[name]["importances"]
+                    setResultValue(featureImportances, fold, foldImportances[i])
         fold += 1
+    features = features.values()
+    features.sort(cmp=compareFeatures)
+    output = OrderedDict()
+    for feature in features:
+        if isinstance(feature, int):
+            output[featureByIndex[feature]] = feature
+        else:
+            output[featureByIndex[feature["id"]]] = feature
+    meta["features"] = output
                     
     # Save results
     f = open(resultPath, "wt")

@@ -123,14 +123,10 @@ Number of test samples in this split.
         if extraOut == "auto" or "predictions" in extraOut:
             predictions = clf.predict(X)
             predictionIndex = 0
-            exampleIndex = 0
             predictionByIndex = {}
-            for maskValue in safe_mask(X, test):
-                print maskValue
-                if maskValue:
-                    predictionByIndex[exampleIndex] = predictions[predictionIndex]
-                    predictionIndex += 1
-                exampleIndex += 1
+            for exampleIndex in safe_mask(X, test):
+                predictionByIndex[exampleIndex] = predictions[predictionIndex]
+                predictionIndex += 1
             extraRVs["predictions"] = predictionByIndex
         if (extraOut == "auto" or "importances" in extraOut) and hasattr(clf, "feature_importances_"):
             extraRVs["importances"] = clf.feature_importances_
