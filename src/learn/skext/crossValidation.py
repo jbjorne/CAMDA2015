@@ -1,13 +1,23 @@
 import numpy as np
 from sklearn.utils import check_random_state
 from sklearn.cross_validation import _BaseKFold
+import itertools
 
-class KFold(_BaseKFold):
-    def __init__(self, n, n_folds=3, indices=True, shuffle=False,
+class GroupedKFold(_BaseKFold):
+    def __init__(self, groups, n_folds=3, indices=True, shuffle=False,
                  random_state=None, k=None):
-        super(KFold, self).__init__(n, n_folds, indices, k)
+        # Get unique groups
+        seen = set()
+        seen_add = seen.add
+        uniqGroups = [x for x in groups if x not in seen and not seen_add(x)]
+        # Map index of each unique group to example indices in that group
+        self.groupIndices = []
+        for groupId in uniqGroups:
+            self.groupIndices.append([i for i, x in enumerate(groups) if x == groupId]) 
+        # Initialize base classes with number of unique groups
+        super(GroupedKFold, self).__init__(len(uniqGroups), n_folds, indices, k)
         random_state = check_random_state(random_state)
-        self.idxs = np.arange(n)
+        self.idxs = np.arange(len(uniqGroups))
         if shuffle:
             random_state.shuffle(self.idxs)
 
@@ -19,7 +29,8 @@ class KFold(_BaseKFold):
         current = 0
         for fold_size in fold_sizes:
             start, stop = current, current + fold_size
-            yield self.idxs[start:stop]
+            yield itertools.chain([self.groupIndices[x] for x in self.idxs[start:stop]])
+            #yield self.idxs[start:stop]
             current = stop
 
     def __repr__(self):
