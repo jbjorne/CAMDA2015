@@ -39,12 +39,16 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
     print search.best_estimator_
     print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
+    results = []
     for params, mean_score, scores in search.grid_scores_:
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+        results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__,
+                        "scoring":"roc_auc","scores":list(scores), 
+                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(search, meta, resultPath)
+        saveResults(search, meta, resultPath, results)
 
 def setResultValue(target, key, value, parent=None, append=False):
     if parent != None and not parent in target:
@@ -68,21 +72,20 @@ def compareFeatures(a, b):
         return int(sum(a["importances"].values()) / len(a["importances"]) - 
                    sum(b["importances"].values()) / len(b["importances"]) )
                 
-def saveResults(search, meta, resultPath):
+def saveResults(search, meta, resultPath, results):
     if not hasattr(search, "extras_"):
         print "No detailed information for cross-validation"
         return
     if not os.path.exists(os.path.dirname(resultPath)):
         os.makedirs(os.path.dirname(resultPath))
     meta = getMeta(meta)
-    # Insert results
+    # Add general results
+    # Insert detailed results
     examples = meta["meta"]
     features = meta["features"]
     featureByIndex = {}
     for featureName in features:
         featureByIndex[features[featureName]] = featureName
-    #for i in range(len(examples)):
-    #    example = examples[i]
     fold = 0
     for extra in search.extras_:
         if "predictions" in extra:
@@ -103,6 +106,7 @@ def saveResults(search, meta, resultPath):
                     featureImportances = features[name]["importances"]
                     setResultValue(featureImportances, fold, foldImportances[i])
         fold += 1
+    # Sort features
     featureValues = features.values()
     featureValues.sort(cmp=compareFeatures)
     features = OrderedDict()
@@ -114,7 +118,8 @@ def saveResults(search, meta, resultPath):
     output = OrderedDict((
                           ("experiment",meta["experiment"]), 
                           ("template",meta["template"]), 
-                          ("classes",meta["classes"]), 
+                          ("classes",meta["classes"]),
+                          ("results",results),
                           ("features",features),
                           ("meta",meta["meta"]),
                         ))
