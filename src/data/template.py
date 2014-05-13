@@ -24,6 +24,8 @@ def compileTemplate(template):
     lambdaArgs.remove("label")
     lambdaArgs.remove("features")
     compiled["example"] = compileTemplateOption(compiled["example"], ["con"] + lambdaArgs, "example")
+    if "filter" in compiled:
+        compiled["filter"] = compileTemplateOption(compiled["filter"], ["con", "example"] + lambdaArgs, "filter")
     compiled["label"] = compileTemplateOption(compiled["label"], ["con", "example"] + lambdaArgs, "label")
     compiled["features"] = compileTemplateOption(compiled["features"], ["con", "example"] + lambdaArgs, "features")
     compiled["meta"] = compileTemplateOption(compiled["meta"], ["example", "label", "features"] + lambdaArgs, "meta")
@@ -56,8 +58,10 @@ def compileTemplateOption(template, arguments, key=None):
             else:
                 sql += split
         sql = "lambda " + ",".join(arguments) + ": con.execute(\"" + sql
-        if len(parameters) > 0:
+        if len(parameters) > 1:
             sql += "\", (" + ", ".join(parameters) + ",))"
+        elif len(parameters) == 1:
+            sql += "\", (" + parameters[0] + ",))"
         else:
             sql += "\")"
         print "Compiled template", [key, sql]

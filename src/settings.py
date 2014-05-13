@@ -1,6 +1,7 @@
 import os
 import hashlib, base64
 import math
+import inspect
 
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
@@ -29,8 +30,9 @@ def preprocessMicroRNA(cell):
     # From http://stackoverflow.com/questions/11095408/python-shortest-unique-id-from-strings
     return base64.b64encode(hashlib.md5(cell).digest())
 
-def testFunction(value):
-    print value
+def testFunction(value, con):
+    print value#, inspect.stack()[0][3]
+    print [x["file"] for x in con.execute("PRAGMA database_list;")][0]
     return True
 SQLITE_FUNCTIONS = [testFunction]
 
@@ -112,21 +114,25 @@ REMISSION = {
     "project":"BRCA-US",
     "example":"""
         SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
-        FROM clinical 
+        FROM clinical
         WHERE project_code IN {'project'} AND 
         length(specimen_type) > 0 AND 
         length(disease_status_last_followup) > 0 AND
         ((disease_status_last_followup LIKE '%remission%') OR
         (donor_vital_status IS 'deceased')) AND
-        specimen_type NOT LIKE '%control%' AND
-        testFunction(icgc_donor_id)
+        specimen_type NOT LIKE '%control%'
     """,
+    "filter":"SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1",
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
     "hidden":0.3,
     "meta":META
 }
+
+REMISSION_ALL = dict(REMISSION)
+REMISSION_ALL["example"] = REMISSION_ALL["example"].replace(
+    "FROM clinical", "FROM clinical WHERE EXISTS (SELECT * FROM gene_expression WHERE gene_expression.icgc_specimen_id = clinical.icgc_specimen_id)")
 
 TUMOUR_STAGE_AT_DIAGNOSIS = {
     "project":"NBL-US",
