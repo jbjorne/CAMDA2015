@@ -29,6 +29,11 @@ def preprocessMicroRNA(cell):
     # From http://stackoverflow.com/questions/11095408/python-shortest-unique-id-from-strings
     return base64.b64encode(hashlib.md5(cell).digest())
 
+def testFunction(value):
+    print value
+    return True
+SQLITE_FUNCTIONS = [testFunction]
+
 # How ICGC data files are imported to the database
 TABLE_FORMAT = {
     "clinical":{
@@ -113,7 +118,8 @@ REMISSION = {
         length(disease_status_last_followup) > 0 AND
         ((disease_status_last_followup LIKE '%remission%') OR
         (donor_vital_status IS 'deceased')) AND
-        specimen_type NOT LIKE '%control%'
+        specimen_type NOT LIKE '%control%' AND
+        testFunction(icgc_donor_id)
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},

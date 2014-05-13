@@ -11,6 +11,7 @@ from example import *
 import itertools
 import hidden
 import math
+import inspect
 from numbers import Number
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,6 +23,8 @@ def connect(con):
         con = sqlite3.connect(con)
         con.row_factory = sqlite3.Row
         con.create_function("log", 1, math.log)
+    for func in settings.SQLITE_FUNCTIONS: #functions:
+        con.create_function(func.func_name,func.func_code.co_argcount,func)
     return con
 
 def parseExperiment(experiment):
@@ -48,6 +51,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     con = connect(con)
     template = parseExperiment(experimentName).copy()
     template = parseTemplateOptions(options, template)
+    #con = connect(con, template.get("functions", None))
     #options = updateTemplateOptions(template, options)
     print "Template:", experimentName
     print json.dumps(template, indent=4)
