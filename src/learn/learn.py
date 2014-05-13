@@ -44,10 +44,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
     index = 0
     bestIndex = 0
     for params, mean_score, scores in search.grid_scores_:
-        bestIndex = index
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         if results == None or float(mean_score) > results["mean"]:
+            bestIndex = index
             results = {"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
                        "scoring":"roc_auc","scores":list(scores), 
                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":params}
