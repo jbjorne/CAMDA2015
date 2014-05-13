@@ -61,14 +61,12 @@ def compareFeatures(a, b):
     if isinstance(a, int) and isinstance(b, int):
         return a - b
     elif isinstance(a, dict) and isinstance(b, int):
-        return 1
-    elif isinstance(a, int) and isinstance(b, dict):
         return -1
+    elif isinstance(a, int) and isinstance(b, dict):
+        return 1
     else:
-        if len(a["importances"]) != len(b["importances"]):
-            return len(a["importances"]) - len(b["importances"])
-        else:
-            return int(sum(a["importances"].values()) - len(b["importances"].values()))
+        return int(sum(a["importances"].values()) / len(a["importances"]) - 
+                   sum(b["importances"].values()) / len(b["importances"]) )
                 
 def saveResults(search, meta, resultPath):
     if not hasattr(search, "extras_"):
@@ -105,19 +103,25 @@ def saveResults(search, meta, resultPath):
                     featureImportances = features[name]["importances"]
                     setResultValue(featureImportances, fold, foldImportances[i])
         fold += 1
-    features = features.values()
-    features.sort(cmp=compareFeatures)
-    output = OrderedDict()
-    for feature in features:
+    featureValues = features.values()
+    featureValues.sort(cmp=compareFeatures)
+    features = OrderedDict()
+    for feature in featureValues:
         if isinstance(feature, int):
-            output[featureByIndex[feature]] = feature
+            features[featureByIndex[feature]] = feature
         else:
-            output[featureByIndex[feature["id"]]] = feature
-    meta["features"] = output
+            features[featureByIndex[feature["id"]]] = feature
+    output = OrderedDict((
+                          ("experiment",meta["experiment"]), 
+                          ("template",meta["template"]), 
+                          ("classes",meta["classes"]), 
+                          ("features",features),
+                          ("meta",meta["meta"]),
+                        ))
                     
     # Save results
     f = open(resultPath, "wt")
-    json.dump(meta, f, indent=4)
+    json.dump(output, f, indent=4)
     f.close()
     
 def getClassifier(classifierName, classifierArguments):
