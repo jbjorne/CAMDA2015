@@ -39,20 +39,22 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
     print search.best_estimator_
     print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
-    results = []
+    results = None
     for params, mean_score, scores in search.grid_scores_:
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-        results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__,
-                        "scoring":"roc_auc","scores":list(scores), 
-                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
+        if results == None or float(mean_score) > results["mean"]:
+            results = {"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
+                       "scoring":"roc_auc","scores":list(scores), 
+                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":params}
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
         saveResults(search, meta, resultPath, results)
 
 def setResultValue(target, key, value, parent=None, append=False):
-    if parent != None and not parent in target:
-        target[parent] = {}
+    if parent != None:
+        if not parent in target:
+            target[parent] = {}
         target = target[parent]
     if append:
         value = [value]
