@@ -37,19 +37,30 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
     search.fit(X, y) 
     print "----------------------------- Best Estimator -----------------------------------"
     print search.best_estimator_
-    print "--------------------------------------------------------------------------------"
+    #print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
     results = None
+    extras = None
+    index = 0
+    bestIndex = 0
     for params, mean_score, scores in search.grid_scores_:
+        bestIndex = index
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         if results == None or float(mean_score) > results["mean"]:
             results = {"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
                        "scoring":"roc_auc","scores":list(scores), 
                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":params}
+            if hasattr(search, "extras_"):
+                extras = search.extras_[index]
+        index += 1
+    print "---------------------- Best scores on development set --------------------------"
+    params, mean_score, scores = search.grid_scores_[bestIndex]
+    print scores
+    print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(search, meta, resultPath, results)
+        saveResults(meta, resultPath, results, extras)
 
 def setResultValue(target, key, value, parent=None, append=False):
     if parent != None:
@@ -74,8 +85,8 @@ def compareFeatures(a, b):
         return int(sum(a["importances"].values()) / len(a["importances"]) - 
                    sum(b["importances"].values()) / len(b["importances"]) )
                 
-def saveResults(search, meta, resultPath, results):
-    if not hasattr(search, "extras_"):
+def saveResults(meta, resultPath, results, extras):
+    if extras == None:
         print "No detailed information for cross-validation"
         return
     if not os.path.exists(os.path.dirname(resultPath)):
@@ -89,7 +100,7 @@ def saveResults(search, meta, resultPath, results):
     for featureName in features:
         featureByIndex[features[featureName]] = featureName
     fold = 0
-    for extra in search.extras_:
+    for extra in extras:
         if "predictions" in extra:
             predictions = extra["predictions"]
             for index in predictions:

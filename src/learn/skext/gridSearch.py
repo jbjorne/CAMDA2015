@@ -181,16 +181,17 @@ class ExtendedBaseSearchCV(BaseSearchCV):
         n_folds = len(cv)
 
         scores = list()
-        extras = list()
+        grid_extras = list()
         grid_scores = list()
         for grid_start in range(0, n_fits, n_folds):
             n_test_samples = 0
             score = 0
             all_scores = []
+            all_extras = list()
             for this_score, parameters, this_n_test_samples, extra in \
                     out[grid_start:grid_start + n_folds]:
                 all_scores.append(this_score)
-                extras.append(extra)
+                all_extras.append(extra)
                 if self.iid:
                     this_score *= this_n_test_samples
                     n_test_samples += this_n_test_samples
@@ -205,9 +206,10 @@ class ExtendedBaseSearchCV(BaseSearchCV):
                 parameters,
                 score,
                 np.array(all_scores)))
+            grid_extras.append(all_extras)
         # Store the computed scores
         self.grid_scores_ = grid_scores
-        self.extras_ = extras
+        self.extras_ = grid_extras
 
         # Find the best parameters by comparing on the mean validation score:
         # note that `sorted` is deterministic in the way it breaks ties
