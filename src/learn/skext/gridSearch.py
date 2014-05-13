@@ -120,15 +120,18 @@ Number of test samples in this split.
     if extraOut != None:
         if "estimator" in extraOut:
             extraRVs["estimator"] = clf
-        if extraOut == "auto" or "classes" in extraOut:
+        if extraOut == "auto" or "predictions" in extraOut:
             predictions = clf.predict(X)
-            count = 0
+            predictionIndex = 0
+            exampleIndex = 0
             predictionByIndex = {}
-            for maskValue, prediction in zip(safe_mask(X, test), predictions):
+            for maskValue in safe_mask(X, test):
+                print maskValue
                 if maskValue:
-                    predictionByIndex[count] = prediction
-                count += 1
-            extraRVs["classes"] = predictionByIndex
+                    predictionByIndex[exampleIndex] = predictions[predictionIndex]
+                    predictionIndex += 1
+                exampleIndex += 1
+            extraRVs["predictions"] = predictionByIndex
         if (extraOut == "auto" or "importances" in extraOut) and hasattr(clf, "feature_importances_"):
             extraRVs["importances"] = clf.feature_importances_
     rvs = [this_score, parameters, _num_samples(X_test), extraRVs]
@@ -191,6 +194,7 @@ class ExtendedBaseSearchCV(BaseSearchCV):
             for this_score, parameters, this_n_test_samples, extra in \
                     out[grid_start:grid_start + n_folds]:
                 all_scores.append(this_score)
+                extras.append(extra)
                 if self.iid:
                     this_score *= this_n_test_samples
                     n_test_samples += this_n_test_samples
@@ -200,7 +204,6 @@ class ExtendedBaseSearchCV(BaseSearchCV):
             else:
                 score /= float(n_folds)
             scores.append((score, parameters))
-            extras.append(extra)
             # TODO: shall we also store the test_fold_sizes?
             grid_scores.append(_CVScoreTuple(
                 parameters,

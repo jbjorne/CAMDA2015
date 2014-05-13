@@ -113,7 +113,7 @@ EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icg
 # Experiments #################################################################
 
 REMISSION = {
-    "project":"BRCA-US",
+    "project":"KIRC-US",
     "example":"""
         SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
         FROM clinical
@@ -126,15 +126,15 @@ REMISSION = {
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
-    "features":[EXP,SSM],
+    "features":MAIN_FEATURES,
     "filter":EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }
 
 REMISSION_ALL = dict(REMISSION)
-REMISSION_ALL["example"] = REMISSION_ALL["example"].replace(
-    "FROM clinical", "FROM clinical WHERE EXISTS (SELECT * FROM gene_expression WHERE gene_expression.icgc_specimen_id = clinical.icgc_specimen_id)")
+del REMISSION_ALL["project"]
+REMISSION_ALL["example"] = REMISSION_ALL["example"].replace("project_code IN {'project'} AND", "")
 
 TUMOUR_STAGE_AT_DIAGNOSIS = {
     "project":"NBL-US",
