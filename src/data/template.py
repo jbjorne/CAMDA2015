@@ -72,14 +72,12 @@ def parseOptionString(string):
         return {}
     # Separate key and values into a list, allowing commas within values
     splits = []
-    phase = False
     equalSignSplits = string.split("=")
-    for split in equalSignSplits:
-        if phase and (split != equalSignSplits[-1]): # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
-            splits.extend(split.rsplit(",", 1))
+    for i in range(len(equalSignSplits)):
+        if i < len(equalSignSplits) - 1: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
+            splits.extend(equalSignSplits[i].rsplit(",", 1))
         else:
-            splits.append(split)
-        phase = not phase
+            splits.append(equalSignSplits[i])
     options = {}
     for key, value in zip(*[iter(splits)] * 2):
         try:
