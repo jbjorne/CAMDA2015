@@ -108,6 +108,8 @@ SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutatio
 CNSM = "SELECT ('CNSM:'||gene_affected||':'||mutation_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
+EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
+
 # Experiments #################################################################
 
 REMISSION = {
@@ -122,10 +124,10 @@ REMISSION = {
         (donor_vital_status IS 'deceased')) AND
         specimen_type NOT LIKE '%control%'
     """,
-    "filter":"SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1",
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
     "features":[EXP,SSM],
+    "filter":EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }
