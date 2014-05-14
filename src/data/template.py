@@ -33,6 +33,8 @@ def compileTemplate(template):
     return compiled, lambdaArgs
 
 def compileTemplateOption(template, arguments, key=None):
+    if template == None:
+        return None
     if not isinstance(template, basestring):
         return [compileTemplateOption(x, arguments, key) for x in template]
     template = template.replace("\n", " ")

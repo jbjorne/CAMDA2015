@@ -17,12 +17,13 @@ class GroupedKFold(_BaseKFold):
         # Initialize base classes with number of unique groups
         super(GroupedKFold, self).__init__(len(groups), n_folds, indices, k)
         random_state = check_random_state(random_state)
-        self.idxs = np.arange(len(uniqGroups))
+        self.uniq_n = len(uniqGroups)
+        self.idxs = np.arange(self.uniq_n)
         if shuffle:
             random_state.shuffle(self.idxs)
 
     def _iter_test_indices(self):
-        n = self.n
+        n = self.uniq_n
         n_folds = self.n_folds
         fold_sizes = (n // n_folds) * np.ones(n_folds, dtype=np.int)
         fold_sizes[:n % n_folds] += 1
@@ -44,3 +45,19 @@ class GroupedKFold(_BaseKFold):
 
     def __len__(self):
         return self.n_folds
+
+def testGroupedKFold():
+    import random
+    g = ["DO"+str(random.randint(0,20)) for x in range(50)]
+    print "groups =", g
+    k = GroupedKFold(g, 5)
+    f = [x for x in k]
+    count = 1
+    for p in f:
+        print "Fold", count, "-------------------------------"
+        print "indices = ", p
+        print "n = ", (len(p[0]), len(p[1]))
+        print "items = ", [g[i] for i in p[0]], [g[i] for i in p[1]]
+        print "uniq = ", set([g[i] for i in p[0]]), set([g[i] for i in p[1]])
+        print "intersect = ", set([g[i] for i in p[0]]).intersection( set([g[i] for i in p[1]]) )
+        count += 1

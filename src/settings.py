@@ -105,10 +105,16 @@ EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM g
 PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-CNSM = "SELECT ('CNSM:'||gene_affected||':'||mutation_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
+CNSM = "SELECT ('CNSM:'||gene_affected||':'||chromosome||':'||chromosome_start||':'||chromosome_end||':'||mutation_type),1 FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
 
 EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
+PEXP_FILTER = "SELECT * FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
+SSM_FILTER = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
+CNSM_FILTER = "SELECT * FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
+MIRNA_FILTER = "SELECT * FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
+#def require(table):
+#    return "SELECT * FROM " + table + " WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1"
 
 # Experiments #################################################################
 
@@ -154,15 +160,19 @@ TUMOUR_STAGE_AT_DIAGNOSIS = {
 }
 
 CANCER_OR_CONTROL = {
-    "project":"BRCA-US",
+    "project":"KIRC-US",
     "example":"""
-        SELECT icgc_donor_id,icgc_specimen_id,disease_status_last_followup,specimen_type 
+        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
         FROM clinical 
-        WHERE project_code IN {'project'} AND length(specimen_type) > 0
+        WHERE project_code IN {'project'} AND 
+        length(specimen_type) > 0
     """,
     "label":"{'control' not in example['specimen_type']}",
     "classes":{'True':1, 'False':-1},
-    "features":[EXP,SSM],
+    #"label":"{example['specimen_type']}",
+    #"classes":{},
+    "features":[EXP],
+    "filter":EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }

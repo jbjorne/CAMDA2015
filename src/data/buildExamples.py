@@ -75,7 +75,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         print "Processing example", example,
         cls = getIdOrValue(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         print cls, str(count) + "/" + str(numExamples)
-        if "filter" in compiled and len([x for x in compiled["filter"](con=con, example=example, **lambdaArgs)]) == 0:
+        if "filter" in compiled and compiled["filter"] != None and len([x for x in compiled["filter"](con=con, example=example, **lambdaArgs)]) == 0:
             print "NOTE: Filtered example"
             continue
         features = {}

@@ -28,7 +28,7 @@ def getDonorCV(y, meta, numFolds=10):
         groups.append(examples[i]["icgc_donor_id"])
     if not len(groups) == len(y):
         raise Exception("Metadata example count differs from y: " + str((len(examples), len(y))))
-    return GroupedKFold(groups, n_folds=numFolds)
+    return GroupedKFold(groups, n_folds=numFolds, shuffle=True)
 
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)

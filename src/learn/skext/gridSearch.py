@@ -175,6 +175,14 @@ class ExtendedBaseSearchCV(BaseSearchCV):
                     self.scorer_, self.verbose, **self.fit_params)
                 for parameters in parameter_iterable
                 for train, test in cv)
+        
+#         out = []
+#         for parameters in parameter_iterable:
+#             fold = 1
+#             for train, test in cv:
+#                 print "Processing fold", fold, self.fit_params
+#                 out.append(fit_grid_point_extended(X, y, base_estimator, parameters, train, test, self.scorer_, self.verbose, **self.fit_params))
+#                 fold += 1
 
         # Out is a list of triplet: score, estimator, n_test_samples
         n_fits = len(out)
