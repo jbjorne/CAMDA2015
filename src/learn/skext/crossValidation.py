@@ -15,7 +15,7 @@ class GroupedKFold(_BaseKFold):
         for groupId in uniqGroups:
             self.groupIndices.append([i for i, x in enumerate(groups) if x == groupId]) 
         # Initialize base classes with number of unique groups
-        super(GroupedKFold, self).__init__(len(uniqGroups), n_folds, indices, k)
+        super(GroupedKFold, self).__init__(len(groups), n_folds, indices, k)
         random_state = check_random_state(random_state)
         self.idxs = np.arange(len(uniqGroups))
         if shuffle:
@@ -29,7 +29,8 @@ class GroupedKFold(_BaseKFold):
         current = 0
         for fold_size in fold_sizes:
             start, stop = current, current + fold_size
-            yield itertools.chain([self.groupIndices[x] for x in self.idxs[start:stop]])
+            #print [x for x in itertools.chain(*[self.groupIndices[x] for x in self.idxs[start:stop]])]
+            yield [x for x in itertools.chain(*[self.groupIndices[x] for x in self.idxs[start:stop]])]
             #yield self.idxs[start:stop]
             current = stop
 
