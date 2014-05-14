@@ -7,9 +7,11 @@ from data.cache import getExperiment
 from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
 from skext.gridSearch import ExtendedGridSearchCV
+from skext.crossValidation import GroupedKFold
 from collections import defaultdict
 import tempfile
 from collections import OrderedDict
+import imp
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -19,7 +21,19 @@ def getClassDistribution(y):
     #bincount = numpy.nonzero(numpy.bincount(y))[0]
     #return zip(bincount,y[bincount])
 
-def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFolds=10, verbose=3, parallel=1, preDispatch='2*n_jobs'):
+def getDonorCV(y, meta, numFolds=10):
+    groups = []
+    examples = meta["meta"]
+    for i in range(len(examples)):
+        groups.append(examples[i]["icgc_donor_id"])
+    if not len(groups) == len(y):
+        raise Exception("Metadata example count differs from y: " + str((len(examples), len(y))))
+    return GroupedKFold(groups, n_folds=numFolds)
+
+def getStratifiedKFoldCV(y, meta, numFolds=10):
+    return StratifiedKFold(y, n_folds=numFolds)
+
+def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, preDispatch='2*n_jobs'):
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
@@ -30,7 +44,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, numFold
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
-    cv = StratifiedKFold(y, n_folds=numFolds)
+    cv = getCV(y, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
     search = ExtendedGridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
@@ -141,16 +155,29 @@ def saveResults(meta, resultPath, results, extras):
     f = open(resultPath, "wt")
     json.dump(output, f, indent=4)
     f.close()
+
+def importNamed(name):
+    asName = name.rsplit(".", 1)[-1]
+    imported = False
+    attempts = ["from sklearn." + name.rsplit(".", 1)[0] + " import " + asName,
+                "from " + name.rsplit(".", 1)[0] + " import " + asName,
+                "import " + name + " as " + asName]
+    for attempt in attempts:
+        try:
+            print "Importing '" + attempt + "', ",
+            exec attempt
+            imported = True
+            print "OK"
+            break;
+        except ImportError:
+            print "failed"
+    if not imported:
+        raise Exception("Could not import '" + name + "'")
+    return eval(asName)
     
 def getClassifier(classifierName, classifierArguments):
-    if "." in classifierName:
-        importCmd = "from sklearn." + classifierName.rsplit(".", 1)[0] + " import " + classifierName.rsplit(".", 1)[1]
-    else:
-        importCmd = "import " + classifierName
-    print importCmd
-    exec importCmd
-    classifier = eval(classifierName.rsplit(".", 1)[1]) 
-    classifierArgs=parseOptionString(classifierArguments)
+    classifier = importNamed(classifierName)
+    classifierArgs = parseOptionString(classifierArguments)
     print "Using classifier", classifierName, "with arguments", classifierArgs
     return classifier, classifierArgs
     
@@ -164,6 +191,7 @@ if __name__ == "__main__":
     parser.add_argument('--cacheDir', help='Cache directory, used if x, y or m are undefined (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
     parser.add_argument('-a','--classifierArguments', help='', default=None)
+    parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
     parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
@@ -172,10 +200,11 @@ if __name__ == "__main__":
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
+    cvFunction = eval(options.iteratorCV)
     featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
                                                                  database=options.database, hidden=options.hidden, writer=options.writer, 
                                                                  useCached=not options.noCache, featureFilePath=options.features, 
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
-         numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
+         getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
          preDispatch=options.preDispatch, resultPath=options.result)
