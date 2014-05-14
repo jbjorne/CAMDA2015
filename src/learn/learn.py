@@ -47,10 +47,11 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     cv = getCV(y, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=False, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X, y) 
-    print "----------------------------- Best Estimator -----------------------------------"
-    print search.best_estimator_
+    if hasattr(search, "best_estimator_"):
+        print "----------------------------- Best Estimator -----------------------------------"
+        print search.best_estimator_
     #print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
     results = None

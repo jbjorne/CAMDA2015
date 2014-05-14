@@ -108,6 +108,8 @@ SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutatio
 CNSM = "SELECT ('CNSM:'||gene_affected||':'||chromosome||':'||chromosome_start||':'||chromosome_end||':'||mutation_type),1 FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
 
+EXP_CUTOFF = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level) > 0.005"
+
 EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
 PEXP_FILTER = "SELECT * FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
 SSM_FILTER = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
@@ -159,20 +161,29 @@ TUMOUR_STAGE_AT_DIAGNOSIS = {
     "meta":META
 }
 
+CONTROL_EXP_FILTER = """
+    SELECT * FROM gene_expression WHERE icgc_specimen_id IN
+    (SELECT icgc_specimen_id FROM clinical WHERE 
+        icgc_donor_id = {example['icgc_donor_id']} AND
+        specimen_type LIKE '%control%' AND
+        specimen_type LIKE '%primary%') LIMIT 1
+    """
+    
+    #(project_code IN {'project'} OR specimen_type LIKE '%control%') AND 
 CANCER_OR_CONTROL = {
-    "project":"KIRC-US",
     "example":"""
-        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
-        FROM clinical 
-        WHERE project_code IN {'project'} AND 
-        length(specimen_type) > 0
+        SELECT project_code,icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
+        FROM clinical WHERE
+        project_code='KIRC-US' AND
+        length(specimen_type) > 0 AND
+        specimen_type LIKE '%primary%'
     """,
     "label":"{'control' not in example['specimen_type']}",
     "classes":{'True':1, 'False':-1},
     #"label":"{example['specimen_type']}",
     #"classes":{},
-    "features":[EXP],
-    "filter":EXP_FILTER,
+    "features":[EXP_CUTOFF],
+    "filter":CONTROL_EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }
