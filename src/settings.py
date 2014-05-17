@@ -174,13 +174,19 @@ CONTROL_EXP_FILTER = """
                     specimen_type LIKE '%control%' AND
                     specimen_type LIKE '%primary%'
             )
-        ELSE
-            icgc_specimen_id NOT IN 
+        ELSE 
+            {example['icgc_donor_id']} NOT IN
             (
-                SELECT icgc_specimen_id FROM clinical WHERE 
-                    icgc_donor_id = {example['icgc_donor_id']} AND
-                    specimen_type LIKE '%control%' AND
-                    specimen_type LIKE '%primary%'
+                SELECT control_specimens.icgc_donor_id FROM
+                    (SELECT icgc_donor_id, icgc_specimen_id FROM clinical 
+                        WHERE 
+                        icgc_donor_id = {example['icgc_donor_id']} AND
+                        specimen_type LIKE '%control%' AND
+                        specimen_type LIKE '%primary%'
+                    ) AS control_specimens
+                JOIN gene_expression
+                ON gene_expression.icgc_specimen_id = control_specimens.icgc_specimen_id
+                LIMIT 1
             )
         END
     LIMIT 1
