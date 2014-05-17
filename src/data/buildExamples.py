@@ -13,6 +13,7 @@ import hidden
 import math
 import inspect
 from numbers import Number
+from lib.pymersennetwister.mtwister import MTwister
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
@@ -66,6 +67,8 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     featureIds = {}
     meta = []
     featureGroups = compiled.get("features", [])
+    sampleRandom = MTwister()
+    sampleRandom.set_seed(2)
     for example in examples:
         count += 1
         if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
@@ -75,6 +78,9 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         print "Processing example", example,
         cls = getIdOrValue(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         print cls, str(count) + "/" + str(numExamples)
+        if "sample" in compiled and cls in compiled["sample"] and sampleRandom.random() > compiled["sample"][cls]:
+            print "NOTE: Downsampled example"
+            continue
         if "filter" in compiled and compiled["filter"] != None and len([x for x in compiled["filter"](con=con, example=example, **lambdaArgs)]) == 0:
             print "NOTE: Filtered example"
             continue

@@ -93,16 +93,22 @@ def download(url, destPath=None, addName=True, clear=False):
         print >> sys.stderr, "Skipping already downloaded file", url
     return destFileName
 
-url = "https://github.com/aatapa/RLScore/archive/master.zip"
-libPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
-downloaded = download(url, None, clear=False)
-if os.path.exists(os.path.join(libPath, "ext_src")):
-    shutil.rmtree(os.path.join(libPath, "ext_src"))
-if os.path.exists(os.path.join(libPath, "rlscore")):
-    shutil.rmtree(os.path.join(libPath, "rlscore"))
-extractPackage(downloaded, libPath, subPath="RLScore-master")
-cwd = os.getcwd()
-os.chdir(libPath)
-#print os.listdir(os.getcwd())
-subprocess.call(['python', 'setup.py'])
-os.chdir(cwd)
+def setupRLSCore():
+    url = "https://github.com/aatapa/RLScore/archive/master.zip"
+    libPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
+    downloaded = download(url, None, clear=False)
+    if os.path.exists(os.path.join(libPath, "ext_src")):
+        shutil.rmtree(os.path.join(libPath, "ext_src"))
+    if os.path.exists(os.path.join(libPath, "rlscore")):
+        shutil.rmtree(os.path.join(libPath, "rlscore"))
+    extractPackage(downloaded, libPath, subPath="RLScore-master")
+    cwd = os.getcwd()
+    os.chdir(libPath)
+    #print os.listdir(os.getcwd())
+    subprocess.call(['python', 'setup.py'])
+    os.chdir(cwd)
+    # Remove installation files
+    #shutil.rmtree(os.path.join(libPath, "ext_src"))
+
+if __name__ == "__main__":
+    setupRLSCore()

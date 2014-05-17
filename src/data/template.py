@@ -51,6 +51,7 @@ def compileTemplateOption(template, arguments, key=None):
                     sql += "?"
             else:
                 sql += split
+        sql = ' '.join(sql.split()).strip()
         sql = "lambda " + ",".join(arguments) + ": con.execute(\"" + sql
         if len(parameters) > 1:
             sql += "\", (" + ", ".join(parameters) + ",))"

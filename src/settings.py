@@ -207,11 +207,16 @@ CANCER_OR_CONTROL = {
     "classes":{'True':1, 'False':-1},
     #"label":"{example['specimen_type']}",
     #"classes":{},
-    "features":[EXP_CUTOFF],
+    "features":[EXP],
     "filter":CONTROL_EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }
+
+CANCER_OR_CONTROL_ALL = dict(REMISSION)
+del CANCER_OR_CONTROL_ALL["project"]
+CANCER_OR_CONTROL_ALL["example"] = REMISSION_ALL["example"].replace("project_code IN {'project'} AND", "")
+CANCER_OR_CONTROL_ALL["sample"] = {1:0.1}
 
 SURVIVAL = {
     "project":"KIRC-US",
