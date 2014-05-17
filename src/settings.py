@@ -170,11 +170,11 @@ CONTROL_EXP_FILTER = """
     """
     
     #(project_code IN {'project'} OR specimen_type LIKE '%control%') AND 
+#        project_code='KIRC-US' AND
 CANCER_OR_CONTROL = {
     "example":"""
         SELECT project_code,icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
         FROM clinical WHERE
-        project_code='KIRC-US' AND
         length(specimen_type) > 0 AND
         specimen_type LIKE '%primary%'
     """,

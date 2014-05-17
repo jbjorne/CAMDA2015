@@ -2,7 +2,7 @@ import sys, os
 import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.example import exampleOptions, readAuto
-from data.template import parseOptionString, getMeta
+from data.template import parseOptionString
 from data.cache import getExperiment
 from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
@@ -10,8 +10,7 @@ from skext.gridSearch import ExtendedGridSearchCV
 from skext.crossValidation import GroupedKFold
 from collections import defaultdict
 import tempfile
-from collections import OrderedDict
-import imp
+import data.result as result
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -38,7 +37,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     meta = {}
     if metaPath != None:
         print "Loading metadata from", metaPath
-        meta = getMeta(metaPath)
+        meta = result.getMeta(metaPath)
     if "classes" in meta:
         print "Class distribution = ", getClassDistribution(y)
 
@@ -76,29 +75,6 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
         saveResults(meta, resultPath, results, extras)
-
-def setResultValue(target, key, value, parent=None, append=False):
-    if parent != None:
-        if not parent in target:
-            target[parent] = {}
-        target = target[parent]
-    if append:
-        value = [value]
-    if append and key in target:
-        target[key].append(value)
-    else:
-        target[key] = value
-
-def compareFeatures(a, b):
-    if isinstance(a, int) and isinstance(b, int):
-        return a - b
-    elif isinstance(a, dict) and isinstance(b, int):
-        return -1
-    elif isinstance(a, int) and isinstance(b, dict):
-        return 1
-    else:
-        return -cmp(sum(a["importances"].values()) / len(a["importances"]), 
-                    sum(b["importances"].values()) / len(b["importances"]))
                 
 def saveResults(meta, resultPath, results, extras):
     if extras == None:
@@ -106,56 +82,30 @@ def saveResults(meta, resultPath, results, extras):
         return
     if not os.path.exists(os.path.dirname(resultPath)):
         os.makedirs(os.path.dirname(resultPath))
-    meta = getMeta(meta)
+    meta = result.getMeta(meta)
     # Add general results
     # Insert detailed results
-    examples = meta["meta"]
-    features = meta["features"]
-    featureByIndex = {}
-    for featureName in features:
-        featureByIndex[features[featureName]] = featureName
+    featureByIndex = result.getFeaturesByIndex(meta)
     fold = 0
     for extra in extras:
         if "predictions" in extra:
             predictions = extra["predictions"]
             for index in predictions:
-                example = examples[index]
-                setResultValue(example, "prediction", predictions[index], "classification")
-                setResultValue(example, "fold", fold, "classification")
+                example = result.getExample(meta, index)
+                result.setValue(example, "prediction", predictions[index], "classification")
+                result.setValue(example, "fold", fold, "classification")
         if "importances" in extra:
             foldImportances = extra["importances"]
             for i in range(len(foldImportances)):
                 if foldImportances[i] != 0:
-                    name = featureByIndex[i]
-                    if isinstance(features[name], int):
-                        features[name] = {"id":features[name]}
-                    if not "importances" in features[name]:
-                        features[name]["importances"] = {}
-                    featureImportances = features[name]["importances"]
-                    setResultValue(featureImportances, fold, foldImportances[i])
+                    feature = result.getFeature(meta, i, featureByIndex)
+                    result.setValue(feature, fold, foldImportances[i], "importances")
+                    result.setValue(feature, "sort", sum(feature["importances"].values()) / len(feature["importances"]))
         fold += 1
-    # Sort features
-    featureValues = features.values()
-    featureValues.sort(cmp=compareFeatures)
-    features = OrderedDict()
-    for feature in featureValues:
-        if isinstance(feature, int):
-            features[featureByIndex[feature]] = feature
-        else:
-            features[featureByIndex[feature["id"]]] = feature
-    output = OrderedDict((
-                          ("experiment",meta["experiment"]), 
-                          ("template",meta["template"]), 
-                          ("classes",meta["classes"]),
-                          ("results",results),
-                          ("features",features),
-                          ("meta",meta["meta"]),
-                        ))
                     
     # Save results
-    f = open(resultPath, "wt")
-    json.dump(output, f, indent=4)
-    f.close()
+    if resultPath != None:
+        result.saveMeta(meta, resultPath)
 
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]

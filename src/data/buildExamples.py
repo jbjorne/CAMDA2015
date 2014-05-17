@@ -114,7 +114,7 @@ def saveMetaData(metaDataFileName, con, template, experimentName, experimentOpti
             clsIds = {}
         output = OrderedDict((("experiment",experimentMeta), ("template",template), ("classes",clsIds), ("features",featureIds)))
         if len(meta) > 0:
-            output["meta"] = meta
+            output["examples"] = meta
         json.dump(output, f, indent=4)#, separators=(',\n', ':'))
         f.close()
 

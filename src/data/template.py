@@ -7,15 +7,7 @@ import settings
 import json, hashlib
 
 def getTemplateId(template):
-    return hashlib.md5(json.dumps(template)).hexdigest()
-
-def getMeta(meta):
-    if not isinstance(meta, basestring):
-        return meta
-    f = open(meta, "rt")
-    meta = json.load(f)
-    f.close()
-    return meta
+    return hashlib.md5(json.dumps(template)).hexdigest()    
 
 def compileTemplate(template):
     compiled = template.copy()

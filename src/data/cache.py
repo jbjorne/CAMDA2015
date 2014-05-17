@@ -6,8 +6,9 @@ import time
 import json
 import buildExamples
 from example import evalWriter
-from data.template import getTemplateId, getMeta, parseTemplateOptions
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from data.template import getTemplateId, parseTemplateOptions
+from data.result import getMeta
 import settings
 
 def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH, hidden='skip', writer='writeNumpyText', useCached=True,
