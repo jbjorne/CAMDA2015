@@ -53,18 +53,18 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
         print search.best_estimator_
     #print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
-    results = None
+    results = []
     extras = None
     index = 0
     bestIndex = 0
     for params, mean_score, scores in search.grid_scores_:
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-        if results == None or float(mean_score) > results["mean"]:
+        results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
+                   "scoring":"roc_auc","scores":list(scores), 
+                   "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
+        if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
             bestIndex = index
-            results = {"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
-                       "scoring":"roc_auc","scores":list(scores), 
-                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":params}
             if hasattr(search, "extras_"):
                 extras = search.extras_[index]
         index += 1
@@ -74,9 +74,9 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(meta, resultPath, results, extras)
+        saveResults(meta, resultPath, results, extras, bestIndex)
                 
-def saveResults(meta, resultPath, results, extras):
+def saveResults(meta, resultPath, results, extras, bestIndex):
     if extras == None:
         print "No detailed information for cross-validation"
         return
@@ -84,6 +84,7 @@ def saveResults(meta, resultPath, results, extras):
         os.makedirs(os.path.dirname(resultPath))
     meta = result.getMeta(meta)
     # Add general results
+    meta["results"] = {"best":results[bestIndex], "all":results}
     # Insert detailed results
     featureByIndex = result.getFeaturesByIndex(meta)
     fold = 0
