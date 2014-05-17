@@ -162,19 +162,38 @@ TUMOUR_STAGE_AT_DIAGNOSIS = {
 }
 
 CONTROL_EXP_FILTER = """
-    SELECT * FROM gene_expression WHERE icgc_specimen_id IN
-    (SELECT icgc_specimen_id FROM clinical WHERE 
-        icgc_donor_id = {example['icgc_donor_id']} AND
-        specimen_type LIKE '%control%' AND
-        specimen_type LIKE '%primary%') LIMIT 1
-    """
+    SELECT * FROM gene_expression
+    WHERE
+        icgc_specimen_id = {example['icgc_specimen_id']} AND
+        CASE WHEN {example['specimen_type']} LIKE '%control%'
+        THEN
+            icgc_specimen_id IN 
+            (
+                SELECT icgc_specimen_id FROM clinical WHERE 
+                    icgc_donor_id = {example['icgc_donor_id']} AND
+                    specimen_type LIKE '%control%' AND
+                    specimen_type LIKE '%primary%'
+            )
+        ELSE
+            icgc_specimen_id NOT IN 
+            (
+                SELECT icgc_specimen_id FROM clinical WHERE 
+                    icgc_donor_id = {example['icgc_donor_id']} AND
+                    specimen_type LIKE '%control%' AND
+                    specimen_type LIKE '%primary%'
+            )
+        END
+    LIMIT 1
+"""
     
     #(project_code IN {'project'} OR specimen_type LIKE '%control%') AND 
 #        project_code='KIRC-US' AND
 CANCER_OR_CONTROL = {
+    "project":"KIRC-US",
     "example":"""
         SELECT project_code,icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
         FROM clinical WHERE
+        project_code IN {'project'} AND
         length(specimen_type) > 0 AND
         specimen_type LIKE '%primary%'
     """,
