@@ -13,9 +13,34 @@ def iterparse(xml, tag):
             yield elem
             elem.clear()
 
-def processGeneEntries(xmlFile):
-    for elem in iterparse(zf.open(item), tag='GeneEntry'):
+def processGeneEntries(xmlFile, dbPath):
+    con = DB.connect(dbPath)
+    tables = OrderedDict()
+    inserts = {}
+    for tableName in sorted(settings.CGI_TABLES.keys()):
+        columns = getColumns(tableName)
+        inserts[tableName] = DB.defineSQLInsert(tableName, columns)
+        columnToElement = {v:k for k, v in settings.CGI_TABLES[tableName]["columns"].items()}
+        valueElementPaths = []
+        for i in range(len(columns)):
+            valueElementPaths.append(columnToElement[columns[i][0]])
+        tables[tableName] = valueElementPaths
+    for elem in iterparse(xmlFile, tag='GeneEntry'):
+        for tableName in tables:
+            table = tables[tableName]
+            values = []
+            for valueElementPath in table:
+                subElem = elem
+                if "/" in valueElementPath:
+                    subElem = elem.find(valueElementPath)
+                values.append(subElem.text)
+            print values
+            con.execute(inserts[tableName], values)
         print elem
+
+def getColumns(tableName):
+    table = settings.CGI_TABLES[tableName]
+    return DB.defineColumns([table["columns"][c] for c in table["columns"]])
 
 def initDB(dbPath, clear=True):
     # Initialize the database
@@ -27,20 +52,14 @@ def initDB(dbPath, clear=True):
     con = DB.connect(dbPath)
     
     for tableName in sorted(settings.CGI_TABLES.keys()):
+        columns = getColumns(tableName)
         table = settings.CGI_TABLES[tableName]
-        #columns = []
-        #columnTypes = []
-        #for column in table:
-        #    if isinstance(table[column], basestring):
-        #        columns.append(table[column])
-        #        columnTypes.append({table[column]:""})
-        columns = DB.defineColumns([table["columns"][c] for c in table["columns"]])
-        print columns
-        print DB.defineSQLTable(tableName, columns, table["primary_key"])
         con.execute(DB.defineSQLTable(tableName, columns, table["primary_key"]))
     return con
 
 def buildDB(filename, downloadDir):
+    initDB(filename)
+    
     if downloadDir == None:
         downloadDir = settings.CGI_DOWNLOAD_PATH
     diseaseFile = download.download(settings.CGI_GENE_DISEASE_FILE, downloadDir)
@@ -49,7 +68,7 @@ def buildDB(filename, downloadDir):
     #sys.exit()
     
     item = os.path.basename(diseaseFile).split(".")[0] + ".xml"
-    processGeneEntries(zf.open(item))
+    processGeneEntries(zf.open(item), filename)
     zf.close()
 
 if __name__ == "__main__":
@@ -60,5 +79,5 @@ if __name__ == "__main__":
     parser.add_argument('-b','--database', help='Database location', default=settings.CGI_DB_PATH)
     options = parser.parse_args()
     
-    initDB(options.database)
-    #buildDB(options.database, options.directory)
+    #initDB(options.database)
+    buildDB(options.database, options.directory)
