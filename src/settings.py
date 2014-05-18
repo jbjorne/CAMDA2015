@@ -2,6 +2,7 @@ import os
 import hashlib, base64
 import math
 import inspect
+from collections import OrderedDict
 
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
@@ -16,6 +17,19 @@ CGI_DOWNLOAD_PATH = os.path.join(DATA_PATH, "NCI-CancerGeneIndex")
 CGI_DB_PATH = os.path.join(DATA_PATH, "NCI-CancerGeneIndex/NCI-CGI.sqlite")
 CGI_GENE_DISEASE_FILE = "https://ncisvn.nci.nih.gov/svn/files/trunk/cancergeneindex/cancergeneindex/CancerGeneIndex/NCI_CancerIndex_allphases_disease.zip"
 CGI_GENE_COMPOUND_FILE = "https://ncisvn.nci.nih.gov/svn/files/trunk/cancergeneindex/cancergeneindex/CancerGeneIndex/NCI_CancerIndex_allphases_compound.zip"
+
+CGI_TABLES = {
+    "gene_entry":{
+        "columns":OrderedDict([
+                    ("HUGOGeneSymbol", "hugo_gene_symbol"), 
+                    ("SequenceIdentificationCollection/HgncID", "hgnc_id"), 
+                    ("SequenceIdentificationCollection/LocusLinkID", "locus_link_id"), 
+                    ("SequenceIdentificationCollection/GenbankAccession", "genbank_accession"), 
+                    ("SequenceIdentificationCollection/RefSeqID", "refseq_id"), 
+                    ("SequenceIdentificationCollection/UniProtID", "uniprot_id"), 
+                    ("GeneStatusFlag", "gene_status_flag")]),
+        "primary_key":["hugo_gene_symbol"]}
+}
 
 # ICGC data files
 TABLE_FILES = {
