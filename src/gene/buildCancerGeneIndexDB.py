@@ -88,6 +88,20 @@ def initDB(dbPath, clear=True):
             DB.addIndices(con, tableName, table["indices"])
     return con
 
+def makeCountTables(filename):
+    con = DB.connect(filename)
+    con.execute("""
+    CREATE TABLE disease AS
+    SELECT hugo_gene_symbol, matched_disease_term, nci_disease_concept_code, organism, COUNT(*) 
+    AS term_count
+    FROM sentence
+    GROUP BY hugo_gene_symbol, matched_disease_term, nci_disease_concept_code, organism 
+    ORDER BY hugo_gene_symbol;
+    """)
+    DB.addIndices(con, "disease", ["hugo_gene_symbol"])
+    con.commit()
+    con.close()
+
 def buildDB(filename, downloadDir):
     initDB(filename)
     
@@ -101,6 +115,7 @@ def buildDB(filename, downloadDir):
     item = os.path.basename(diseaseFile).split(".")[0] + ".xml"
     processGeneEntries(zf.open(item), filename)
     zf.close()
+    makeCountTables(filename)
 
 if __name__ == "__main__":
     import argparse
