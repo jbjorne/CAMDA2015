@@ -11,6 +11,7 @@ from skext.crossValidation import GroupedKFold
 from collections import defaultdict
 import tempfile
 import data.result as result
+import random
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -32,7 +33,7 @@ def getDonorCV(y, meta, numFolds=10):
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)
 
-def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, preDispatch='2*n_jobs'):
+def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, preDispatch='2*n_jobs', randomize=False):
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
@@ -40,6 +41,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
         meta = result.getMeta(metaPath)
     if "classes" in meta:
         print "Class distribution = ", getClassDistribution(y)
+        if randomize:
+            classes = meta["classes"].values()
+            y = [random.choice(classes) for x in range(len(y))]
+            print "Class distribution = ", getClassDistribution(y)
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
@@ -149,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
     parser.add_argument('-r', '--result', help='Output file for detailed results (optional)', default=None)
+    parser.add_argument('--randomize', help='', default=False, action="store_true")
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
@@ -159,4 +165,4 @@ if __name__ == "__main__":
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
-         preDispatch=options.preDispatch, resultPath=options.result)
+         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize)
