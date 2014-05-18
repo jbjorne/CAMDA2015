@@ -4,14 +4,21 @@ import settings
 import data.buildDB as DB
 import data.result as result
 
+def getSymbols(con, geneName):
+    return con.execute("SELECT DISTINCT(hugo_gene_symbol) FROM gene_alias WHERE alias = ?", (geneName,))
+
+def getTerms(con, geneSymbol, table):
+    assert table in ("disease", "drug")
+    return con.execute("SELECT * FROM " + table + " WHERE hugo_gene_symbol = ?", (geneSymbol,))
+
 def getCancerGenes(con, geneName):
-    geneSymbols = con.execute("SELECT DISTINCT(hugo_gene_symbol) FROM gene_alias WHERE alias = ?", (geneName,))
+    geneSymbols = getSymbols(con, geneName)
     analysis = {}
     terms = []
     count = 0
     for symbol in geneSymbols:
         symbol = symbol["hugo_gene_symbol"]
-        for row in con.execute("SELECT * FROM disease WHERE hugo_gene_symbol = ?", (symbol,)):
+        for row in getTerms(con, symbol, 'disease'):
             #mapping = {}
             #for key in row.keys():
             #    mapping[key] = row[key]
@@ -25,11 +32,11 @@ def getCancerGeneCoverage(con, geneNames):
     foundCount = 0
     for geneName in geneNames:
         print geneName
-        geneSymbols = con.execute("SELECT DISTINCT(hugo_gene_symbol) FROM gene_alias WHERE alias = ?", (geneName,))
+        geneSymbols = getSymbols(con, geneName)
         for symbol in geneSymbols:
             symbol = symbol["hugo_gene_symbol"]
             found = False
-            for row in con.execute("SELECT * FROM disease WHERE hugo_gene_symbol = ?", (symbol,)):
+            for row in getTerms(con, symbol, 'disease'):
                 found = True
                 break
             print symbol, found

@@ -99,6 +99,15 @@ def makeCountTables(filename):
     ORDER BY hugo_gene_symbol;
     """)
     DB.addIndices(con, "disease", ["hugo_gene_symbol"])
+    con.execute("""
+    CREATE TABLE drug AS
+    SELECT hugo_gene_symbol, drug_term, nci_drug_concept_code, organism, COUNT(*) 
+    AS term_count
+    FROM sentence
+    GROUP BY hugo_gene_symbol, drug_term, nci_drug_concept_code, organism 
+    ORDER BY hugo_gene_symbol;
+    """)
+    DB.addIndices(con, "drug", ["hugo_gene_symbol"])
     con.commit()
     con.close()
 
@@ -107,11 +116,15 @@ def buildDB(filename, downloadDir):
     
     if downloadDir == None:
         downloadDir = settings.CGI_DOWNLOAD_PATH
+    # Add gene-drug associations
+    drugFile = download.download(settings.CGI_GENE_COMPOUND_FILE, downloadDir)
+    zf = zipfile.ZipFile(drugFile, "r")
+    item = os.path.basename(drugFile).split(".")[0] + ".xml"
+    processGeneEntries(zf.open(item), filename)
+    zf.close()
+    # Add gene-disease associations
     diseaseFile = download.download(settings.CGI_GENE_DISEASE_FILE, downloadDir)
     zf = zipfile.ZipFile(diseaseFile, "r")
-    #print zf.namelist()
-    #sys.exit()
-    
     item = os.path.basename(diseaseFile).split(".")[0] + ".xml"
     processGeneEntries(zf.open(item), filename)
     zf.close()

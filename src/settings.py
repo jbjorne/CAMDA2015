@@ -35,6 +35,7 @@ CGI_TABLES = {
         "columns":OrderedDict([
             ("../HUGOGeneSymbol", "hugo_gene_symbol"),           
             ("GeneAliasCollection/GeneAlias", "alias")]),
+        "primary_key":["hugo_gene_symbol", "alias"],
         "indices":["alias"],
         "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues},
     "sentence":{
@@ -45,6 +46,8 @@ CGI_TABLES = {
             ("Sentence/GeneData/NCIGeneConceptCode", "nci_gene_concept_code"),
             ("Sentence/DiseaseData/MatchedDiseaseTerm", "matched_disease_term"),
             ("Sentence/DiseaseData/NCIDiseaseConceptCode", "nci_disease_concept_code"),
+            ("Sentence/DrugData/DrugTerm", "drug_term"),
+            ("Sentence/DrugData/NCIDrugConceptCode", "nci_drug_concept_code"),
             ("Sentence/Statement", "statement"),
             ("Sentence/PubMedID", "pubmed_id"),
             ("Sentence/Organism", "organism"),
