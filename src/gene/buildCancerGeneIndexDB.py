@@ -30,11 +30,13 @@ def processGeneEntries(xmlFile, dbPath):
             table = tables[tableName]
             values = []
             for valueElementPath in table:
-                subElem = elem.find(valueElementPath)
-                if subElem != None:
-                    values.append(subElem.text)
-                else:
-                    values.append(None)
+                subElems = elem.findall(valueElementPath)
+                valueList = []
+                for subElem in subElems:
+                    valueList.append(subElem.text)
+                if len(valueList) == 0:
+                    valueList = [0]
+                values.append(valueList)
             print inserts[tableName]
             print values
             con.execute(inserts[tableName], values)

@@ -28,7 +28,13 @@ CGI_TABLES = {
                     ("SequenceIdentificationCollection/RefSeqID", "refseq_id"), 
                     ("SequenceIdentificationCollection/UniProtID", "uniprot_id"), 
                     ("GeneStatusFlag", "gene_status_flag")]),
-        "primary_key":["hugo_gene_symbol"]}
+        "primary_key":["hugo_gene_symbol"]},
+    "gene_alias":{
+        "columns":OrderedDict([
+            ("HUGOGeneSymbol", "hugo_gene_symbol")              
+            ("GeneAliasCollection/GeneAlias", "alias")]),
+        "primary_key":["hugo_gene_symbol"]},
+        "list":"GeneAliasCollection"
 }
 
 # ICGC data files
