@@ -13,6 +13,9 @@ def iterparse(xml, tag):
             yield elem
             elem.clear()
 
+def preprocessAliasValues(tableName, elem, valueLists):
+    return [[valueLists[0][0], valueLists[0][0]]] + valueLists
+
 def processGeneEntries(xmlFile, dbPath):
     con = DB.connect(dbPath)
     tableValuePaths = OrderedDict()
@@ -28,6 +31,7 @@ def processGeneEntries(xmlFile, dbPath):
     for elem in iterparse(xmlFile, tag='GeneEntry'):
         for tableName in tableValuePaths:
             valuePaths = tableValuePaths[tableName]
+            valueLists = []
             if "elements" in settings.CGI_TABLES[tableName]:
                 listElemPath = settings.CGI_TABLES[tableName]["elements"]
                 elemList = elem.findall(listElemPath)
@@ -49,10 +53,16 @@ def processGeneEntries(xmlFile, dbPath):
                         values.append(valueElem.text)
                     else:
                         values.append(None)
-                print inserts[tableName]
-                print values
-                con.execute(inserts[tableName], values)
-        print elem
+                #print inserts[tableName]
+                #print values
+                #con.execute(inserts[tableName], values)
+                valueLists.append(values)
+            if "preprocess" in settings.CGI_TABLES[tableName]:
+                valueLists = settings.CGI_TABLES[tableName]["preprocess"](tableName, elem, valueLists)
+            #print inserts[tableName]
+            #print valueLists
+            con.executemany(inserts[tableName], valueLists)
+        print elem.find("HUGOGeneSymbol").text
     con.commit()
     con.close()
 
@@ -72,7 +82,9 @@ def initDB(dbPath, clear=True):
     for tableName in sorted(settings.CGI_TABLES.keys()):
         columns = getColumns(tableName)
         table = settings.CGI_TABLES[tableName]
-        con.execute(DB.defineSQLTable(tableName, columns, table["primary_key"]))
+        con.execute(DB.defineSQLTable(tableName, columns, table.get("primary_key", None)))
+        if "indices" in table:
+            DB.addIndices(con, tableName, table["indices"])
     return con
 
 def buildDB(filename, downloadDir):

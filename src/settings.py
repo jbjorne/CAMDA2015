@@ -2,6 +2,7 @@ import os
 import hashlib, base64
 import math
 import inspect
+import gene.buildCancerGeneIndexDB
 from collections import OrderedDict
 
 def logrange(a, b):
@@ -34,7 +35,8 @@ CGI_TABLES = {
         "columns":OrderedDict([
             ("../HUGOGeneSymbol", "hugo_gene_symbol"),           
             ("GeneAliasCollection/GeneAlias", "alias")]),
-        "primary_key":["hugo_gene_symbol"]},
+        "indices":["hugo_gene_symbol"],
+        "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues}
 }
 
 # ICGC data files
