@@ -12,6 +12,7 @@ from collections import defaultdict
 import tempfile
 import data.result as result
 import random
+import gene.analyze
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -33,7 +34,9 @@ def getDonorCV(y, meta, numFolds=10):
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)
 
-def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, preDispatch='2*n_jobs', randomize=False):
+def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
+         getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
+         preDispatch='2*n_jobs', randomize=False, analyzeResults=False):
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
@@ -78,9 +81,9 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(meta, resultPath, results, extras, bestIndex)
+        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults)
                 
-def saveResults(meta, resultPath, results, extras, bestIndex):
+def saveResults(meta, resultPath, results, extras, bestIndex, analyze):
     if extras == None:
         print "No detailed information for cross-validation"
         return
@@ -107,7 +110,10 @@ def saveResults(meta, resultPath, results, extras, bestIndex):
                     result.setValue(feature, fold, foldImportances[i], "importances")
                     result.setValue(feature, "sort", sum(feature["importances"].values()) / len(feature["importances"]))
         fold += 1
-                    
+    # Analyze results
+    if analyze:
+        print "Analyzing results"
+        meta = gene.analyze.analyze(meta)              
     # Save results
     if resultPath != None:
         result.saveMeta(meta, resultPath)
@@ -154,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
     parser.add_argument('-r', '--result', help='Output file for detailed results (optional)', default=None)
     parser.add_argument('--randomize', help='', default=False, action="store_true")
+    parser.add_argument('--analyze', help='Analyze feature selection results', default=False, action="store_true")
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
@@ -164,4 +171,4 @@ if __name__ == "__main__":
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
-         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize)
+         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze)

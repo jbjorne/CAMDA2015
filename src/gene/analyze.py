@@ -32,7 +32,7 @@ def getTermAnalysis(con, geneName, table):
 def getCancerGeneCoverage(con, geneNames):
     foundCount = 0
     for geneName in geneNames:
-        print geneName
+        #print geneName
         geneSymbols = getSymbols(con, geneName)
         for symbol in geneSymbols:
             symbol = symbol["hugo_gene_symbol"]
@@ -40,7 +40,7 @@ def getCancerGeneCoverage(con, geneNames):
             for row in getTermsForSymbol(con, symbol, 'disease'):
                 found = True
                 break
-            print symbol, found
+            #print symbol, found
             if found:
                 foundCount += 1
     return foundCount / float(len(geneNames))
@@ -94,8 +94,10 @@ def getGeneName(featureName):
             geneName = featureBody
     return geneName
 
-def analyze(meta, dbPath, resultPath):
+def analyze(meta, dbPath=None, resultPath=None, verbose=False):
     meta = result.getMeta(meta)
+    if dbPath == None:
+        dbPath = settings.CGI_DB_PATH
     con = DB.connect(dbPath)
     result.sortFeatures(meta)
     features = meta["features"]
@@ -104,7 +106,8 @@ def analyze(meta, dbPath, resultPath):
     nonSelected = []
     for featureName in features:
         if not isinstance(features[featureName], int):
-            print "Processing feature", featureName, str(count) + "/" + str(numFeatures)
+            if verbose:
+                print "Processing feature", featureName, str(count) + "/" + str(numFeatures)
             geneName = getGeneName(featureName)
             if geneName != None:
                 mappings = getTermAnalysis(con, geneName, "disease")
@@ -120,6 +123,7 @@ def analyze(meta, dbPath, resultPath):
     result.setValue(meta["analysis"], "non-selected", getCancerGeneCoverage(con, nonSelected), "CancerGeneIndex")
     if resultPath != None:
         result.saveMeta(meta, resultPath)
+    return meta
 
 if __name__ == "__main__":
     import argparse

@@ -113,7 +113,7 @@ def makeCountTables(filename):
     con.commit()
     con.close()
 
-def buildDB(filename=settings.CGI_DB_PATH, downloadDir=settings.CGI_DOWNLOAD_PATH, rebuild=False):
+def buildDB(filename, downloadDir, rebuild=False):
     if os.path.exists(filename) and not rebuild:
         print "NCI Cancer Gene Index already SQLite database exists, not rebuilding"
         return

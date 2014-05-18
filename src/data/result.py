@@ -45,9 +45,10 @@ def getMeta(meta, verbose=True):
     f.close()
     return meta
 
-def saveMeta(meta, filename):
+def saveMeta(meta, filename, verbose=True):
     sortFeatures(meta)
     meta = sortMeta(meta)
+    print "Saving metadata to", filename
     f = open(filename, "wt")
     json.dump(meta, f, indent=4)
     f.close()

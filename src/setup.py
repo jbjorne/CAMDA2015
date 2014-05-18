@@ -6,6 +6,7 @@ import tarfile
 import zipfile
 import tempfile
 import subprocess
+import settings
 
 pbar = None
 
@@ -113,6 +114,6 @@ def setupRLSCore():
 
 if __name__ == "__main__":
     print "Building NCI Cancer Gene Index database"
-    gene.buildCancerGeneIndexDB.buildDB()
+    gene.buildCancerGeneIndexDB.buildDB(settings.CGI_DB_PATH, settings.CGI_DOWNLOAD_PATH)
     #print "Installing RLSCore"
     #setupRLSCore()
