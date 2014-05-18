@@ -15,7 +15,7 @@ def iterparse(xml, tag):
 
 def processGeneEntries(xmlFile, dbPath):
     con = DB.connect(dbPath)
-    tables = OrderedDict()
+    tableValuePaths = OrderedDict()
     inserts = {}
     for tableName in sorted(settings.CGI_TABLES.keys()):
         columns = getColumns(tableName)
@@ -24,22 +24,34 @@ def processGeneEntries(xmlFile, dbPath):
         valueElementPaths = []
         for i in range(len(columns)):
             valueElementPaths.append(columnToElement[columns[i][0]])
-        tables[tableName] = valueElementPaths
+        tableValuePaths[tableName] = valueElementPaths
     for elem in iterparse(xmlFile, tag='GeneEntry'):
-        for tableName in tables:
-            table = tables[tableName]
-            values = []
-            for valueElementPath in table:
-                subElems = elem.findall(valueElementPath)
-                valueList = []
-                for subElem in subElems:
-                    valueList.append(subElem.text)
-                if len(valueList) == 0:
-                    valueList = [0]
-                values.append(valueList)
-            print inserts[tableName]
-            print values
-            con.execute(inserts[tableName], values)
+        for tableName in tableValuePaths:
+            valuePaths = tableValuePaths[tableName]
+            if "elements" in settings.CGI_TABLES[tableName]:
+                listElemPath = settings.CGI_TABLES[tableName]["elements"]
+                elemList = elem.findall(listElemPath)
+            else:
+                listElemPath = ""
+                elemList = [elem]
+            for listElem in elemList:
+                values = []
+                for valueElementPath in valuePaths:
+                    valueElementPath = valueElementPath.replace(listElemPath, "").strip("/")
+                    if len(valueElementPath) > 0:
+                        if valueElementPath.startswith("../"):
+                            valueElem = elem.find(valueElementPath.strip("../"))
+                        else:
+                            valueElem = listElem.find(valueElementPath)
+                    else:
+                        valueElem = listElem
+                    if valueElem != None:
+                        values.append(valueElem.text)
+                    else:
+                        values.append(None)
+                print inserts[tableName]
+                print values
+                con.execute(inserts[tableName], values)
         print elem
     con.commit()
     con.close()

@@ -30,11 +30,11 @@ CGI_TABLES = {
                     ("GeneStatusFlag", "gene_status_flag")]),
         "primary_key":["hugo_gene_symbol"]},
     "gene_alias":{
+        "elements":"GeneAliasCollection/GeneAlias",
         "columns":OrderedDict([
-            ("HUGOGeneSymbol", "hugo_gene_symbol")              
+            ("../HUGOGeneSymbol", "hugo_gene_symbol"),           
             ("GeneAliasCollection/GeneAlias", "alias")]),
         "primary_key":["hugo_gene_symbol"]},
-        "list":"GeneAliasCollection"
 }
 
 # ICGC data files
