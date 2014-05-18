@@ -21,10 +21,26 @@ def getCancerGenes(con, geneName):
     analysis["term_count"] = count
     return analysis
 
-def termCoverage(features):
+def getCancerGeneCoverage(con, geneNames):
+    foundCount = 0
+    for geneName in geneNames:
+        print geneName
+        geneSymbols = con.execute("SELECT DISTINCT(hugo_gene_symbol) FROM gene_alias WHERE alias = ?", (geneName,))
+        for symbol in geneSymbols:
+            symbol = symbol["hugo_gene_symbol"]
+            found = False
+            for row in con.execute("SELECT * FROM disease WHERE hugo_gene_symbol = ?", (symbol,)):
+                found = True
+                break
+            print symbol, found
+            if found:
+                foundCount += 1
+    return foundCount / float(len(geneNames))
+
+def analyzeTermCoverage(features):
     selected = {}
     for featureName in features:
-        if not isinstance(features[featureName], int):
+        if not isinstance(features[featureName], int) and getGeneName(featureName) != None:
             selected[featureName] = features[featureName]
     bestByFold = {}
     bestByFold["sort"] = []
@@ -50,6 +66,7 @@ def termCoverage(features):
             slice = bestByFold[fold][i*step:(i+1)*step]
             sumMapped = 0
             for featureName in [x[1] for x in slice]:
+                #if "CancerGeneIndex" in selected[featureName] and "term_count" in selected[featureName]["CancerGeneIndex"]
                 if selected[featureName]["CancerGeneIndex"]["term_count"] > 0:
                     sumMapped += 1
             if len(slice) > 0:
@@ -61,6 +78,14 @@ def termCoverage(features):
             analysis[fold].append(s)
     return analysis
 
+def getGeneName(featureName):
+    geneName = None
+    if featureName.startswith("EXP:"):
+        featureBody = featureName.split(":")[1]
+        if not featureBody.startswith("ENSG"):
+            geneName = featureBody
+    return geneName
+
 def analyze(meta, dbPath, resultPath):
     meta = result.getMeta(meta)
     con = DB.connect(dbPath)
@@ -68,17 +93,21 @@ def analyze(meta, dbPath, resultPath):
     features = meta["features"]
     count = 1
     numFeatures = len(features)
+    nonSelected = []
     for featureName in features:
         if not isinstance(features[featureName], int):
             print "Processing feature", featureName, str(count) + "/" + str(numFeatures)
-            geneName = None
-            if featureName.startswith("EXP:"):
-                geneName = featureName.split(":")[1]
+            geneName = getGeneName(featureName)
             if geneName != None:
                 mappings = getCancerGenes(con, geneName)
                 result.setValue(features[featureName], "CancerGeneIndex", mappings)
+        else:
+            geneName = getGeneName(featureName)
+            if geneName != None:
+                nonSelected.append(geneName)
         count += 1
-    result.setValue(meta, "CancerGeneIndex", termCoverage(features), "analysis")
+    result.setValue(meta, "CancerGeneIndex", analyzeTermCoverage(features), "analysis")
+    result.setValue(meta["analysis"], "non-selected", getCancerGeneCoverage(con, nonSelected), "CancerGeneIndex")
     if resultPath != None:
         result.saveMeta(meta, resultPath)
 
