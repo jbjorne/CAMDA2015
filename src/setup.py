@@ -1,6 +1,7 @@
 import urllib
 import sys, os, shutil
 from lib.progressbar import *
+import gene.buildCancerGeneIndexDB
 import tarfile
 import zipfile
 import tempfile
@@ -111,4 +112,7 @@ def setupRLSCore():
     #shutil.rmtree(os.path.join(libPath, "ext_src"))
 
 if __name__ == "__main__":
-    setupRLSCore()
+    print "Building NCI Cancer Gene Index database"
+    gene.buildCancerGeneIndexDB.buildDB()
+    #print "Installing RLSCore"
+    #setupRLSCore()

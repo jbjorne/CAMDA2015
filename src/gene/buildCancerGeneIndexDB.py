@@ -113,9 +113,11 @@ def makeCountTables(filename):
     con.commit()
     con.close()
 
-def buildDB(filename, downloadDir):
+def buildDB(filename=settings.CGI_DB_PATH, downloadDir=settings.CGI_DOWNLOAD_PATH, rebuild=False):
+    if os.path.exists(filename) and not rebuild:
+        print "NCI Cancer Gene Index already SQLite database exists, not rebuilding"
+        return
     initDB(filename)
-    
     if downloadDir == None:
         downloadDir = settings.CGI_DOWNLOAD_PATH
     # Add gene-drug associations
