@@ -37,7 +37,6 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, getCV=g
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
-        print "Loading metadata from", metaPath
         meta = result.getMeta(metaPath)
     if "classes" in meta:
         print "Class distribution = ", getClassDistribution(y)

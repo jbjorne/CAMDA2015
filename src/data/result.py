@@ -36,9 +36,10 @@ def getFeatures(meta, indices, featuresByIndex=None):
         rv[index] = features[name]
     return rv
 
-def getMeta(meta):
+def getMeta(meta, verbose=True):
     if not isinstance(meta, basestring):
         return meta
+    print "Loading metadata from", meta
     f = open(meta, "rt")
     meta = json.load(f)
     f.close()
