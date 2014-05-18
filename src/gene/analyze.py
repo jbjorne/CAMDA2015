@@ -7,21 +7,22 @@ import data.result as result
 def getSymbols(con, geneName):
     return con.execute("SELECT DISTINCT(hugo_gene_symbol) FROM gene_alias WHERE alias = ?", (geneName,))
 
-def getTerms(con, geneSymbol, table):
+def getTermsForSymbol(con, geneSymbol, table, organism="Human"):
     assert table in ("disease", "drug")
-    return con.execute("SELECT * FROM " + table + " WHERE hugo_gene_symbol = ?", (geneSymbol,))
+    query = "SELECT * FROM " + table + " WHERE hugo_gene_symbol = ?"
+    if organism != None:
+        query += " AND organism = '" + organism + "'"
+    return con.execute(query, (geneSymbol,))
 
-def getCancerGenes(con, geneName):
+def getTermAnalysis(con, geneName, table):
+    assert table in ("disease", "drug")
     geneSymbols = getSymbols(con, geneName)
     analysis = {}
     terms = []
     count = 0
     for symbol in geneSymbols:
         symbol = symbol["hugo_gene_symbol"]
-        for row in getTerms(con, symbol, 'disease'):
-            #mapping = {}
-            #for key in row.keys():
-            #    mapping[key] = row[key]
+        for row in getTermsForSymbol(con, symbol, table):
             count += row["term_count"]
             terms.append(str([x for x in row]))
     analysis["terms"] = terms
@@ -36,7 +37,7 @@ def getCancerGeneCoverage(con, geneNames):
         for symbol in geneSymbols:
             symbol = symbol["hugo_gene_symbol"]
             found = False
-            for row in getTerms(con, symbol, 'disease'):
+            for row in getTermsForSymbol(con, symbol, 'disease'):
                 found = True
                 break
             print symbol, found
@@ -106,8 +107,10 @@ def analyze(meta, dbPath, resultPath):
             print "Processing feature", featureName, str(count) + "/" + str(numFeatures)
             geneName = getGeneName(featureName)
             if geneName != None:
-                mappings = getCancerGenes(con, geneName)
+                mappings = getTermAnalysis(con, geneName, "disease")
                 result.setValue(features[featureName], "CancerGeneIndex", mappings)
+                mappings = getTermAnalysis(con, geneName, "drug")
+                result.setValue(features[featureName], "CancerGeneDrug", mappings)
         else:
             geneName = getGeneName(featureName)
             if geneName != None:
