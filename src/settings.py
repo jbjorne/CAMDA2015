@@ -36,7 +36,27 @@ CGI_TABLES = {
             ("../HUGOGeneSymbol", "hugo_gene_symbol"),           
             ("GeneAliasCollection/GeneAlias", "alias")]),
         "indices":["hugo_gene_symbol"],
-        "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues}
+        "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues},
+    "sentence":{
+        "elements":"Sentence",
+        "columns":OrderedDict([
+            ("../HUGOGeneSymbol", "hugo_gene_symbol"),           
+            ("Sentence/GeneData/MatchedGeneTerm", "matched_gene_term"),
+            ("Sentence/GeneData/NCIGeneConceptCode", "nci_gene_concept_code"),
+            ("Sentence/DiseaseData/MatchedDiseaseTerm", "matched_disease_term"),
+            ("Sentence/DiseaseData/NCIDiseaseConceptCode", "nci_disease_concept_code"),
+            ("Sentence/Statement", "statement"),
+            ("Sentence/PubMedID", "pubmed_id"),
+            ("Sentence/Organism", "organism"),
+            ("Sentence/NegationIndicator", "negation_indicator"),
+            ("Sentence/CellineIndicator", "celline_indicator"),
+            ("Sentence/Comments", "comments"),
+            ("Sentence/EvidenceCode", "evidence_code"),
+            ("Sentence/Roles/PrimaryNCIRoleCode", "primary_nci_role_code"),
+            ("Sentence/Roles/OtherRole", "other_roles"),
+            ("Sentence/SentenceStatusFlag", "sentence_status_flag"),
+            ]),
+        "indices":["hugo_gene_symbol"]}
 }
 
 # ICGC data files
