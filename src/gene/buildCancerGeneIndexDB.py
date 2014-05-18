@@ -95,6 +95,7 @@ def makeCountTables(filename):
     SELECT hugo_gene_symbol, matched_disease_term, nci_disease_concept_code, organism, COUNT(*) 
     AS term_count
     FROM sentence
+    WHERE matched_disease_term IS NOT NULL
     GROUP BY hugo_gene_symbol, matched_disease_term, nci_disease_concept_code, organism 
     ORDER BY hugo_gene_symbol;
     """)
@@ -104,6 +105,7 @@ def makeCountTables(filename):
     SELECT hugo_gene_symbol, drug_term, nci_drug_concept_code, organism, COUNT(*) 
     AS term_count
     FROM sentence
+    WHERE drug_term IS NOT NULL
     GROUP BY hugo_gene_symbol, drug_term, nci_drug_concept_code, organism 
     ORDER BY hugo_gene_symbol;
     """)
