@@ -6,10 +6,16 @@ import inspect
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
 
-DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/ICGC/")
-DB_PATH = os.path.join(DATA_PATH, "ICGC.sqlite")
+DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/")
+
+DB_PATH = os.path.join(DATA_PATH, "ICGC/ICGC.sqlite")
 ICGC_FTP = "data.dcc.icgc.org"
 ICGC_VERSION = "version_15.1"
+
+CGI_DOWNLOAD_PATH = os.path.join(DATA_PATH, "NCI-CancerGeneIndex")
+CGI_DB_PATH = os.path.join(DATA_PATH, "NCI-CancerGeneIndex/NCI-CGI.sqlite")
+CGI_GENE_DISEASE_FILE = "https://ncisvn.nci.nih.gov/svn/files/trunk/cancergeneindex/cancergeneindex/CancerGeneIndex/NCI_CancerIndex_allphases_disease.zip"
+CGI_GENE_COMPOUND_FILE = "https://ncisvn.nci.nih.gov/svn/files/trunk/cancergeneindex/cancergeneindex/CancerGeneIndex/NCI_CancerIndex_allphases_compound.zip"
 
 # ICGC data files
 TABLE_FILES = {
@@ -143,6 +149,7 @@ REMISSION = {
 REMISSION_ALL = dict(REMISSION)
 del REMISSION_ALL["project"]
 REMISSION_ALL["example"] = REMISSION_ALL["example"].replace("project_code IN {'project'} AND", "")
+REMISSION_ALL["sample"] = {"1":0.1, "-1":0.1}
 
 TUMOUR_STAGE_AT_DIAGNOSIS = {
     "project":"NBL-US",
@@ -213,10 +220,12 @@ CANCER_OR_CONTROL = {
     "meta":META
 }
 
-CANCER_OR_CONTROL_ALL = dict(REMISSION)
+CANCER_OR_CONTROL_ALL = dict(CANCER_OR_CONTROL)
 del CANCER_OR_CONTROL_ALL["project"]
-CANCER_OR_CONTROL_ALL["example"] = REMISSION_ALL["example"].replace("project_code IN {'project'} AND", "")
-CANCER_OR_CONTROL_ALL["sample"] = {1:0.1}
+CANCER_OR_CONTROL_ALL["example"] = CANCER_OR_CONTROL_ALL["example"].replace("project_code IN {'project'} AND", "")
+#CANCER_OR_CONTROL_ALL["sample"] = {"1":0.05, "-1":0.5}
+#CANCER_OR_CONTROL_ALL["sample"] = {"1":0.1}
+CANCER_OR_CONTROL_ALL["sample"] = {"1":0.075, "-1":0.75}
 
 SURVIVAL = {
     "project":"KIRC-US",

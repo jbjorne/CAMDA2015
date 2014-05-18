@@ -78,7 +78,8 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         print "Processing example", example,
         cls = getIdOrValue(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
         print cls, str(count) + "/" + str(numExamples)
-        if "sample" in compiled and cls in compiled["sample"] and sampleRandom.random() > compiled["sample"][cls]:
+        strCls = str(cls)
+        if "sample" in compiled and strCls in compiled["sample"] and sampleRandom.random() > compiled["sample"][strCls]:
             print "NOTE: Downsampled example"
             continue
         if "filter" in compiled and compiled["filter"] != None and len([x for x in compiled["filter"](con=con, example=example, **lambdaArgs)]) == 0:
