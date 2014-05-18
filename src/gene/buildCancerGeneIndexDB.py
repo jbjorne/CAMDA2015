@@ -30,13 +30,17 @@ def processGeneEntries(xmlFile, dbPath):
             table = tables[tableName]
             values = []
             for valueElementPath in table:
-                subElem = elem
-                if "/" in valueElementPath:
-                    subElem = elem.find(valueElementPath)
-                values.append(subElem.text)
+                subElem = elem.find(valueElementPath)
+                if subElem != None:
+                    values.append(subElem.text)
+                else:
+                    values.append(None)
+            print inserts[tableName]
             print values
             con.execute(inserts[tableName], values)
         print elem
+    con.commit()
+    con.close()
 
 def getColumns(tableName):
     table = settings.CGI_TABLES[tableName]
