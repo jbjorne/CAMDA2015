@@ -62,7 +62,7 @@ def setValue(target, key, value, parent=None):
 def sortMeta(meta):
     keys = meta.keys()
     sortedKeys = []
-    for named in ["experiment", "template", "classes", "results", "features", "examples"]:
+    for named in ["experiment", "template", "classes", "results", "analysis", "features", "examples"]:
         if named in keys:
             sortedKeys.append(named)
             keys.remove(named)
