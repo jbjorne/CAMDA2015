@@ -8,7 +8,7 @@ exampleOptions = argparse.ArgumentParser(add_help=False)
 exampleOptions.add_argument('-e','--experiment', help='Experiment template', default=None)
 exampleOptions.add_argument('-o','--options', help='Experiment template options', default=None)
 exampleOptions.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
-exampleOptions.add_argument('--hidden', help='Inclusion of hidden examples: skip,include,only (default=skip)', default="skip")
+#exampleOptions.add_argument('--hidden', help='Inclusion of hidden examples: train,hidden,both (default=skip)', default="skip")
 exampleOptions.add_argument('-w','--writer', help='Output writer function (optional)', default='writeNumpyText')
 
 def openOutputFiles(featureFilePath, labelFilePath, writer=None, makeDirs=True):

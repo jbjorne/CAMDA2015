@@ -30,9 +30,10 @@ def connect(con):
 
 def parseExperiment(experiment):
     if isinstance(experiment, basestring):
-        return getattr(settings, experiment)
-    else:
-        return experiment
+        experiment = getattr(settings, experiment)
+    if not "include" in experiment:
+        experiment["include"] = "train"
+    return experiment
 
 def getId(value, dictionary):
     if value not in dictionary:
@@ -48,7 +49,7 @@ def getIdOrValue(value, dictionary=None):
     else:
         return value
 
-def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None, hiddenRule="skip"):
+def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None):
     con = connect(con)
     template = parseExperiment(experimentName).copy()
     template = parseTemplateOptions(options, template)
@@ -64,6 +65,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
     print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
     count = 0
     clsIds = compiled.get("classes", None)
+    hiddenRule = compiled.get("include", "train")
     featureIds = {}
     meta = []
     featureGroups = compiled.get("features", [])
@@ -73,6 +75,7 @@ def getExamples(con, experimentName, callback, callbackArgs, metaDataFileName=No
         count += 1
         if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
             continue
+        hidden.setSet(example, compiled.get("hidden", None))
         #print experiment["class"](con, example)
         #if count % 10 == 0:
         print "Processing example", example,
@@ -125,7 +128,7 @@ def saveMetaData(metaDataFileName, con, template, experimentName, experimentOpti
         json.dump(output, f, indent=4)#, separators=(',\n', ':'))
         f.close()
 
-def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, featureFilePath, labelFilePath, metaFilePath, writer=writeNumpyText):
+def writeExamples(dbPath, experimentName, experimentOptions, featureFilePath, labelFilePath, metaFilePath, writer=writeNumpyText):
     if not os.path.exists(dbPath):
         raise Exception("No database at " + str(dbPath))
     print "Using database at", dbPath
@@ -134,7 +137,7 @@ def writeExamples(dbPath, experimentName, experimentOptions, hiddenRule, feature
     experimentMeta = {"X":featureFilePath,"y":labelFilePath,"writer":writer.__name__}
     if "fY" not in writerArgs:
         del experimentMeta["y"]
-    featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, experimentMeta, hiddenRule)
+    featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, experimentMeta)
     closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
 
 if __name__ == "__main__":
@@ -146,4 +149,4 @@ if __name__ == "__main__":
     options = parser.parse_args()
     
     writeExamples(dbPath=options.database, experimentName=options.experiment, experimentOptions=options.options, 
-        hiddenRule=options.hidden, writer=eval(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)
+        writer=eval(options.writer), featureFilePath=options.features, labelFilePath=options.labels, metaFilePath=options.meta)

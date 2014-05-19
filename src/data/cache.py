@@ -11,7 +11,7 @@ from data.template import getTemplateId, parseTemplateOptions
 from data.result import getMeta
 import settings
 
-def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH, hidden='skip', writer='writeNumpyText', useCached=True,
+def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH, writer='writeNumpyText', useCached=True,
                   featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
     """
     Get a cached experiment, or re-calculate if not cached.
@@ -58,7 +58,7 @@ def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH,
     if cached == None:
         print "Building examples for experiment", experiment, "at cache directory:", cacheDir
         buildExamples.writeExamples(dbPath=database, experimentName=experiment, experimentOptions=experimentOptions, 
-                                    hiddenRule=hidden, writer=evalWriter(writer), featureFilePath=featureFilePath, 
+                                    writer=evalWriter(writer), featureFilePath=featureFilePath, 
                                     labelFilePath=labelFilePath, metaFilePath=metaFilePath)
     
     return featureFilePath, labelFilePath, metaFilePath

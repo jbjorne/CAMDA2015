@@ -8,9 +8,11 @@ from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
 from skext.gridSearch import ExtendedGridSearchCV
 from skext.crossValidation import GroupedKFold
+from sklearn.metrics import classification_report
 from collections import defaultdict
 import tempfile
 import data.result as result
+import data.hidden as hidden
 import random
 import gene.analyze
 
@@ -47,14 +49,15 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
             classes = meta["classes"].values()
             y = [random.choice(classes) for x in range(len(y))]
             print "Class distribution = ", getClassDistribution(y)
+    X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
     cv = getCV(y, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=False, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
-    search.fit(X, y) 
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=True, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
         print search.best_estimator_
@@ -79,6 +82,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     params, mean_score, scores = search.grid_scores_[bestIndex]
     print scores
     print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+    if len(X_hidden) > 0:
+        print "----------------------------- Classifying Hidden Set -----------------------------------"
+        y_hidden_pred = search.predict(X_hidden)
+        print classification_report(y_hidden, y_hidden_pred)
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
         saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults)
@@ -166,7 +173,7 @@ if __name__ == "__main__":
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
     cvFunction = eval(options.iteratorCV)
     featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
-                                                                 database=options.database, hidden=options.hidden, writer=options.writer, 
+                                                                 database=options.database, writer=options.writer, 
                                                                  useCached=not options.noCache, featureFilePath=options.features, 
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
