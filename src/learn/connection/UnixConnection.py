@@ -311,8 +311,9 @@ class UnixConnection:
         script = ""
         if self.preamble != None:
             script += self.preamble + ";"
-        if jobDir != None:
-            script += "cd " + jobDir + "; " + commands
+        script += commands
+        #if jobDir != None:
+        #    script += "cd " + jobDir + "; " + commands
         script += "; echo retcode=$? >> " + self.getRemotePath(self._getJobPath(jobDir, jobName)) # store return value
         return script
     

@@ -36,7 +36,7 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None):
         projects = projects.split(",")
     if classifiers == None:
         classifiers = 'ensemble.ExtraTreesClassifier'
-    if isinstance(experiments, basestring):
+    if isinstance(classifiers, basestring):
         classifiers = classifiers.split(",")
     
     jobs = []
@@ -75,7 +75,9 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
             return False
     
     if not dummy:
-        connection.submit(command, jobDir, jobName)
+        connection.submit(command, jobDir, jobName, 
+                          os.path.join(jobDir, jobName + ".stdout"),
+                          os.path.join(jobDir, jobName + ".stderr"))
     else:
         print >> sys.stderr, "Dummy mode"
         if connection.debug:
@@ -85,7 +87,8 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
     return True
     
 def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, 
-          limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False):
+          limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False, 
+          clearCache=False):
     global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
@@ -94,16 +97,19 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers,
     for index, job in enumerate(jobs):
         waitForJobs(limit, submitCount, connection, sleepTime)
         print "Processing job", str(index+1) + "/" + str(len(jobs)), job
+        script = ""
         if runDir != None:
             script = "cd " + runDir + "\n"
         script += "python learn.py"
         script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both\""
-        script += " -c " + job["classifier"] + " -a " + CLASSIFIER_ARGS[job["classifier"]]
+        script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
+        script += " -r " + job["result"]
         if job["classifier"] in ANALYZE:
             script += " --analyze"
-        script += " --clearCache"
+        if clearCache:
+            script += " --clearCache"
         jobName = os.path.basename(job["result"])
-        if submitJob(script, connection, jobDir, jobName):
+        if submitJob(script, connection, jobDir, jobName, dummy, rerun, hideFinished):
             submitCount += 1
 
 if __name__ == "__main__":
@@ -122,6 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--hideFinished", default=False, action="store_true", dest="hideFinished", help="")
     parser.add_argument("--runDir", default=None, dest="runDir", help="")
     parser.add_argument("--jobDir", default="/tmp/jobs", dest="jobDir", help="")
+    parser.add_argument('--clearCache', default=False, action="store_true")
     options = parser.parse_args()
     
     if options.slurm:
@@ -134,4 +141,4 @@ if __name__ == "__main__":
     batch(runDir=options.runDir, jobDir=options.jobDir, resultPath=options.results, 
           experiments=options.experiments, projects=options.projects, 
           classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
-          hideFinished=options.hideFinished, dummy=options.dummy)
+          hideFinished=options.hideFinished, dummy=options.dummy, clearCache=options.clearCache)

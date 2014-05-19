@@ -99,7 +99,7 @@ class ClusterConnection(UnixConnection):
             commands += "export TEES_SETTINGS=" + self.remoteSettingsPath + "\n"
         if jobDir != None:
             commands += "mkdir -p " + self.getRemotePath(jobDir) + "\n" # ensure output directory exists
-            commands += "cd " + self.getRemotePath(jobDir) + "\n\n" # move to output directory where the program will be run
+            #commands += "cd " + self.getRemotePath(jobDir) + "\n\n" # move to output directory where the program will be run
         commands += script + "\n"
         # Store return value in job file
         commands += "echo retcode=$? >> " + self.getRemotePath(self._getJobPath(jobDir, jobName))
