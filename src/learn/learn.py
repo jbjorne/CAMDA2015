@@ -53,7 +53,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
-    cv = getCV(y, meta, numFolds=numFolds)
+    cv = getCV(y_train, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
     search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=True, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)

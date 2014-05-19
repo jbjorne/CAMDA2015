@@ -51,6 +51,11 @@ def setSet(example, templateHidden):
     return example["set"]
 
 def split(*arrays, **options):
+    """
+    Get train and hidden sets using example metadata. Call with e.g.
+    X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
+    where X and y are Numpy arrays and meta is the metadata dictionary.
+    """
     # Modified from sklearn.cross_validation.train_test_split
     n_arrays = len(arrays)
     if n_arrays == 0:
@@ -66,10 +71,14 @@ def split(*arrays, **options):
                 hidden.add(index)
     
     numColumns = len(arrays[0])
+    #print numColumns
     train = set()
     for index in range(numColumns):
         if index not in hidden:
             train.add(index)
+    train = sorted(list(train))
+    hidden = sorted(list(hidden))
+    #print train, hidden
     
     splitted = []
     for a in arrays:
