@@ -196,6 +196,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--result', help='Output file for detailed results (optional)', default=None)
     parser.add_argument('--randomize', help='', default=False, action="store_true")
     parser.add_argument('--analyze', help='Analyze feature selection results', default=False, action="store_true")
+    parser.add_argument('--clearCache', default=False, action="store_true")
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
@@ -207,3 +208,8 @@ if __name__ == "__main__":
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
          preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze)
+    if options.clearCache:
+        print "Removing cache files"
+        for filename in [featureFilePath, labelFilePath, metaFilePath]:
+            if os.path.exists(filename):
+                os.remove(filename)
