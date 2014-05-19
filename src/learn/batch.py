@@ -1,5 +1,6 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import settings
 from data.example import exampleOptions
 import time
 from connection.UnixConnection import UnixConnection
@@ -7,7 +8,7 @@ from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':"n_estimators=[250]",
+    'ensemble.ExtraTreesClassifier':"n_estimators=[10000]",
     'svm.LinearSVC':"C=logrange(-10, 10)"}
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
@@ -21,7 +22,7 @@ ALL_PROJECTS = ["BLCA-US","BOCA-UK","BRCA-UK","BRCA-US","CESC-US","CLLE-ES",
                 "RECA-EU","SKCM-US","STAD-US","THCA-SA","THCA-US","UCEC-US"]
 
 
-def getJobs(resultPath, experiments=None, projects=None, classifiers=None):
+def getJobs(resultPath, experiments=None, projects=None, classifiers=None, features=None):
     global ALL_CAMDA_PROJECTS, ALL_PROJECTS
     if experiments == None:
         experiments = "ALL"
@@ -38,18 +39,24 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None):
         classifiers = 'ensemble.ExtraTreesClassifier'
     if isinstance(classifiers, basestring):
         classifiers = classifiers.split(",")
+    if features == None:
+        features = [None]
+    elif isinstance(features, basestring):
+        features = features.split(",")
     
     jobs = []
     for experiment in experiments:
         for project in projects:
             for classifier in classifiers:
-                resultFileName = experiment + "-" + project + "-" + classifier + ".json"
-                job = {"result":os.path.join(resultPath, resultFileName),
-                       "experiment":experiment,
-                       "project":project,
-                       "classifier":classifier
-                       }
-                jobs.append(job)
+                for feature in features:
+                    resultFileName = experiment + "-" + project + "-" + classifier + ".json"
+                    job = {"result":os.path.join(resultPath, resultFileName),
+                           "experiment":experiment,
+                           "project":project,
+                           "classifier":classifier,
+                           "features":feature
+                           }
+                    jobs.append(job)
     return jobs
 
 def waitForJobs(maxJobs, submitCount, connection, sleepTime=15):
@@ -86,28 +93,35 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
             print >> sys.stderr, "--------------------------"
     return True
     
-def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, 
+def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features,
           limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False, 
-          clearCache=False):
+          clearCache=False, icgcDB=None, cgiDB=None):
     global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
     submitCount = 0
-    jobs = getJobs(resultPath, experiments, projects, classifiers)
+    jobs = getJobs(resultPath, experiments, projects, classifiers, features)
     for index, job in enumerate(jobs):
         waitForJobs(limit, submitCount, connection, sleepTime)
         print "Processing job", str(index+1) + "/" + str(len(jobs)), job
         script = ""
         if runDir != None:
             script = "cd " + runDir + "\n"
+        featureScript = ""
+        if "features" in job and job["features"] != None:
+            featureScript = ",features=" + job["features"]
         script += "python learn.py"
-        script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both\""
+        script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both" + featureScript + "\""
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
         script += " -r " + job["result"]
         if job["classifier"] in ANALYZE:
             script += " --analyze"
         if clearCache:
             script += " --clearCache"
+        if icgcDB != None:
+            script += " --database " + icgcDB
+        if cgiDB != None:
+            script += " --databaseCGI " + cgiDB
         jobName = os.path.basename(job["result"])
         if submitJob(script, connection, jobDir, jobName, dummy, rerun, hideFinished):
             submitCount += 1
@@ -118,6 +132,7 @@ if __name__ == "__main__":
     parser.add_argument('-e','--experiments', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
     parser.add_argument('-c','--classifiers', help='', default=None)
+    parser.add_argument('-f','--features', help='', default=None)
     parser.add_argument('-r','--results', help='Output directory', default=None)
     parser.add_argument('--slurm', help='', default=False, action="store_true")
     #parser.add_argument('--cacheDir', help='Cache directory (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
@@ -129,6 +144,9 @@ if __name__ == "__main__":
     parser.add_argument("--runDir", default=None, dest="runDir", help="")
     parser.add_argument("--jobDir", default="/tmp/jobs", dest="jobDir", help="")
     parser.add_argument('--clearCache', default=False, action="store_true")
+    ####
+    parser.add_argument('--icgcDB', default=settings.DB_PATH, dest="icgcDB")
+    parser.add_argument('--cgiDB', default=settings.CGI_DB_PATH, dest="cgiDB")
     options = parser.parse_args()
     
     if options.slurm:
@@ -139,6 +157,7 @@ if __name__ == "__main__":
         os.makedirs(options.jobDir)
     connection.debug = options.debug
     batch(runDir=options.runDir, jobDir=options.jobDir, resultPath=options.results, 
-          experiments=options.experiments, projects=options.projects, 
+          experiments=options.experiments, projects=options.projects, features=options.features,
           classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
-          hideFinished=options.hideFinished, dummy=options.dummy, clearCache=options.clearCache)
+          hideFinished=options.hideFinished, dummy=options.dummy, clearCache=options.clearCache,
+          icgcDB=options.icgcDB, cgiDB=options.cgiDB)

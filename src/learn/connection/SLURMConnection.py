@@ -33,7 +33,9 @@ class SLURMConnection(ClusterConnection):
         if wallTime == None:
             wallTime = "48:00:00"
         if memory == None:
-            memory = 32000
+            memory = 64000
+        if cores == None:
+            cores = 1
         #if modules == None:
         #    modules = ["python", "ruby"]
         ClusterConnection.__init__(self, account=account, workdir=workdir, settings=settings, memory=memory, cores=cores, modules=modules, wallTime=wallTime, preamble=preamble, debug=debug)

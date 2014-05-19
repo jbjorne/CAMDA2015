@@ -104,6 +104,7 @@ def analyze(meta, dbPath=None, resultPath=None, verbose=False):
     meta = result.getMeta(meta)
     if dbPath == None:
         dbPath = settings.CGI_DB_PATH
+    print "Analyzing", dbPath
     con = DB.connect(dbPath)
     result.sortFeatures(meta)
     features = meta["features"]
