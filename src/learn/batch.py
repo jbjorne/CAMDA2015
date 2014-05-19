@@ -1,10 +1,6 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.example import exampleOptions, readAuto
-from data.template import parseOptionString
-from data.cache import getExperiment
-import settings
-import learn
+from data.example import exampleOptions
 import time
 from connection.UnixConnection import UnixConnection
 from connection.SLURMConnection import SLURMConnection
@@ -56,31 +52,6 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None):
                 jobs.append(job)
     return jobs
 
-def run(resultPath, runDir):
-    global ANALYZE, CLASSIFIER_ARGS
-    jobs = getJobs(resultPath)
-    for index, job in enumerate(jobs):
-        print "Processing job", str(index+1) + "/" + str(len(jobs)), job
-        script = "cd " + runDir + "\n"
-        script += "python learn.py"
-        script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both\""
-        script += " -c " + job["classifier"] + " -a " + CLASSIFIER_ARGS[job["classifier"]]
-        if job["classifier"] in ANALYZE:
-            script += " --analyze"
-        script += " --clearCache"
-        connection.submit(script, jobDir, jobName, stdout, stderr)
-
-def runImmediate(job):
-    featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=job["experiment"], 
-                                                                 experimentOptions="project="+job["experiment"]+",hidden=both")
-    learn.test(featureFilePath, labelFilePath, metaFilePath, classifier=job["classifier"], 
-               classifierArgs=CLASSIFIER_ARGS[job["classifier"]], 
-               resultPath=job["result"], analyzeResults=job["classifier"] in ANALYZE)
-    print "Removing cache files"
-    for filename in [featureFilePath, labelFilePath, metaFilePath]:
-        if os.path.exists(filename):
-            os.remove(filename)
-
 def waitForJobs(maxJobs, submitCount, connection, sleepTime=15):
     currentJobs = connection.getNumJobs()
     print >> sys.stderr, "Current jobs", str(currentJobs) + ", max jobs", str(maxJobs) + ", submitted jobs", submitCount
@@ -89,26 +60,51 @@ def waitForJobs(maxJobs, submitCount, connection, sleepTime=15):
             time.sleep(sleepTime)
             currentJobs = connection.getNumJobs()
             print >> sys.stderr, "Current jobs", str(currentJobs) + ", max jobs", str(maxJobs) + ", submitted jobs", submitCount
+
+def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hideFinished=False):
+    print >> sys.stderr, "Processing job", jobName, "for input", input
+    jobStatus = connection.getJobStatusByName(jobDir, jobName)
+    if jobStatus != None:
+        if rerun != None and jobStatus in rerun:
+            print >> sys.stderr, "Rerunning job", jobName, "with status", jobStatus
+        else:
+            if jobStatus == "RUNNING":
+                print >> sys.stderr, "Skipping currently running job"
+            elif not hideFinished:
+                print >> sys.stderr, "Skipping already processed job with status", jobStatus
+            return False
     
-def batch(experiments, projects, classifiers, database, hidden, writer, sleepTime=15):
+    if not dummy:
+        connection.submit(command, jobDir, jobName)
+    else:
+        print >> sys.stderr, "Dummy mode"
+        if connection.debug:
+            print >> sys.stderr, "------- Job command -------"
+            print >> sys.stderr, connection.makeJobScript(command, jobDir, jobName)
+            print >> sys.stderr, "--------------------------"
+    return True
+    
+def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, 
+          limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False):
+    global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
-    if isinstance(experiments, basestring):
-        experiments = experiments.split(",")
-    if isinstance(projects, basestring):
-        projects = projects.split(",")
-    run = runImmediate
-    for experiment in experiments:
+    submitCount = 0
+    jobs = getJobs(resultPath, experiments, projects, classifiers)
+    for index, job in enumerate(jobs):
         waitForJobs(limit, submitCount, connection, sleepTime)
-        template = settings[experiment]
-        if 'project' in template:
-            projectsToProcess = projects
-        else:
-            projectsToProcess = [None]
-        for project in projectsToProcess:
-            for classifier in classifiers:
-                print "Processing", experiment + "/" + str(project) + "/" + classifier
-                run(experiment, project, classifier, CLASSIFIER_ARGS[classifier], database, hidden, writer)
+        print "Processing job", str(index+1) + "/" + str(len(jobs)), job
+        if runDir != None:
+            script = "cd " + runDir + "\n"
+        script += "python learn.py"
+        script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both\""
+        script += " -c " + job["classifier"] + " -a " + CLASSIFIER_ARGS[job["classifier"]]
+        if job["classifier"] in ANALYZE:
+            script += " --analyze"
+        script += " --clearCache"
+        jobName = os.path.basename(job["result"])
+        if submitJob(script, connection, jobDir, jobName):
+            submitCount += 1
 
 if __name__ == "__main__":
     import argparse
@@ -118,16 +114,23 @@ if __name__ == "__main__":
     parser.add_argument('-r','--results', help='Output directory', default=None)
     parser.add_argument('--slurm', help='', default=False, action="store_true")
     #parser.add_argument('--cacheDir', help='Cache directory (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
-    parser.add_argument("-l", "--limit", default=None, dest="limit", help="")
     parser.add_argument("--debug", default=False, action="store_true", dest="debug", help="Print jobs on screen")
     parser.add_argument("--dummy", default=False, action="store_true", dest="dummy", help="Don't submit jobs")
     parser.add_argument("--rerun", default=None, dest="rerun", help="Rerun jobs which have one of these states (comma-separated list)")
-    parser.add_argument("--maxJobs", default=None, type="int", dest="maxJobs", help="Maximum number of jobs in queue/running")
+    parser.add_argument("-l", "--limit", default=None, type="int", dest="limit", help="Maximum number of jobs in queue/running")
     parser.add_argument("--hideFinished", default=False, action="store_true", dest="hideFinished", help="")
+    parser.add_argument("--runDir", default=None, dest="runDir", help="")
+    parser.add_argument("--jobDir", default="/tmp/jobs", dest="jobDir", help="")
     options = parser.parse_args()
     
     if options.slurm:
         connection = SLURMConnection()
     else:
         connection = UnixConnection()
+    if not os.path.exists(options.jobDir):
+        os.makedirs(options.jobDir)
     connection.debug = options.debug
+    batch(runDir=options.runDir, jobDir=options.jobDir, resultPath=options.results, 
+          experiments=options.experiments, projects=options.projects, 
+          classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
+          maxJobs=options.maxJobs, hideFinished=options.hideFinished, dummy=options.dummy)
