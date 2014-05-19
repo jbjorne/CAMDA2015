@@ -7,7 +7,7 @@ from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':"n_estimators=[10000]",
+    'ensemble.ExtraTreesClassifier':"n_estimators=[250]",
     'svm.LinearSVC':"C=logrange(-10, 10)"}
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
@@ -31,8 +31,8 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None):
     if projects == None:
         projects = "ALL_CAMDA"
     if isinstance(projects, basestring):
-        experiments = experiments.replace("ALL_CAMDA", ",".join(ALL_CAMDA_PROJECTS))
-        experiments = experiments.replace("ALL", ALL_PROJECTS)
+        projects = projects.replace("ALL_CAMDA", ",".join(ALL_CAMDA_PROJECTS))
+        projects = projects.replace("ALL", ",".join(ALL_PROJECTS))
         projects = projects.split(",")
     if classifiers == None:
         classifiers = 'ensemble.ExtraTreesClassifier'
@@ -108,16 +108,17 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers,
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(parents=[exampleOptions], description='')
+    parser = argparse.ArgumentParser(description='')
     parser.add_argument('-e','--experiments', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
+    parser.add_argument('-c','--classifiers', help='', default=None)
     parser.add_argument('-r','--results', help='Output directory', default=None)
     parser.add_argument('--slurm', help='', default=False, action="store_true")
     #parser.add_argument('--cacheDir', help='Cache directory (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
     parser.add_argument("--debug", default=False, action="store_true", dest="debug", help="Print jobs on screen")
     parser.add_argument("--dummy", default=False, action="store_true", dest="dummy", help="Don't submit jobs")
     parser.add_argument("--rerun", default=None, dest="rerun", help="Rerun jobs which have one of these states (comma-separated list)")
-    parser.add_argument("-l", "--limit", default=None, type="int", dest="limit", help="Maximum number of jobs in queue/running")
+    parser.add_argument("-l", "--limit", default=None, type=int, dest="limit", help="Maximum number of jobs in queue/running")
     parser.add_argument("--hideFinished", default=False, action="store_true", dest="hideFinished", help="")
     parser.add_argument("--runDir", default=None, dest="runDir", help="")
     parser.add_argument("--jobDir", default="/tmp/jobs", dest="jobDir", help="")
@@ -133,4 +134,4 @@ if __name__ == "__main__":
     batch(runDir=options.runDir, jobDir=options.jobDir, resultPath=options.results, 
           experiments=options.experiments, projects=options.projects, 
           classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
-          maxJobs=options.maxJobs, hideFinished=options.hideFinished, dummy=options.dummy)
+          hideFinished=options.hideFinished, dummy=options.dummy)
