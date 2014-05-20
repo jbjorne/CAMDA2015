@@ -3,6 +3,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import data.result as result
 import copy
+import numpy as np
 import matplotlib.pyplot as plt
 
 def formatValue(value):
@@ -63,8 +64,15 @@ def makeProjectTable(projects):
 
 def makeCGIFigure(projects):
     fig = plt.figure()
-    ax1 = fig.add_subplot(111)
-    bars = ax1.bar(range(1,10), range(1,10), color='blue', edgecolor='black')
+    ind = np.arange(11)  # the x locations for the groups
+    width = 0.35       # the width of the bars
+    ax = fig.add_subplot(111)
+    bars = ax.bar(range(1,11), range(1,10) + [4], color='blue', edgecolor='black')
+    
+    ax.set_ylabel('Scores')
+    ax.set_title('Scores by group and gender')
+    ax.set_xticks(ind+width)
+    ax.set_xticklabels( [str(x) for x in range(1,10)] + ["NS"] )
     
     bars[6].set_facecolor('red')
     plt.show()
