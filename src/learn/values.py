@@ -114,6 +114,7 @@ def autolabel(rects, ax):
 
 def makeCGIFigure(projects, experiments):
     plots = {"CANCER_OR_CONTROL":211, "REMISSION":212}
+    titles = {"CANCER_OR_CONTROL":"cancer/control", "REMISSION":"remission/progression"}
     projectNames = ["KIRC-US", "HNSC-US", "LUAD-US"]
     colors = {"KIRC-US":"blue", "HNSC-US":"black", "LUAD-US":"red"}
     markers = {"KIRC-US":"o", "HNSC-US":"h", "LUAD-US":"s"}
@@ -149,6 +150,11 @@ def makeCGIFigure(projects, experiments):
             data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name], linestyle=linestyles[name])#, marker=markers[name], markersize=5)
         #ax.set_ylabel('cgi / features')
         #ax.set_title('Scores by group and gender')
+        #ax.set_title(titles[experiment])
+        ax.text(0.99, 0.96, titles[experiment],
+                verticalalignment='top', horizontalalignment='right',
+                transform=ax.transAxes,
+                color='black', fontsize=15)
         ax.set_xticks(ind)
         ax.set_xticklabels( data[data.keys()[0]]["labels"] )
         ax.legend( [data[name]["rects"][0] for name in included], included, loc="lower left" )
