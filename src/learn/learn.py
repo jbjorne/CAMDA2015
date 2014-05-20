@@ -38,7 +38,8 @@ def getStratifiedKFoldCV(y, meta, numFolds=10):
 
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
-         preDispatch='2*n_jobs', randomize=False, analyzeResults=False):
+         preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
+         databaseCGI=None):
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
@@ -56,7 +57,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     cv = getCV(y_train, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=True, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
@@ -82,15 +83,51 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     params, mean_score, scores = search.grid_scores_[bestIndex]
     print scores
     print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+    hiddenResults = None
+    hiddenDetails = None
     if len(X_hidden) > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
+        hiddenResults = {"classifier":" ".join(str(search.best_estimator_).split()), "roc_auc":search.score(X, y), "params":search.best_params_}
+        print "AUC =", hiddenResults["roc_auc"]
         y_hidden_pred = search.predict(X_hidden)
+        hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+        if hasattr(search.best_estimator_, "feature_importances_"):
+            hiddenDetails["importances"] = search.best_estimator_.feature_importances_
         print classification_report(y_hidden, y_hidden_pred)
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults)
+        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI)
+
+def saveDetails(meta, predictions, importances, fold, featureByIndex=None):
+    if featureByIndex == None:
+        featureByIndex = result.getFeaturesByIndex(meta)
+    if predictions != None:
+        for index in predictions:
+            if fold == "hidden":
+                example = result.getExampleFromSet(meta, index, "hidden")
+            else:
+                example = result.getExampleFromSet(meta, index, "train")
+            if "classification" in example:
+                raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
+            result.setValue(example, "prediction", predictions[index], "classification")
+            result.setValue(example, "fold", fold, "classification")
+    if importances != None:
+        for i in range(len(importances)):
+            if importances[i] != 0:
+                feature = result.getFeature(meta, i, featureByIndex)
+                if fold != "hidden":
+                    result.setValue(feature, fold, importances[i], "importances")
+                    #if "sort" not in feature:
+                    #    result.setValue(feature, "sort", 0)
+                else:
+                    result.setValue(feature, "hidden-importance", importances[i])
+                    result.setValue(feature, "sort", importances[i])
+                #if "importances" in feature:
+                #    result.setValue(feature, "sort", sum(feature["importances"].values()) / len(feature["importances"]))
+                #else:
+                #    result.setValue(feature, "sort", 0)
                 
-def saveResults(meta, resultPath, results, extras, bestIndex, analyze):
+def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenResults=None, hiddenDetails=None, databaseCGI=None):
     if extras == None:
         print "No detailed information for cross-validation"
         return
@@ -99,28 +136,20 @@ def saveResults(meta, resultPath, results, extras, bestIndex, analyze):
     meta = result.getMeta(meta)
     # Add general results
     meta["results"] = {"best":results[bestIndex], "all":results}
+    if hiddenResults != None:
+        meta["results"]["hidden"] = hiddenResults
     # Insert detailed results
     featureByIndex = result.getFeaturesByIndex(meta)
+    if hiddenDetails != None:
+        saveDetails(meta, hiddenDetails.get("predictions", None), hiddenDetails.get("importances", None), "hidden", featureByIndex)
     fold = 0
     for extra in extras:
-        if "predictions" in extra:
-            predictions = extra["predictions"]
-            for index in predictions:
-                example = result.getExample(meta, index)
-                result.setValue(example, "prediction", predictions[index], "classification")
-                result.setValue(example, "fold", fold, "classification")
-        if "importances" in extra:
-            foldImportances = extra["importances"]
-            for i in range(len(foldImportances)):
-                if foldImportances[i] != 0:
-                    feature = result.getFeature(meta, i, featureByIndex)
-                    result.setValue(feature, fold, foldImportances[i], "importances")
-                    result.setValue(feature, "sort", sum(feature["importances"].values()) / len(feature["importances"]))
+        saveDetails(meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
         fold += 1
     # Analyze results
     if analyze:
         print "Analyzing results"
-        meta = gene.analyze.analyze(meta)              
+        meta = gene.analyze.analyze(meta, databaseCGI)              
     # Save results
     if resultPath != None:
         result.saveMeta(meta, resultPath)
@@ -168,6 +197,8 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--result', help='Output file for detailed results (optional)', default=None)
     parser.add_argument('--randomize', help='', default=False, action="store_true")
     parser.add_argument('--analyze', help='Analyze feature selection results', default=False, action="store_true")
+    parser.add_argument('--databaseCGI', help='Analysis database', default=None)
+    parser.add_argument('--clearCache', default=False, action="store_true")
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
@@ -178,4 +209,9 @@ if __name__ == "__main__":
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
-         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze)
+         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze, databaseCGI=options.databaseCGI)
+    if options.clearCache:
+        print "Removing cache files"
+        for filename in [featureFilePath, labelFilePath, metaFilePath]:
+            if os.path.exists(filename):
+                os.remove(filename)

@@ -1,6 +1,14 @@
 from collections import OrderedDict
 import json
 
+def getExampleFromSet(meta, index, setName):
+    i = -1
+    for example in meta["examples"]:
+        if example["set"] == setName:
+            i += 1
+        if i == index:
+            return example
+
 def getExample(meta, index):
     return meta["examples"][index]
 
@@ -73,18 +81,20 @@ def sortMeta(meta):
         output[key] = meta[key]
     return output
 
-def sortFeatures(meta, featuresByIndex=None):
+def sortFeatures(meta, featuresByIndex=None, addRank=True):
     if featuresByIndex == None:
         featuresByIndex = getFeaturesByIndex(meta)
     # Sort features
     featureValues = meta["features"].values()
     featureValues.sort(cmp=compareFeatures)
     features = OrderedDict()
-    for feature in featureValues:
+    for index, feature in enumerate(featureValues):
         if isinstance(feature, int):
             features[featuresByIndex[feature]] = feature
         else:
             features[featuresByIndex[feature["id"]]] = feature
+            if addRank:
+                feature["rank"] = index + 1
     meta["features"] = features
 
 def compareFeatures(a, b):
@@ -94,5 +104,11 @@ def compareFeatures(a, b):
         return -1
     elif isinstance(a, int) and isinstance(b, dict):
         return 1
-    else:
+    elif "sort" in a and "sort" in b:
         return -cmp(a["sort"], b["sort"])
+    elif "sort" in a:
+        return -1
+    elif "sort" in b:
+        return 1
+    else: # a and b are dict, neither has a sort attribute
+        return a["id"] - b["id"]

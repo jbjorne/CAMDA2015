@@ -185,7 +185,7 @@ REMISSION = {
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
-    "features":MAIN_FEATURES,
+    "features":[EXP],
     "filter":EXP_FILTER,
     "hidden":0.3,
     "meta":META

@@ -51,19 +51,25 @@ def analyzeTermCoverage(features):
         if not isinstance(features[featureName], int) and getGeneName(featureName) != None:
             selected[featureName] = features[featureName]
     bestByFold = {}
-    bestByFold["sort"] = []
+    bestByFold["train"] = []
+    bestByFold["hidden"] = []
     for i in range(1,6):
-        bestByFold["sort-" + str(i)] = []
+        bestByFold["train-n-" + str(i)] = []
     for featureName in selected:
         feature = selected[featureName]
-        importances = feature["importances"]
-        for fold in importances:
-            if not fold in bestByFold:
-                bestByFold[fold] = []
-            bestByFold[fold].append((importances[fold], featureName))
-        bestByFold["sort"].append((feature["sort"], featureName))
-        for i in range(len(importances), 6, 1):
-            bestByFold["sort-"+str(i)].append((feature["sort"], featureName))
+        if "importances" in feature:
+            importances = feature["importances"]
+            for fold in importances:
+                if not fold in bestByFold:
+                    bestByFold[fold] = []
+                bestByFold[fold].append((importances[fold], featureName))
+            trainSort = sum(feature["importances"].values()) / len(feature["importances"])
+            bestByFold["train"].append((trainSort, featureName))
+            for i in range(len(importances), 6, 1):
+                bestByFold["train-n-"+str(i)].append((trainSort, featureName))
+        if "hidden-importance" in feature:
+            bestByFold["hidden"].append((feature["hidden-importance"], featureName))
+            
     analysis = {}
     numSteps = 10
     for fold in bestByFold:
@@ -98,6 +104,7 @@ def analyze(meta, dbPath=None, resultPath=None, verbose=False):
     meta = result.getMeta(meta)
     if dbPath == None:
         dbPath = settings.CGI_DB_PATH
+    print "Analyzing", dbPath
     con = DB.connect(dbPath)
     result.sortFeatures(meta)
     features = meta["features"]
