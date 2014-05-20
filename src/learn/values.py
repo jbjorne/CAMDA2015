@@ -40,19 +40,21 @@ def makeProjectTable(projects):
                     if classifierName in experiment:
                         classifier = experiment[classifierName]
                         #if experiment["classifier"] == "ensemble.ExtraTreesClassifier":
-                        row[(experimentName, classifierName)] = classifier["auc-train"]
+                        row[(experimentName, classifierName)] = classifier["auc-hidden"]
                         row[(experimentName, 1)] = classifier["1"]
                         row[(experimentName, -1)] = classifier["-1"]
         rows.append(row)
     columns = ["project",
                ("CANCER_OR_CONTROL", 1),
                ("CANCER_OR_CONTROL", -1),
-               ("CANCER_OR_CONTROL", "ExtraTreesClassifier"),
+               "$AUC_R$",
                ("CANCER_OR_CONTROL", "LinearSVC"),
+               ("CANCER_OR_CONTROL", "ExtraTreesClassifier"),
                ("REMISSION", 1),
                ("REMISSION", -1),
-               ("REMISSION", "ExtraTreesClassifier"),
-               ("REMISSION", "LinearSVC")]
+               "$AUC_R$",
+               ("REMISSION", "LinearSVC"),
+               ("REMISSION", "ExtraTreesClassifier")]
     columnNames = {("CANCER_OR_CONTROL", "ExtraTreesClassifier"):"$AUC_E$",
                    ("CANCER_OR_CONTROL", "LinearSVC"):"$AUC_S$",
                    ("CANCER_OR_CONTROL", 1):"cancer",
@@ -113,8 +115,9 @@ def autolabel(rects, ax):
 def makeCGIFigure(projects, experiments):
     plots = {"CANCER_OR_CONTROL":211, "REMISSION":212}
     projectNames = ["KIRC-US", "HNSC-US", "LUAD-US"]
-    colors = {"KIRC-US":"r", "HNSC-US":"g", "LUAD-US":"b"}
+    colors = {"KIRC-US":"blue", "HNSC-US":"black", "LUAD-US":"red"}
     markers = {"KIRC-US":"o", "HNSC-US":"h", "LUAD-US":"s"}
+    linestyles = {"KIRC-US":"-", "HNSC-US":"--", "LUAD-US":":"}
     data = {}
     plt.subplots_adjust(wspace=0.5)
     for experiment in experiments:
@@ -143,13 +146,13 @@ def makeCGIFigure(projects, experiments):
             width = 0.2       # the width of the bars        
             print data[name]["values"]
             #data[name]["rects"] = ax.bar(ind + index * width, data[name]["values"], width, color=colors[name])
-            data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name])#, marker=markers[name], markersize=5)
+            data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name], linestyle=linestyles[name])#, marker=markers[name], markersize=5)
         #ax.set_ylabel('cgi / features')
         #ax.set_title('Scores by group and gender')
         ax.set_xticks(ind)
         ax.set_xticklabels( data[data.keys()[0]]["labels"] )
         ax.legend( [data[name]["rects"][0] for name in included], included, loc="lower left" )
-        plt.grid(True)
+        plt.grid(True, color='#ADADAD')
         #ax.legend( [data[name]["rects"]], ('Men', 'Women') )
         #for name in data:
         #    autolabel(data[name]["rects"], ax)
@@ -218,7 +221,7 @@ def process(dirname, projectFilter):
     print makeProjectTable(projects)
     print
     print makeGenesTable(projects)
-    #makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
+    makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
 
 if __name__ == "__main__":
     import argparse
