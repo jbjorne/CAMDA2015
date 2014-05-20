@@ -62,19 +62,50 @@ def makeProjectTable(projects):
     #header = "project & \multicolumn{2}{c}{Multi-column}"
     return makeTableLatex(columns, rows, columnNames)
 
-def makeCGIFigure(projects):
+def autolabel(rects, ax):
+    # attach some text labels
+    for rect in rects:
+        height = rect.get_height()
+        ax.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%d'%int(height),
+                ha='center', va='bottom')
+
+def makeCGIFigure(projects, experiment):
+    projectNames = ["KIRC-US", "HNSC-US", "LUAD-US"]
+    colors = {"KIRC-US":"r", "HNSC-US":"g", "LUAD-US":"b"}
+    data = {}
+    for projectName in projectNames:
+        if projectName in projects and experiment in projects[projectName] and "ExtraTreesClassifier" in projects[projectName][experiment]:
+            classifier = projects[projectName][experiment]["ExtraTreesClassifier"]
+            labels = []
+            values = []
+            for decile in classifier["gene-features-hidden"]:
+                label, value = decile.split("=")
+                value = float(value.split()[0])
+                labels.append(label)
+                values.append(value)
+            values.append(classifier["gene-features-nonselected"])
+            labels.append("NS")
+            data[projectName] = {"labels":labels, "values":values}
     fig = plt.figure()
-    ind = np.arange(11)  # the x locations for the groups
-    width = 0.35       # the width of the bars
     ax = fig.add_subplot(111)
-    bars = ax.bar(range(1,11), range(1,10) + [4], color='blue', edgecolor='black')
-    
+    included = []
+    for name in projectNames:
+        if name in data:
+            included.append(name)
+    for index, name in enumerate(included):
+        ind = np.arange(len(data[name]["values"]))  # the x locations for the groups
+        width = 0.2       # the width of the bars        
+        print data[name]["values"]
+        data[name]["rects"] = ax.bar(ind + index * width, data[name]["values"], width, color=colors[name])
     ax.set_ylabel('Scores')
     ax.set_title('Scores by group and gender')
     ax.set_xticks(ind+width)
-    ax.set_xticklabels( [str(x) for x in range(1,10)] + ["NS"] )
+    ax.set_xticklabels( data[data.keys()[0]]["labels"] )
+    ax.legend( [data[name]["rects"][0] for name in included], included )
+    #ax.legend( [data[name]["rects"]], ('Men', 'Women') )
+    #for name in data:
+    #    autolabel(data[name]["rects"], ax)
     
-    bars[6].set_facecolor('red')
     plt.show()
 
 def countExamples(meta):
@@ -131,7 +162,7 @@ def process(dirname, projectFilter):
         projectFilter = projectFilter.split(",")
     projects = getProjects(dirname, projectFilter)
     print makeProjectTable(projects)
-    makeCGIFigure(projects)
+    makeCGIFigure(projects, "CANCER_OR_CONTROL")
 
 if __name__ == "__main__":
     import argparse
