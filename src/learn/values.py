@@ -64,18 +64,29 @@ def makeProjectTable(projects):
     #header = "project & \multicolumn{2}{c}{Multi-column}"
     return makeTableLatex(columns, rows, columnNames)
 
-def pickTopTerm(terms):
+def pickTopTerm(terms, preferredTerms=None):
     if len(terms) == 0:
         return None
     terms = [eval(term) for term in terms]
     terms = sorted(terms, key=lambda tup: tup[4])
-    return terms[0][1] + " [" + terms[0][2] + "]"
+    if preferredTerms != None:
+        for preferred in preferredTerms:
+            for term in terms:
+                if preferred in term[1].lower():
+                    return term[1] + " [" + term[2] + "]"
+    return terms[0][1] + " [" + terms[0][2] + "]" # return most common term
 
 def makeGenesTable(projects):
+    preferredTerms = {"KIRC-US":["kidney", "renal", "clear cell"],
+                      "LUAD-US":["lung", "adenocarcinoma"],
+                      "HNSC-US":["head and neck", "head", "neck", "squamous"]
+                      }
     rows = []
-    for projectName in sorted(projects.keys()):
+    for projectName in ["KIRC-US", "HNSC-US", "LUAD-US"]:
+        if projectName not in projects:
+            continue
         project = projects[projectName]
-        for experimentName in ["CANCER_OR_CONTROL", "REMISSION"]:
+        for experimentName in ["CANCER_OR_CONTROL"]:
             if experimentName in project:
                 experiment = project[experimentName]
                 classifierName = "ExtraTreesClassifier"
@@ -85,11 +96,11 @@ def makeGenesTable(projects):
                         row = {"project":projectName, "experiment":experimentName}
                         row["gene"] = feature["name"].split(":")[1]
                         row["n(r)"] = feature["CancerGeneIndex"]["term_count"]
-                        row["role"] = pickTopTerm(feature["CancerGeneIndex"]["terms"])
+                        row["role"] = pickTopTerm(feature["CancerGeneIndex"]["terms"], preferredTerms[projectName])
                         row["n(d)"] = feature["CancerGeneDrug"]["term_count"]
                         row["drug"] = pickTopTerm(feature["CancerGeneDrug"]["terms"])
                         rows.append(row)
-    columns = ["experiment", "project", "gene", "n(r)", "role", "n(d)", "drug"]
+    columns = ["project", "gene", "n(r)", "role", "n(d)", "drug"]
     return makeTableLatex(columns, rows)
 
 def autolabel(rects, ax):
@@ -195,7 +206,7 @@ def getProjects(dirname, projectFilter):
                     classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
                     classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
                     classifier["top-features"] = []
-                    for name, feature in meta["features"].items()[:10]:
+                    for name, feature in meta["features"].items()[:5]:
                         feature["name"] = name
                         classifier["top-features"].append(feature)
     return projects
