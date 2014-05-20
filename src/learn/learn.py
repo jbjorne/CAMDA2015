@@ -87,7 +87,9 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     hiddenDetails = None
     if len(X_hidden) > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
-        hiddenResults = {"classifier":" ".join(str(search.best_estimator_).split()), "roc_auc":search.score(X, y), "params":search.best_params_}
+        hiddenResults = {"classifier":" ".join(str(search.best_estimator_).split()), 
+                         "roc_auc":search.score(X_hidden, y_hidden), 
+                         "params":search.best_params_}
         print "AUC =", hiddenResults["roc_auc"]
         y_hidden_pred = search.predict(X_hidden)
         hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
