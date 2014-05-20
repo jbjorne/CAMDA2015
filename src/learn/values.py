@@ -7,7 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def formatValue(value):
-    if isinstance(value, basestring):
+    if value == None:
+        return "-"
+    elif isinstance(value, basestring):
         return value
     elif isinstance(value, int):
         return str(value)
@@ -61,6 +63,34 @@ def makeProjectTable(projects):
                    ("REMISSION", -1):"progression"}
     #header = "project & \multicolumn{2}{c}{Multi-column}"
     return makeTableLatex(columns, rows, columnNames)
+
+def pickTopTerm(terms):
+    if len(terms) == 0:
+        return None
+    terms = [eval(term) for term in terms]
+    terms = sorted(terms, key=lambda tup: tup[4])
+    return terms[0][1] + " [" + terms[0][2] + "]"
+
+def makeGenesTable(projects):
+    rows = []
+    for projectName in sorted(projects.keys()):
+        project = projects[projectName]
+        for experimentName in ["CANCER_OR_CONTROL", "REMISSION"]:
+            if experimentName in project:
+                experiment = project[experimentName]
+                classifierName = "ExtraTreesClassifier"
+                if classifierName in experiment:
+                    classifier = experiment[classifierName]
+                    for feature in classifier["top-features"]:
+                        row = {"project":projectName, "experiment":experimentName}
+                        row["gene"] = feature["name"].split(":")[1]
+                        row["n(r)"] = feature["CancerGeneIndex"]["term_count"]
+                        row["role"] = pickTopTerm(feature["CancerGeneIndex"]["terms"])
+                        row["n(d)"] = feature["CancerGeneDrug"]["term_count"]
+                        row["drug"] = pickTopTerm(feature["CancerGeneDrug"]["terms"])
+                        rows.append(row)
+    columns = ["experiment", "project", "gene", "n(r)", "role", "n(d)", "drug"]
+    return makeTableLatex(columns, rows)
 
 def autolabel(rects, ax):
     # attach some text labels
@@ -164,6 +194,10 @@ def getProjects(dirname, projectFilter):
                 if "analysis" in meta:
                     classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
                     classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
+                    classifier["top-features"] = []
+                    for name, feature in meta["features"].items()[:10]:
+                        feature["name"] = name
+                        classifier["top-features"].append(feature)
     return projects
 
 def process(dirname, projectFilter):
@@ -171,7 +205,9 @@ def process(dirname, projectFilter):
         projectFilter = projectFilter.split(",")
     projects = getProjects(dirname, projectFilter)
     print makeProjectTable(projects)
-    makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
+    print
+    print makeGenesTable(projects)
+    #makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
 
 if __name__ == "__main__":
     import argparse
