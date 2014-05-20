@@ -69,42 +69,49 @@ def autolabel(rects, ax):
         ax.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%d'%int(height),
                 ha='center', va='bottom')
 
-def makeCGIFigure(projects, experiment):
+def makeCGIFigure(projects, experiments):
+    plots = {"CANCER_OR_CONTROL":211, "REMISSION":212}
     projectNames = ["KIRC-US", "HNSC-US", "LUAD-US"]
     colors = {"KIRC-US":"r", "HNSC-US":"g", "LUAD-US":"b"}
+    markers = {"KIRC-US":"o", "HNSC-US":"h", "LUAD-US":"s"}
     data = {}
-    for projectName in projectNames:
-        if projectName in projects and experiment in projects[projectName] and "ExtraTreesClassifier" in projects[projectName][experiment]:
-            classifier = projects[projectName][experiment]["ExtraTreesClassifier"]
-            labels = []
-            values = []
-            for decile in classifier["gene-features-hidden"]:
-                label, value = decile.split("=")
-                value = float(value.split()[0])
-                labels.append(label)
-                values.append(value)
-            values.append(classifier["gene-features-nonselected"])
-            labels.append("NS")
-            data[projectName] = {"labels":labels, "values":values}
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    included = []
-    for name in projectNames:
-        if name in data:
-            included.append(name)
-    for index, name in enumerate(included):
-        ind = np.arange(len(data[name]["values"]))  # the x locations for the groups
-        width = 0.2       # the width of the bars        
-        print data[name]["values"]
-        data[name]["rects"] = ax.bar(ind + index * width, data[name]["values"], width, color=colors[name])
-    ax.set_ylabel('Scores')
-    ax.set_title('Scores by group and gender')
-    ax.set_xticks(ind+width)
-    ax.set_xticklabels( data[data.keys()[0]]["labels"] )
-    ax.legend( [data[name]["rects"][0] for name in included], included )
-    #ax.legend( [data[name]["rects"]], ('Men', 'Women') )
-    #for name in data:
-    #    autolabel(data[name]["rects"], ax)
+    plt.subplots_adjust(wspace=0.5)
+    for experiment in experiments:
+        for projectName in projectNames:
+            if projectName in projects and experiment in projects[projectName] and "ExtraTreesClassifier" in projects[projectName][experiment]:
+                classifier = projects[projectName][experiment]["ExtraTreesClassifier"]
+                labels = []
+                values = []
+                for decile in classifier["gene-features-hidden"]:
+                    label, value = decile.split("=")
+                    value = float(value.split()[0])
+                    labels.append(str(int(label)+1))
+                    values.append(value)
+                values.append(classifier["gene-features-nonselected"])
+                labels.append("NS")
+                data[projectName] = {"labels":labels, "values":values}
+        #fig = plt.figure()
+        #ax = fig.add_subplot(plots[experiment])
+        ax = plt.subplot(plots[experiment])
+        included = []
+        for name in projectNames:
+            if name in data:
+                included.append(name)
+        for index, name in enumerate(included):
+            ind = np.arange(len(data[name]["values"]))  # the x locations for the groups
+            width = 0.2       # the width of the bars        
+            print data[name]["values"]
+            #data[name]["rects"] = ax.bar(ind + index * width, data[name]["values"], width, color=colors[name])
+            data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name], marker=markers[name], markersize=5)
+        ax.set_ylabel('Scores')
+        ax.set_title('Scores by group and gender')
+        ax.set_xticks(ind)
+        ax.set_xticklabels( data[data.keys()[0]]["labels"] )
+        ax.legend( [data[name]["rects"][0] for name in included], included )
+        plt.grid(True)
+        #ax.legend( [data[name]["rects"]], ('Men', 'Women') )
+        #for name in data:
+        #    autolabel(data[name]["rects"], ax)
     
     plt.show()
 
@@ -162,7 +169,7 @@ def process(dirname, projectFilter):
         projectFilter = projectFilter.split(",")
     projects = getProjects(dirname, projectFilter)
     print makeProjectTable(projects)
-    makeCGIFigure(projects, "CANCER_OR_CONTROL")
+    makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
 
 if __name__ == "__main__":
     import argparse
