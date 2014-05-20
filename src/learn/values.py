@@ -3,6 +3,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import data.result as result
 import copy
+import matplotlib.pyplot as plt
 
 def formatValue(value):
     if isinstance(value, basestring):
@@ -57,8 +58,16 @@ def makeProjectTable(projects):
                    ("REMISSION", "LinearSVC"):"$AUC_S$",
                    ("REMISSION", 1):"remission",
                    ("REMISSION", -1):"progression"}
-    header = "project & \multicolumn{2}{c}{Multi-column}"
+    #header = "project & \multicolumn{2}{c}{Multi-column}"
     return makeTableLatex(columns, rows, columnNames)
+
+def makeCGIFigure(projects):
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    bars = ax1.bar(range(1,10), range(1,10), color='blue', edgecolor='black')
+    
+    bars[6].set_facecolor('red')
+    plt.show()
 
 def countExamples(meta):
     counts = {"1":0, "-1":0}
@@ -103,6 +112,10 @@ def getProjects(dirname, projectFilter):
                 classifier["auc-train"] = meta["results"]["best"]["mean"]
                 classifier["std-train"] = meta["results"]["best"]["std"]
                 classifier.update(countExamples(meta))
+                
+                if "analysis" in meta:
+                    classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
+                    classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
     return projects
 
 def process(dirname, projectFilter):
@@ -110,6 +123,7 @@ def process(dirname, projectFilter):
         projectFilter = projectFilter.split(",")
     projects = getProjects(dirname, projectFilter)
     print makeProjectTable(projects)
+    makeCGIFigure(projects)
 
 if __name__ == "__main__":
     import argparse
