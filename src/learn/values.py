@@ -38,7 +38,7 @@ def makeProjectTable(projects):
                     if classifierName in experiment:
                         classifier = experiment[classifierName]
                         #if experiment["classifier"] == "ensemble.ExtraTreesClassifier":
-                        row[(experimentName, classifierName)] = classifier["auc-hidden"]
+                        row[(experimentName, classifierName)] = classifier["auc-train"]
                         row[(experimentName, 1)] = classifier["1"]
                         row[(experimentName, -1)] = classifier["-1"]
         rows.append(row)
@@ -102,17 +102,19 @@ def makeCGIFigure(projects, experiments):
             width = 0.2       # the width of the bars        
             print data[name]["values"]
             #data[name]["rects"] = ax.bar(ind + index * width, data[name]["values"], width, color=colors[name])
-            data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name], marker=markers[name], markersize=5)
-        ax.set_ylabel('Scores')
-        ax.set_title('Scores by group and gender')
+            data[name]["rects"] = ax.plot(ind, data[name]["values"], color=colors[name])#, marker=markers[name], markersize=5)
+        #ax.set_ylabel('cgi / features')
+        #ax.set_title('Scores by group and gender')
         ax.set_xticks(ind)
         ax.set_xticklabels( data[data.keys()[0]]["labels"] )
-        ax.legend( [data[name]["rects"][0] for name in included], included )
+        ax.legend( [data[name]["rects"][0] for name in included], included, loc="lower left" )
         plt.grid(True)
         #ax.legend( [data[name]["rects"]], ('Men', 'Women') )
         #for name in data:
         #    autolabel(data[name]["rects"], ax)
-    
+    plt.ylim(0,0.45)
+    plt.xlabel('decile')
+    plt.savefig(os.path.expanduser('~/Dropbox/git_repositories/CAMDA2014Abstract/figures/cgi-fraction.pdf'))
     plt.show()
 
 def countExamples(meta):
