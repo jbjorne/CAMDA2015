@@ -21,6 +21,8 @@ ALL_PROJECTS = ["BLCA-US","BOCA-UK","BRCA-UK","BRCA-US","CESC-US","CLLE-ES",
                 "PAEN-AU","PBCA-DE","PRAD-CA","PRAD-US","READ-US","RECA-CN",
                 "RECA-EU","SKCM-US","STAD-US","THCA-SA","THCA-US","UCEC-US"]
 
+ALL_FEATURES = ["[EXP]","[PEXP]","[MIRNA]","[SSM]","[CNSM]","ALL_FEATURES"]
+
 
 def getJobs(resultPath, experiments=None, projects=None, classifiers=None, features=None):
     global ALL_CAMDA_PROJECTS, ALL_PROJECTS
@@ -41,6 +43,8 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None, featu
         classifiers = classifiers.split(",")
     if features == None:
         features = [None]
+    elif features == "ALL_FEATURES":
+        features = ALL_FEATURES
     elif isinstance(features, basestring):
         features = features.split(",")
     
@@ -49,7 +53,10 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None, featu
         for project in projects:
             for classifier in classifiers:
                 for feature in features:
-                    resultFileName = experiment + "-" + project + "-" + classifier + ".json"
+                    resultFileName = experiment + "-" + project + "-" + classifier
+                    if feature != None:
+                        resultFileName += "-" + feature.replace("[", "").replace("]", "")
+                    resultFileName += ".json"
                     job = {"result":os.path.join(resultPath, resultFileName),
                            "experiment":experiment,
                            "project":project,
