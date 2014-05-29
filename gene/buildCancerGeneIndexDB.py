@@ -13,10 +13,6 @@ def iterparse(xml, tag):
             yield elem
             elem.clear()
 
-def preprocessAliasValues(tableName, elem, valueLists):
-    primaryName = elem.find("HUGOGeneSymbol").text
-    return [[primaryName, primaryName]] + valueLists
-
 def processGeneEntries(xmlFile, dbPath):
     con = DB.connect(dbPath)
     tableValuePaths = OrderedDict()

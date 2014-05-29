@@ -2,11 +2,14 @@ import os
 import hashlib, base64
 import math
 import inspect
-import gene.buildCancerGeneIndexDB
 from collections import OrderedDict
 
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
+
+def preprocessCGIAliasValues(tableName, elem, valueLists):
+    primaryName = elem.find("HUGOGeneSymbol").text
+    return [[primaryName, primaryName]] + valueLists
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/")
 
@@ -37,7 +40,7 @@ CGI_TABLES = {
             ("GeneAliasCollection/GeneAlias", "alias")]),
         "primary_key":["hugo_gene_symbol", "alias"],
         "indices":["alias"],
-        "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues},
+        "preprocess":preprocessCGIAliasValues},
     "sentence":{
         "elements":"Sentence",
         "columns":OrderedDict([
