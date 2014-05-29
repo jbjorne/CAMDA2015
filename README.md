@@ -28,7 +28,7 @@ Using the code
 ----------------------------------------
 1. Install [Scikit-learn](http://scikit-learn.org/). At least version 14.1 is needed for the program to work. Versions after 14.1 have not been tested.
 2. Run `python setup.py` and wait for the program to download the ICGC and NCI data and construct the relevant databases. This will take a few hours on a normal desktop machine. Make sure you have enough disk space (~35 Gb) for the resulting databases.
-3. Run `python run.py` to produce the experimental results reported in the extended abstract. This will take a long time and a cluster environment with the [SLURM job scheduler](https://computing.llnl.gov/linux/slurm/) is recommended. To enable use of SLURM, run the program with the `--slurm` option.
+3. Run `python run.py` to produce the experimental results reported in the extended abstract. This will take a long time and a cluster environment with the [SLURM job scheduler](https://computing.llnl.gov/linux/slurm/) is recommended. To enable use of SLURM, run the program with the `--slurm` option. The [JSON](http://en.wikipedia.org/wiki/JSON) files in the results directory will contain classification and feature selection (when using a classifier capable of it) results.
 
 Running individual experiments
 ------------------------------
