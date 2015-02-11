@@ -106,6 +106,7 @@ def processLines(csvReader, columns):
     indicesToDelete.sort(reverse=True) # remove from the end
     #print indicesToDelete
     for line in csvReader:
+        #print [x for x in enumerate(line)], len(line), indicesToDelete
         for targetIndex, function in indicesToPreprocess: 
             line[targetIndex] = function(line[targetIndex])
         for i in indicesToDelete:
@@ -168,8 +169,8 @@ def initDB(dbName):
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
                  None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
-    tableFromDefinition(dbName, "cosmic_gene_census", 
-                        settings.TABLE_FORMAT["cosmic_gene_census"])
+    #tableFromDefinition(dbName, "cosmic_gene_census", 
+    #                    settings.TABLE_FORMAT["cosmic_gene_census"])
 
 def addProject(dbName, projectCode, downloadDir=None, tables = None):
     print "Adding project", projectCode, "to database", dbName

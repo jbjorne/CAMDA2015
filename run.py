@@ -35,4 +35,5 @@ if __name__ == "__main__":
           classifiers="svm.LinearSVC,ensemble.ExtraTreesClassifier", 
           limit=options.limit, sleepTime=15, rerun=options.rerun,
           hideFinished=options.hideFinished, dummy=options.dummy, 
-          clearCache=options.clearCache, icgcDB=options.icgcDB, cgiDB=options.cgiDB)
+          clearCache=options.clearCache, icgcDB=options.icgcDB, cgiDB=options.cgiDB,
+          connection=connection)

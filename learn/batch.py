@@ -102,7 +102,7 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
     
 def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features,
           limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False, 
-          clearCache=False, icgcDB=None, cgiDB=None):
+          clearCache=False, icgcDB=None, cgiDB=None, connection=None):
     global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
@@ -167,4 +167,4 @@ if __name__ == "__main__":
           experiments=options.experiments, projects=options.projects, features=options.features,
           classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
           hideFinished=options.hideFinished, dummy=options.dummy, clearCache=options.clearCache,
-          icgcDB=options.icgcDB, cgiDB=options.cgiDB)
+          icgcDB=options.icgcDB, cgiDB=options.cgiDB, connection=connection)
