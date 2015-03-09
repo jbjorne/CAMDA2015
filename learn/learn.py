@@ -9,6 +9,7 @@ from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
 from skext.crossValidation import GroupedKFold
 from sklearn.metrics import classification_report
+from sklearn.metrics import average_precision_score, make_scorer
 from collections import defaultdict
 import tempfile
 import data.result as result
@@ -57,7 +58,8 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     cv = getCV(y_train, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring="roc_auc", verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    scorer = make_scorer(average_precision_score)
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
