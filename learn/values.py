@@ -258,10 +258,10 @@ def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
                             classifier["top-features"].append(feature)
     return projects
 
-def process(indir, outdir, projectFilter):
+def process(indir, outdir, projectFilter, numTopFeatures=30):
     if isinstance(projectFilter, basestring):
         projectFilter = projectFilter.split(",")
-    projects = getProjects(indir, projectFilter, "ALL_FEATURES")
+    projects = getProjects(indir, projectFilter, "ALL_FEATURES", numTopFeatures)
     print "----------------------------", "Projects", "----------------------------"
     print makeProjectTable(projects)
     print
@@ -279,7 +279,8 @@ if __name__ == "__main__":
     parser.add_argument('-i','--input', help='', default=None)
     parser.add_argument('-o','--output', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
+    parser.add_argument('-n','--numTopFeatures', help='', type=int, default=30)
     #parser.add_argument('-c','--classifier', help='', default="ExtraTreesClassifier")
     options = parser.parse_args()
     
-    process(options.input, options.output, options.projects)
+    process(options.input, options.output, options.projects, options.numTopFeatures)
