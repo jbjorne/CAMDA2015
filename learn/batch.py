@@ -3,6 +3,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 from data.example import exampleOptions
 import time
+import tempfile
 from connection.UnixConnection import UnixConnection
 from connection.SLURMConnection import SLURMConnection
 
@@ -121,6 +122,7 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both" + featureScript + "\""
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
         script += " -r " + job["result"]
+        script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2014", os.path.basename(job["result"]))
         if job["classifier"] in ANALYZE:
             script += " --analyze"
         if clearCache:
