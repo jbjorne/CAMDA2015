@@ -78,6 +78,22 @@ def pickTopTerm(terms, preferredTerms=None):
                     return term[1] + " [" + term[2] + "]"
     return terms[0][1] + " [" + terms[0][2] + "]" # return most common term
 
+def listTopGenes(projects):
+    for projectName in ["KIRC-US", "HNSC-US", "LUAD-US"]:
+        if projectName not in projects:
+            continue
+        project = projects[projectName]
+        print "===", projectName, "==="
+        for experimentName in ["CANCER_OR_CONTROL"]:
+            if experimentName in project:
+                experiment = project[experimentName]
+                classifierName = "ExtraTreesClassifier"
+                if classifierName in experiment:
+                    classifier = experiment[classifierName]
+                    for feature in classifier["top-features"]:
+                        print feature["name"].split(":")[1]
+    
+
 def makeGenesTable(projects):
     preferredTerms = {"KIRC-US":["kidney", "renal", "clear cell"],
                       "LUAD-US":["lung", "adenocarcinoma"],
@@ -97,10 +113,18 @@ def makeGenesTable(projects):
                     for feature in classifier["top-features"]:
                         row = {"project":projectName, "experiment":experimentName}
                         row["gene"] = feature["name"].split(":")[1]
-                        row["n(r)"] = feature["CancerGeneIndex"]["term_count"]
-                        row["role"] = pickTopTerm(feature["CancerGeneIndex"]["terms"], preferredTerms[projectName])
-                        row["n(d)"] = feature["CancerGeneDrug"]["term_count"]
-                        row["drug"] = pickTopTerm(feature["CancerGeneDrug"]["terms"])
+                        # read terms
+                        row["n(r)"] = 0
+                        row["role"] = "-"
+                        if "CancerGeneIndex" in feature:
+                            row["n(r)"] = feature["CancerGeneIndex"]["term_count"]
+                            row["role"] = pickTopTerm(feature["CancerGeneIndex"]["terms"], preferredTerms[projectName])
+                        # read drugs
+                        row["n(d)"] = 0
+                        row["drug"] = "-"
+                        if "CancerGeneDrug" in feature:
+                            row["n(d)"] = feature["CancerGeneDrug"]["term_count"]
+                            row["drug"] = pickTopTerm(feature["CancerGeneDrug"]["terms"])
                         rows.append(row)
     columns = ["project", "gene", "n(r)", "role", "n(d)", "drug"]
     return makeTableLatex(columns, rows)
@@ -174,7 +198,7 @@ def countExamples(meta):
         counts[example["label"]] += 1
     return counts
         
-def getProjects(dirname, projectFilter, featuresFilter):
+def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
     projects = {}
     print "Reading results from", dirname
     filenames = os.listdir(dirname)
@@ -191,7 +215,6 @@ def getProjects(dirname, projectFilter, featuresFilter):
                         found = True
                         break
             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
-                print "Processing", filename, str(index+1) #+ "/" + str(len(filenames))
                 # Read project results
                 meta = result.getMeta(filePath)
                 options = {}
@@ -203,6 +226,7 @@ def getProjects(dirname, projectFilter, featuresFilter):
                         options[key] = value
                 # Filter by features
                 if "features" in options and options["features"] == featuresFilter:
+                    print "Processing", filename, str(index+1) #+ "/" + str(len(filenames))
                     # Add results for project...
                     projectName = meta["template"]["project"]
                     if projectName not in projects:
@@ -229,7 +253,7 @@ def getProjects(dirname, projectFilter, featuresFilter):
                         classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
                         classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
                         classifier["top-features"] = []
-                        for name, feature in meta["features"].items()[:5]:
+                        for name, feature in meta["features"].items()[:numTopFeatures]:
                             feature["name"] = name
                             classifier["top-features"].append(feature)
     return projects
@@ -243,6 +267,9 @@ def process(indir, outdir, projectFilter):
     print
     print "----------------------------", "Genes", "----------------------------"
     print makeGenesTable(projects)
+    print
+    print "----------------------------", "Genes List", "----------------------------"
+    print listTopGenes(projects)
     if outdir:
         makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"], outdir)
 
@@ -252,6 +279,7 @@ if __name__ == "__main__":
     parser.add_argument('-i','--input', help='', default=None)
     parser.add_argument('-o','--output', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
+    #parser.add_argument('-c','--classifier', help='', default="ExtraTreesClassifier")
     options = parser.parse_args()
     
     process(options.input, options.output, options.projects)
