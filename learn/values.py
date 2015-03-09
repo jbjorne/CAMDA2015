@@ -112,7 +112,7 @@ def autolabel(rects, ax):
         ax.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%d'%int(height),
                 ha='center', va='bottom')
 
-def makeCGIFigure(projects, experiments):
+def makeCGIFigure(projects, experiments, outdir):
     plots = {"CANCER_OR_CONTROL":211, "REMISSION":212}
     titles = {"CANCER_OR_CONTROL":"cancer/control", "REMISSION":"remission/progression"}
     projectNames = ["KIRC-US", "HNSC-US", "LUAD-US"]
@@ -164,7 +164,8 @@ def makeCGIFigure(projects, experiments):
         #    autolabel(data[name]["rects"], ax)
     plt.ylim(0,0.45)
     plt.xlabel('decile')
-    plt.savefig(os.path.expanduser('~/Dropbox/git_repositories/CAMDA2014Abstract/figures/cgi-fraction.pdf'))
+    #plt.savefig(os.path.expanduser('~/Dropbox/git_repositories/CAMDA2014Abstract/figures/cgi-fraction.pdf'))
+    plt.savefig(os.path.join(outdir, 'cgi-fraction.pdf'))
     plt.show()
 
 def countExamples(meta):
@@ -173,7 +174,7 @@ def countExamples(meta):
         counts[example["label"]] += 1
     return counts
         
-def getProjects(dirname, projectFilter):
+def getProjects(dirname, projectFilter, featuresFilter):
     projects = {}
     print "Reading results from", dirname
     filenames = os.listdir(dirname)
@@ -191,49 +192,66 @@ def getProjects(dirname, projectFilter):
                         break
             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
                 print "Processing", filename, str(index+1) #+ "/" + str(len(filenames))
+                # Read project results
                 meta = result.getMeta(filePath)
-                projectName = meta["template"]["project"]
-                if projectName not in projects:
-                    projects[projectName] = {}
-                project = projects[projectName]
-                experimentName = meta["experiment"]["name"]
-                if experimentName not in project:
-                    project[experimentName] = {}
-                experiment = project[experimentName]
-                classifierName = meta["results"]["best"]["classifier"]
-                if classifierName not in experiment:
-                    experiment[classifierName] = {}
-                classifier = experiment[classifierName]
-                #experiment["classifier"] = meta["results"]["best"]["classifier"]
-                classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
-                classifier["auc-hidden"] = meta["results"]["hidden"]["roc_auc"]
-                classifier["auc-train"] = meta["results"]["best"]["mean"]
-                classifier["std-train"] = meta["results"]["best"]["std"]
-                classifier.update(countExamples(meta))
-                
-                if "analysis" in meta:
-                    classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
-                    classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
-                    classifier["top-features"] = []
-                    for name, feature in meta["features"].items()[:5]:
-                        feature["name"] = name
-                        classifier["top-features"].append(feature)
+                options = {}
+                optionsList = meta["experiment"]["options"]
+                if optionsList != None:
+                    optionsList = optionsList.split(",")
+                    for optionPair in optionsList:
+                        key, value = optionPair.split("=")
+                        options[key] = value
+                # Filter by features
+                if "features" in options and options["features"] == featuresFilter:
+                    # Add results for project...
+                    projectName = meta["template"]["project"]
+                    if projectName not in projects:
+                        projects[projectName] = {}
+                    project = projects[projectName]
+                    # ... for experiment ...
+                    experimentName = meta["experiment"]["name"]
+                    if experimentName not in project:
+                        project[experimentName] = {}
+                    experiment = project[experimentName]
+                    # ... for classifier ...
+                    classifierName = meta["results"]["best"]["classifier"]
+                    if classifierName not in experiment:
+                        experiment[classifierName] = {}
+                    classifier = experiment[classifierName]
+                    #experiment["classifier"] = meta["results"]["best"]["classifier"]
+                    classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
+                    classifier["auc-hidden"] = meta["results"]["hidden"]["roc_auc"]
+                    classifier["auc-train"] = meta["results"]["best"]["mean"]
+                    classifier["std-train"] = meta["results"]["best"]["std"]
+                    classifier.update(countExamples(meta))
+                    
+                    if "analysis" in meta:
+                        classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
+                        classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
+                        classifier["top-features"] = []
+                        for name, feature in meta["features"].items()[:5]:
+                            feature["name"] = name
+                            classifier["top-features"].append(feature)
     return projects
 
-def process(dirname, projectFilter):
+def process(indir, outdir, projectFilter):
     if isinstance(projectFilter, basestring):
         projectFilter = projectFilter.split(",")
-    projects = getProjects(dirname, projectFilter)
+    projects = getProjects(indir, projectFilter, "ALL_FEATURES")
+    print "----------------------------", "Projects", "----------------------------"
     print makeProjectTable(projects)
     print
+    print "----------------------------", "Genes", "----------------------------"
     print makeGenesTable(projects)
-    makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"])
+    if outdir:
+        makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"], outdir)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-d','--directory', help='', default=None)
+    parser.add_argument('-i','--input', help='', default=None)
+    parser.add_argument('-o','--output', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
     options = parser.parse_args()
     
-    process(os.path.abspath(os.path.expanduser(options.directory)), options.projects)
+    process(options.input, options.output, options.projects)

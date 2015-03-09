@@ -43,7 +43,7 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None, featu
         classifiers = classifiers.split(",")
     if features == None:
         features = [None]
-    elif features == "ALL_FEATURES":
+    elif features == "ALL":
         features = ALL_FEATURES
     elif isinstance(features, basestring):
         features = features.split(",")

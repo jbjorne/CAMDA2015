@@ -31,7 +31,7 @@ if __name__ == "__main__":
     connection.debug = options.debug
     runDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "learn")
     learn.batch.batch(runDir=runDir, jobDir=options.jobDir, resultPath=options.results, 
-          experiments="ALL", projects="ALL_PROJECTS", features="ALL_FEATURES",
+          experiments="ALL", projects="ALL", features="ALL",
           classifiers="svm.LinearSVC,ensemble.ExtraTreesClassifier", 
           limit=options.limit, sleepTime=15, rerun=options.rerun,
           hideFinished=options.hideFinished, dummy=options.dummy, 
