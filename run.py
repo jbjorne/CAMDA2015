@@ -24,8 +24,9 @@ if __name__ == "__main__":
     ####
     parser.add_argument('-e','--experiments', help='', default="ALL")
     parser.add_argument('-p','--projects', help='', default="ALL")
-    parser.add_argument('-c','--classifiers', help='', default="svm.LinearSVC,ensemble.ExtraTreesClassifier")
+    parser.add_argument('-c','--classifiers', help='', default="svm.LinearSVC,ensemble.ExtraTreesClassifier,linear_model.Ridge")
     parser.add_argument('-f','--features', help='', default="ALL")
+    parser.add_argument('-m','--metric', help='', default="roc_auc")
     options = parser.parse_args()
     
     resultDir = os.path.join(options.output, "results")
@@ -46,4 +47,4 @@ if __name__ == "__main__":
           limit=options.limit, sleepTime=15, rerun=options.rerun,
           hideFinished=options.hideFinished, dummy=options.dummy, 
           clearCache=options.clearCache, icgcDB=options.icgcDB, cgiDB=options.cgiDB,
-          connection=connection)
+          connection=connection, metric=options.metric)

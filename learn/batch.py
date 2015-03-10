@@ -9,8 +9,9 @@ from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':"n_estimators=[10000]",
-    'svm.LinearSVC':"C=logrange(-10, 10)"}
+    'ensemble.ExtraTreesClassifier':'n_estimators=[10000]',
+    'svm.LinearSVC':'C=logrange(-10, 10)',
+    'linear_model.Ridge':'alpha=logrange(-10, 10)'}
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
 ALL_CAMDA_PROJECTS = ["KIRC-US", "LUAD-US", "HNSC-US"]
@@ -103,7 +104,7 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
     
 def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features,
           limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False, 
-          clearCache=False, icgcDB=None, cgiDB=None, connection=None):
+          clearCache=False, icgcDB=None, cgiDB=None, connection=None, metric=None):
     global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
@@ -121,6 +122,7 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         script += "python learn.py"
         script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both" + featureScript + "\""
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
+        script += " --metric " + job["metric"]
         script += " -r " + job["result"]
         script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2014", os.path.basename(job["result"]))
         if job["classifier"] in ANALYZE:

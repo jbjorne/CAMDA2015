@@ -40,7 +40,7 @@ def getStratifiedKFoldCV(y, meta, numFolds=10):
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
          preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
-         databaseCGI=None):
+         databaseCGI=None, metric="roc_auc"):
     X, y = readAuto(XPath, yPath)
     meta = {}
     if metaPath != None:
@@ -58,7 +58,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     cv = getCV(y_train, meta, numFolds=numFolds)
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
-    scorer = make_scorer(average_precision_score)
+    scorer = getScorer(metric)
     search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
@@ -74,7 +74,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
-                   "scoring":"roc_auc","scores":list(scores), 
+                   "metric":metric,"scores":list(scores), 
                    "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
         if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
             bestIndex = index
@@ -90,9 +90,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     if len(X_hidden) > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
         hiddenResults = {"classifier":" ".join(str(search.best_estimator_).split()), 
-                         "roc_auc":search.score(X_hidden, y_hidden), 
+                         "score":search.score(X_hidden, y_hidden),
+                         "metric":metric,
                          "params":search.best_params_}
-        print "AUC =", hiddenResults["roc_auc"]
+        print "Score =", hiddenResults["score"], "(" + metric + ")"
         y_hidden_pred = search.predict(X_hidden)
         hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
         if hasattr(search.best_estimator_, "feature_importances_"):
@@ -182,6 +183,13 @@ def getClassifier(classifierName, classifierArguments):
     classifierArgs = parseOptionString(classifierArguments)
     print "Using classifier", classifierName, "with arguments", classifierArgs
     return classifier, classifierArgs
+
+def getScorer(metric):
+    print "Using metric", metric
+    if metric == "roc_auc":
+        return metric
+    metric = importNamed(metric)
+    return make_scorer(metric)
     
 if __name__ == "__main__":
     import argparse
@@ -193,6 +201,7 @@ if __name__ == "__main__":
     parser.add_argument('--cacheDir', help='Cache directory, used if x, y or m are undefined (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
     parser.add_argument('-a','--classifierArguments', help='', default=None)
+    parser.add_argument('--metric', help='', default="roc_auc")
     parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
     parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
@@ -213,7 +222,7 @@ if __name__ == "__main__":
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
-         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze, databaseCGI=options.databaseCGI)
+         preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze, databaseCGI=options.databaseCGI, metric=options.metric)
     if options.clearCache:
         print "Removing cache files"
         for filename in [featureFilePath, labelFilePath, metaFilePath]:
