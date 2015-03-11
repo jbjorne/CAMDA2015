@@ -244,7 +244,7 @@ def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
                     classifier = experiment[classifierName]
                     #experiment["classifier"] = meta["results"]["best"]["classifier"]
                     classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
-                    classifier["auc-hidden"] = meta["results"]["hidden"]["roc_auc"]
+                    classifier["auc-hidden"] = meta["results"]["hidden"]["score"]
                     classifier["auc-train"] = meta["results"]["best"]["mean"]
                     classifier["std-train"] = meta["results"]["best"]["std"]
                     classifier.update(countExamples(meta))
@@ -258,24 +258,28 @@ def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
                             classifier["top-features"].append(feature)
     return projects
 
-def process(indir, outdir, projectFilter, numTopFeatures=30):
+def process(indir, outdir, projectFilter, numTopFeatures=30, actions=""):
     if isinstance(projectFilter, basestring):
         projectFilter = projectFilter.split(",")
     projects = getProjects(indir, projectFilter, "ALL_FEATURES", numTopFeatures)
-    print "----------------------------", "Projects", "----------------------------"
-    print makeProjectTable(projects)
-    print
-    print "----------------------------", "Genes", "----------------------------"
-    print makeGenesTable(projects)
-    print
-    print "----------------------------", "Genes List", "----------------------------"
-    print listTopGenes(projects)
+    if "PROJECTS" in actions:
+        print "----------------------------", "Projects", "----------------------------"
+        print makeProjectTable(projects)
+        print
+    if "GENES" in actions:
+        print "----------------------------", "Genes", "----------------------------"
+        print makeGenesTable(projects)
+        print
+    if "GENE_LIST" in actions:
+        print "----------------------------", "Genes List", "----------------------------"
+        print listTopGenes(projects)
     if outdir:
         makeCGIFigure(projects, ["CANCER_OR_CONTROL", "REMISSION"], outdir)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-a','--actions', help='', default="PROJECTS,GENES,GENE_LIST")
     parser.add_argument('-i','--input', help='', default=None)
     parser.add_argument('-o','--output', help='', default=None)
     parser.add_argument('-p','--projects', help='', default=None)
@@ -283,4 +287,4 @@ if __name__ == "__main__":
     #parser.add_argument('-c','--classifier', help='', default="ExtraTreesClassifier")
     options = parser.parse_args()
     
-    process(options.input, options.output, options.projects, options.numTopFeatures)
+    process(options.input, options.output, options.projects, options.numTopFeatures, options.actions.split(","))
