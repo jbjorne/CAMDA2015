@@ -122,7 +122,7 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         script += "python learn.py"
         script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both" + featureScript + "\""
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
-        script += " --metric " + job["metric"]
+        script += " --metric \"" + metric + "\""
         script += " -r " + job["result"]
         script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2014", os.path.basename(job["result"]))
         if job["classifier"] in ANALYZE:
