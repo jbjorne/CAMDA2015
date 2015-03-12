@@ -17,6 +17,11 @@ import data.hidden as hidden
 import random
 import gene.analyze
 
+# RLScore
+basePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(basePath, "lib"))
+from rlscore.rlscore_interface import RLSInterface
+
 def getClassDistribution(y):
     counts = defaultdict(int)
     for value in y:
@@ -98,7 +103,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
         hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
         if hasattr(search.best_estimator_, "feature_importances_"):
             hiddenDetails["importances"] = search.best_estimator_.feature_importances_
-        print classification_report(y_hidden, y_hidden_pred)
+        try:
+            print classification_report(y_hidden, y_hidden_pred)
+        except ValueError, e:
+            print "ValueError in classification_report:", e
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
         saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI)
@@ -179,7 +187,10 @@ def importNamed(name):
     return eval(asName)
     
 def getClassifier(classifierName, classifierArguments):
-    classifier = importNamed(classifierName)
+    if classifierName == "RLScore":
+        classifier = RLSInterface
+    else:
+        classifier = importNamed(classifierName)
     classifierArgs = parseOptionString(classifierArguments)
     print "Using classifier", classifierName, "with arguments", classifierArgs
     return classifier, classifierArgs
