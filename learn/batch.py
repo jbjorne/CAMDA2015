@@ -3,13 +3,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 from data.example import exampleOptions
 import time
+import tempfile
 from connection.UnixConnection import UnixConnection
 from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':"n_estimators=[10000]",
-    'svm.LinearSVC':"C=logrange(-10, 10)"}
+    'ensemble.ExtraTreesClassifier':'n_estimators=[10000]',
+    'svm.LinearSVC':'C=logrange(-10, 10)',
+    'linear_model.Ridge':'alpha=logrange(-10, 10)'}
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
 ALL_CAMDA_PROJECTS = ["KIRC-US", "LUAD-US", "HNSC-US"]
@@ -20,6 +22,8 @@ ALL_PROJECTS = ["BLCA-US","BOCA-UK","BRCA-UK","BRCA-US","CESC-US","CLLE-ES",
                 "ORCA-IN","OV-AU","OV-US","PAAD-US","PACA-AU","PACA-CA",
                 "PAEN-AU","PBCA-DE","PRAD-CA","PRAD-US","READ-US","RECA-CN",
                 "RECA-EU","SKCM-US","STAD-US","THCA-SA","THCA-US","UCEC-US"]
+
+ALL_FEATURES = ["[EXP]","[PEXP]","[MIRNA]","[SSM]","[CNSM]","ALL_FEATURES"]
 
 
 def getJobs(resultPath, experiments=None, projects=None, classifiers=None, features=None):
@@ -41,6 +45,8 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None, featu
         classifiers = classifiers.split(",")
     if features == None:
         features = [None]
+    elif features == "ALL":
+        features = ALL_FEATURES
     elif isinstance(features, basestring):
         features = features.split(",")
     
@@ -49,7 +55,10 @@ def getJobs(resultPath, experiments=None, projects=None, classifiers=None, featu
         for project in projects:
             for classifier in classifiers:
                 for feature in features:
-                    resultFileName = experiment + "-" + project + "-" + classifier + ".json"
+                    resultFileName = experiment + "-" + project + "-" + classifier
+                    if feature != None:
+                        resultFileName += "-" + feature.replace("[", "").replace("]", "")
+                    resultFileName += ".json"
                     job = {"result":os.path.join(resultPath, resultFileName),
                            "experiment":experiment,
                            "project":project,
@@ -95,7 +104,7 @@ def submitJob(command, connection, jobDir, jobName, dummy=False, rerun=None, hid
     
 def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features,
           limit=1, sleepTime=15, dummy=False, rerun=None, hideFinished=False, 
-          clearCache=False, icgcDB=None, cgiDB=None):
+          clearCache=False, icgcDB=None, cgiDB=None, connection=None, metric=None):
     global ANALYZE, CLASSIFIER_ARGS
     if sleepTime == None:
         sleepTime = 15
@@ -113,7 +122,9 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         script += "python learn.py"
         script += " -e " + job["experiment"] + " -o \"project=" + job["project"] + ",include=both" + featureScript + "\""
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
+        script += " --metric \"" + metric + "\""
         script += " -r " + job["result"]
+        script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2014", os.path.basename(job["result"]))
         if job["classifier"] in ANALYZE:
             script += " --analyze"
         if clearCache:
@@ -160,4 +171,4 @@ if __name__ == "__main__":
           experiments=options.experiments, projects=options.projects, features=options.features,
           classifiers=options.classifiers, limit=options.limit, sleepTime=15, rerun=options.rerun,
           hideFinished=options.hideFinished, dummy=options.dummy, clearCache=options.clearCache,
-          icgcDB=options.icgcDB, cgiDB=options.cgiDB)
+          icgcDB=options.icgcDB, cgiDB=options.cgiDB, connection=connection)

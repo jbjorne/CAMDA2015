@@ -106,6 +106,7 @@ def processLines(csvReader, columns):
     indicesToDelete.sort(reverse=True) # remove from the end
     #print indicesToDelete
     for line in csvReader:
+        #print [x for x in enumerate(line)], len(line), indicesToDelete
         for targetIndex, function in indicesToPreprocess: 
             line[targetIndex] = function(line[targetIndex])
         for i in indicesToDelete:
@@ -168,8 +169,8 @@ def initDB(dbName):
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects_2014_04_28_05_58_25.tsv"),
                  None, {"SSM|CNSM|STSM|SGV|METH|EXP|PEXP|miRNA|JCN|Publications":"int"},
                  ["Project_Code"])
-    tableFromDefinition(dbName, "cosmic_gene_census", 
-                        settings.TABLE_FORMAT["cosmic_gene_census"])
+    #tableFromDefinition(dbName, "cosmic_gene_census", 
+    #                    settings.TABLE_FORMAT["cosmic_gene_census"])
 
 def addProject(dbName, projectCode, downloadDir=None, tables = None):
     print "Adding project", projectCode, "to database", dbName
@@ -188,6 +189,38 @@ def addProject(dbName, projectCode, downloadDir=None, tables = None):
                 continue
             tableFromDefinition(dbName, table, tableFormat, tableFile)
 
+def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None, tables=None):
+    if dbPath == None:
+        dbPath = settings.DATA_PATH
+    if downloadDir == None:
+        downloadDir = settings.DATA_PATH
+    
+    print "Building ICGC database"
+    # Define locations
+    if downloadDir != None and not os.path.exists(downloadDir):
+        os.makedirs(downloadDir)
+    
+    # Initialize the database
+    if clear and os.path.exists(dbPath):
+        print "Removing existing database", dbPath
+        os.remove(dbPath)
+    if not os.path.exists(os.path.dirname(dbPath)):
+        os.makedirs(os.path.dirname(dbPath))
+    initDB(dbPath)
+    
+    # Add projects
+    if projects != None:
+        if isinstance(projects, basestring):
+            if projects == "ALL":
+                projects = enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
+            else:
+                projects = projects.split(",")
+        count = 1
+        for project in projects:
+            print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"
+            addProject(dbPath, project, downloadDir, tables)
+            count += 1
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
@@ -196,41 +229,6 @@ if __name__ == "__main__":
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     parser.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
     parser.add_argument('-t','--tables', help='Add project data only from the tables in this comma-separated list (optional)', default=None)
-    args = parser.parse_args()
+    options = parser.parse_args()
     
-    # Define locations
-    dbPath = args.database
-    if args.directory != None and not os.path.exists(args.directory):
-        os.makedirs(args.directory)
-    
-    # Initialize the database
-    if args.clear and os.path.exists(dbPath):
-        print "Removing existing database", dbPath
-        os.remove(dbPath)
-    if not os.path.exists(os.path.dirname(dbPath)):
-        os.makedirs(os.path.dirname(dbPath))
-    initDB(dbPath)
-    
-    # Add projects
-    if args.project != None:
-        if args.project == "ALL":
-            projects = enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
-        else:
-            projects = args.project.split(",")
-        count = 1
-        for project in projects:
-            print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"
-            addProject(dbPath, project, args.directory, args.tables)
-            count += 1
-    
-# tableFromCSV(dataPath + dbName, "clinical", dataPath + "clinical.BRCA-US.tsv",
-#              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-#              ["icgc_specimen_id"])
-# tableFromCSV(dataPath + dbName, "clinicalsample", dataPath + "clinicalsample.BRCA-US.tsv",
-#              {".*_age.*":"int", ".*_time.*":"int", ".*_interval.*":"int"},
-#              ["icgc_sample_id"], 
-#              {"icgc_specimen_id":"clinical"})
-# tableFromCSV(dataPath + dbName, "simple_somatic_mutation_open", dataPath + "simple_somatic_mutation.open.BRCA-US.tsv",
-#              {"chromosome.*":"int"},
-#              ["icgc_mutation_id"], 
-#              {"icgc_specimen_id":"clinical"})
+    buildICGCDatabase(options.database, options.project, options.clear, options.directory)

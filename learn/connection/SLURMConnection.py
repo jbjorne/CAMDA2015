@@ -19,7 +19,7 @@ SLURMJobTemplate = """#!/bin/bash -l
 ## number of processes
 #SBATCH -n %cores
 
-module load python-env
+module load biopython-env
 mkdir -p %stderrDir
 mkdir -p %stdoutDir
 

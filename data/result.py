@@ -49,7 +49,7 @@ def getMeta(meta, verbose=True):
         return meta
     print "Loading metadata from", meta
     f = open(meta, "rt")
-    meta = json.load(f)
+    meta = json.load(f, object_pairs_hook=OrderedDict)
     f.close()
     return meta
 

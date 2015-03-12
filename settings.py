@@ -2,11 +2,14 @@ import os
 import hashlib, base64
 import math
 import inspect
-import gene.buildCancerGeneIndexDB
 from collections import OrderedDict
 
 def logrange(a, b):
     return [math.pow(10,x) for x in range(a, b)]
+
+def preprocessCGIAliasValues(tableName, elem, valueLists):
+    primaryName = elem.find("HUGOGeneSymbol").text
+    return [[primaryName, primaryName]] + valueLists
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2014-data-local/")
 
@@ -37,7 +40,7 @@ CGI_TABLES = {
             ("GeneAliasCollection/GeneAlias", "alias")]),
         "primary_key":["hugo_gene_symbol", "alias"],
         "indices":["alias"],
-        "preprocess":gene.buildCancerGeneIndexDB.preprocessAliasValues},
+        "preprocess":preprocessCGIAliasValues},
     "sentence":{
         "elements":"Sentence",
         "columns":OrderedDict([
@@ -158,6 +161,7 @@ MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mi
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 CNSM = "SELECT ('CNSM:'||gene_affected||':'||chromosome||':'||chromosome_start||':'||chromosome_end||':'||mutation_type),1 FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
+ALL_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
 EXP_CUTOFF = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level) > 0.005"
 
