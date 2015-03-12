@@ -1,3 +1,6 @@
+import sys, os
+basePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(basePath, "lib"))
 from rlscore.learner import rls
 
 class RLSInterface(object):
@@ -12,6 +15,10 @@ class RLSInterface(object):
         self.model = learner.getModel()
 
     def predict(self, X):
+        p = self.model.predict(X)
+        return p
+    
+    def predict_proba(self, X):
         p = self.model.predict(X)
         return p
     

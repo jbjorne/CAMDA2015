@@ -16,11 +16,7 @@ import data.result as result
 import data.hidden as hidden
 import random
 import gene.analyze
-
-# RLScore
-basePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(basePath, "lib"))
-from rlscore.rlscore_interface import RLSInterface
+from rlscore_interface import RLSInterface
 
 def getClassDistribution(y):
     counts = defaultdict(int)
