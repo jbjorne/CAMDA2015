@@ -24,7 +24,7 @@ if __name__ == "__main__":
     ####
     parser.add_argument('-e','--experiments', help='', default="ALL")
     parser.add_argument('-p','--projects', help='', default="ALL")
-    parser.add_argument('-c','--classifiers', help='', default="svm.LinearSVC,ensemble.ExtraTreesClassifier,linear_model.Ridge")
+    parser.add_argument('-c','--classifiers', help='', default="svm.LinearSVC,ensemble.ExtraTreesClassifier,RLScore")
     parser.add_argument('-f','--features', help='', default="ALL")
     parser.add_argument('-m','--metric', help='', default="roc_auc")
     options = parser.parse_args()
