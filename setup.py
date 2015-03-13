@@ -38,17 +38,16 @@ def query_yes_no(question, default="no"):
                              "(or 'y' or 'n').\n")
 
 def setupRLSCore():
-    print "Installing RLSCore"
+    rlsPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rlscore")
+    print "Installing RLSCore to", rlsPath
     url = "https://github.com/aatapa/RLScore/archive/master.zip"
-    libPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
     downloaded = download(url, None, clear=False)
-    if os.path.exists(os.path.join(libPath, "ext_src")):
-        shutil.rmtree(os.path.join(libPath, "ext_src"))
-    if os.path.exists(os.path.join(libPath, "rlscore")):
-        shutil.rmtree(os.path.join(libPath, "rlscore"))
-    extractPackage(downloaded, libPath, subPath="RLScore-master")
+    if os.path.exists(rlsPath):
+        shutil.rmtree(rlsPath)
+    os.makedirs(rlsPath)
+    extractPackage(downloaded, rlsPath, subPath="RLScore-master")
     cwd = os.getcwd()
-    os.chdir(libPath)
+    os.chdir(rlsPath)
     #print os.listdir(os.getcwd())
     subprocess.call(['python', 'setup.py'])
     os.chdir(cwd)

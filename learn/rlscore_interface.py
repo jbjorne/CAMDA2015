@@ -1,6 +1,6 @@
 import sys, os
 basePath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(basePath, "lib"))
+sys.path.append(os.path.join(basePath, "rlscore"))
 from rlscore.learner import rls
 
 class RLSInterface(object):
