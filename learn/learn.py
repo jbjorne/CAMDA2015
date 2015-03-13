@@ -16,7 +16,7 @@ import data.result as result
 import data.hidden as hidden
 import random
 import gene.analyze
-from rlscore_interface import RLSInterface
+from rlscore_interface import RLScore
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -90,7 +90,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     hiddenDetails = None
     if len(X_hidden) > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
-        hiddenResults = {"classifier":" ".join(str(search.best_estimator_).split()), 
+        hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
                          "score":search.score(X_hidden, y_hidden),
                          "metric":metric,
                          "params":search.best_params_}
@@ -186,7 +186,7 @@ def importNamed(name):
     
 def getClassifier(classifierName, classifierArguments):
     if classifierName == "RLScore":
-        classifier = RLSInterface
+        classifier = RLScore
     else:
         classifier = importNamed(classifierName)
     classifierArgs = parseOptionString(classifierArguments)

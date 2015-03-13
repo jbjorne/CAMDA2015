@@ -36,31 +36,33 @@ def makeProjectTable(projects):
         for experimentName in ["CANCER_OR_CONTROL", "REMISSION"]:
             if experimentName in project:
                 experiment = project[experimentName]
-                for classifierName in ["LinearSVC", "ExtraTreesClassifier"]:
+                for classifierName in ["LinearSVC", "ExtraTreesClassifier", "RLScore"]:
                     if classifierName in experiment:
                         classifier = experiment[classifierName]
                         #if experiment["classifier"] == "ensemble.ExtraTreesClassifier":
-                        row[(experimentName, classifierName)] = classifier["auc-hidden"]
+                        row[(experimentName, classifierName)] = classifier["score-hidden"]
                         row[(experimentName, 1)] = classifier["1"]
                         row[(experimentName, -1)] = classifier["-1"]
         rows.append(row)
     columns = ["project",
                ("CANCER_OR_CONTROL", 1),
                ("CANCER_OR_CONTROL", -1),
-               "$AUC_R$",
+               ("CANCER_OR_CONTROL", "RLScore"),
                ("CANCER_OR_CONTROL", "LinearSVC"),
                ("CANCER_OR_CONTROL", "ExtraTreesClassifier"),
                ("REMISSION", 1),
                ("REMISSION", -1),
-               "$AUC_R$",
+               ("REMISSION", "RLScore"),
                ("REMISSION", "LinearSVC"),
                ("REMISSION", "ExtraTreesClassifier")]
     columnNames = {("CANCER_OR_CONTROL", "ExtraTreesClassifier"):"$AUC_E$",
                    ("CANCER_OR_CONTROL", "LinearSVC"):"$AUC_S$",
+                   ("CANCER_OR_CONTROL", "RLScore"):"$AUC_R$",
                    ("CANCER_OR_CONTROL", 1):"cancer",
                    ("CANCER_OR_CONTROL", -1):"normal",
                    ("REMISSION", "ExtraTreesClassifier"):"$AUC_E$",
                    ("REMISSION", "LinearSVC"):"$AUC_S$",
+                   ("REMISSION", "RLScore"):"$AUC_R$",
                    ("REMISSION", 1):"remission",
                    ("REMISSION", -1):"progression"}
     #header = "project & \multicolumn{2}{c}{Multi-column}"
@@ -244,8 +246,8 @@ def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
                     classifier = experiment[classifierName]
                     #experiment["classifier"] = meta["results"]["best"]["classifier"]
                     classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
-                    classifier["auc-hidden"] = meta["results"]["hidden"]["score"]
-                    classifier["auc-train"] = meta["results"]["best"]["mean"]
+                    classifier["score-hidden"] = meta["results"]["hidden"]["score"]
+                    classifier["score-train"] = meta["results"]["best"]["mean"]
                     classifier["std-train"] = meta["results"]["best"]["std"]
                     classifier.update(countExamples(meta))
                     
