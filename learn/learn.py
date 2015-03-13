@@ -96,6 +96,8 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
                          "params":search.best_params_}
         print "Score =", hiddenResults["score"], "(" + metric + ")"
         y_hidden_pred = search.predict(X_hidden)
+        #print y_hidden_pred
+        #print search.predict_proba(X_hidden)
         hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
         if hasattr(search.best_estimator_, "feature_importances_"):
             hiddenDetails["importances"] = search.best_estimator_.feature_importances_

@@ -13,14 +13,18 @@ class RLSInterface(object):
         learner = rls.RLS(**keyw)
         learner.solve(self.alpha)
         self.model = learner.getModel()
+    
+    def decision_function(self, X):
+        p = self.model.predict(X)
+        return p
 
     def predict(self, X):
         p = self.model.predict(X)
         return p
     
-    def predict_proba(self, X):
-        p = self.model.predict(X)
-        return p
+#     def predict_proba(self, X):
+#         p = self.model.predict(X)
+#         return p
     
     def get_params(self, deep=True):
         return {"alpha": self.alpha}
@@ -28,3 +32,4 @@ class RLSInterface(object):
     def set_params(self, **parameters):
         for parameter, value in parameters.items():
             setattr(self, parameter, value)
+        return self
