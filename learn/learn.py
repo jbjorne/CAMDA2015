@@ -41,8 +41,8 @@ def getStratifiedKFoldCV(y, meta, numFolds=10):
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
          preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
-         databaseCGI=None, metric="roc_auc"):
-    X, y = readAuto(XPath, yPath)
+         databaseCGI=None, metric="roc_auc", useFeatures=None):
+    X, y = readAuto(XPath, yPath, useFeatures=useFeatures)
     meta = {}
     if metaPath != None:
         meta = result.getMeta(metaPath)
@@ -184,12 +184,13 @@ def importNamed(name):
         raise Exception("Could not import '" + name + "'")
     return eval(asName)
     
-def getClassifier(classifierName, classifierArguments):
+def getClassifier(classifierName, classifierArgs):
     if classifierName == "RLScore":
         classifier = RLScore
     else:
         classifier = importNamed(classifierName)
-    classifierArgs = parseOptionString(classifierArguments)
+    if isinstance(classifierArgs, basestring):
+        classifierArgs = parseOptionString(classifierArgs)
     print "Using classifier", classifierName, "with arguments", classifierArgs
     return classifier, classifierArgs
 

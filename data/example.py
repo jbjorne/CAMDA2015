@@ -43,17 +43,19 @@ def closeOutputFiles(opened, writer, featureFilePath, numFeatures):
     if writer == writeNumpyText and featureFilePath != None:
         padNumpyFeatureFile(featureFilePath, numFeatures)
         
-def readAuto(featureFilePath, labelFilePath):
+def readAuto(featureFilePath, labelFilePath, useFeatures=None):
     if labelFilePath == None or featureFilePath == labelFilePath or not os.path.exists(labelFilePath):
         from sklearn.datasets import load_svmlight_file
         print "Loading SVM-light features and labels from", featureFilePath
+        if useFeatures != None:
+            raise Exception("useFeatures is not supported with the SVM-light format")
         X, y = load_svmlight_file(featureFilePath)
     else:
         import numpy
         print "Loading numpy txt labels from", labelFilePath
         y = numpy.loadtxt(labelFilePath)
         print "Loading numpy txt features from", featureFilePath
-        X = numpy.loadtxt(featureFilePath)
+        X = numpy.loadtxt(featureFilePath, usecols=useFeatures)
     return X, y
 
 def writeSVMLight(fX, example, cls, features):

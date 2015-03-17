@@ -3,6 +3,8 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data import result, cache
 import learn
+from learn import getStratifiedKFoldCV as StratifiedKFold
+import sklearn
 import settings
 
 def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, parallel=1, 
@@ -21,6 +23,9 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
     featureSet = []
     cls = meta["results"]["best"]
     params = [x["params"] for x in meta["results"]["all"]]
+    classifierNameMap = {"LinearSVC":"svm.LinearSVC","ExtraTreesClassifier":"ensemble.ExtraTreesClassifier","RLScore":"RLScore"}
+    classifierName = classifierNameMap[cls["classifier"]]
+    classifier, params = learn.getClassifier(classifierName, params)
     for featureName in features:
         feature = features[featureName]
         print "Processing feature", featureName
@@ -30,7 +35,7 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
         if resultDir != None:
             pointResultPath = os.path.join(resultDir, "feature-" + str(feature["rank"]) + ".json")
         curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
-                   classifier=cls["classifier"], classifierArgs=params, getCV=cls["cv"],
+                   classifier=classifier, classifierArgs=params, getCV=eval(cls["cv"]),
                    numFolds=cls["folds"], verbose=verbose, parallel=parallel,
                    preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])
         count += 1
@@ -38,7 +43,7 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
             break
     
 
-def curvePoint(XPath, yPath, metaPath, featureSet, resultPath, classifier, classifierArgs, getCV, numFolds, verbose, parallel, preDispatch, randomize, analyzeResults, databaseCGI, metric):
+def curvePoint(XPath, yPath, metaPath, featureSet, resultPath, classifier, classifierArgs, getCV, numFolds, verbose, parallel, preDispatch, randomize, metric):
     learn.test(XPath, yPath, metaPath, resultPath, 
                classifier=classifier, classifierArgs=classifierArgs, getCV=getCV, 
                numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
@@ -63,5 +68,4 @@ if __name__ == "__main__":
         verbose=options.verbose, 
         parallel=options.parallel, 
         preDispatch=options.preDispatch, 
-        resultPath=options.result, 
         randomize=options.randomize)
