@@ -108,6 +108,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
         saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI)
+    return meta, results, extras, hiddenResults, hiddenDetails
 
 def saveDetails(meta, predictions, importances, fold, featureByIndex=None):
     if featureByIndex == None:

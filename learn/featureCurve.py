@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, shutil
 import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data import result, cache
@@ -13,6 +13,9 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
     
     baseResultPath = None
     if resultDir != None:
+        if os.path.exists(resultDir):
+            shutil.rmtree(resultDir)
+        os.makedirs(resultDir)
         baseResultPath = os.path.join(resultDir, "base.json")
     baseXPath, baseYPath, baseMetaPath = cache.getExperiment(
          experiment=meta["experiment"]["name"], experimentOptions=meta["experiment"]["options"], 
@@ -32,6 +35,7 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
     classifierNameMap = {"LinearSVC":"svm.LinearSVC","ExtraTreesClassifier":"ensemble.ExtraTreesClassifier","RLScore":"RLScore"}
     classifierName = classifierNameMap[cls["classifier"]]
     classifier, params = learn.getClassifier(classifierName, params)
+    results = []
     for featureName in features:
         feature = features[featureName]
         print "Processing feature", featureName
@@ -42,21 +46,28 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
             pointResultPath = os.path.join(resultDir, "feature-" + str(feature["rank"]) + ".json")
         print "Feature set", featureSet
         if len(featureSet) > 1:
-            curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
+            hiddenResults = curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
                        classifier=classifier, classifierArgs=params, getCV=eval(cls["cv"]),
                        numFolds=cls["folds"], verbose=verbose, parallel=parallel,
-                       preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])
+                       preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])[3]
+            results.append(hiddenResults)
         count += 1
         if count > cutoff:
             break
     
+    if resultDir != None:
+        f = open(os.path.join(resultDir, "results.json"), "wt")
+        json.dump(results, f, indent=4)
+        f.close()    
 
 def curvePoint(XPath, yPath, metaPath, featureSet, resultPath, classifier, classifierArgs, getCV, numFolds, verbose, parallel, preDispatch, randomize, metric):
-    learn.test(XPath, yPath, metaPath, resultPath, 
-               classifier=classifier, classifierArgs=classifierArgs, getCV=getCV, 
-               numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
-               randomize=randomize, analyzeResults=False, 
-               metric=metric, useFeatures=featureSet)
+    meta, results, extras, hiddenResults, hiddenDetails = learn.test(
+        XPath, yPath, metaPath, resultPath, 
+        classifier=classifier, classifierArgs=classifierArgs, getCV=getCV, 
+        numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
+        randomize=randomize, analyzeResults=False, 
+        metric=metric, useFeatures=featureSet)
+    return [meta, results, extras, hiddenResults, hiddenDetails]
 
 if __name__ == "__main__":
     import argparse
