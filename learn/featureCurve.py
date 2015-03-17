@@ -22,7 +22,13 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
     count = 0
     featureSet = []
     cls = meta["results"]["best"]
-    params = [x["params"] for x in meta["results"]["all"]]
+    paramSets = [x["params"] for x in meta["results"]["all"]]
+    params = {}
+    for paramSet in paramSets:
+        for key in paramSet:
+            if not key in params:
+                params[key] = []
+            params[key].append(paramSet[key])
     classifierNameMap = {"LinearSVC":"svm.LinearSVC","ExtraTreesClassifier":"ensemble.ExtraTreesClassifier","RLScore":"RLScore"}
     classifierName = classifierNameMap[cls["classifier"]]
     classifier, params = learn.getClassifier(classifierName, params)
@@ -34,10 +40,12 @@ def process(database, templateMetaPath, resultDir, cutoff=30, verbose=3, paralle
         pointResultPath = None
         if resultDir != None:
             pointResultPath = os.path.join(resultDir, "feature-" + str(feature["rank"]) + ".json")
-        curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
-                   classifier=classifier, classifierArgs=params, getCV=eval(cls["cv"]),
-                   numFolds=cls["folds"], verbose=verbose, parallel=parallel,
-                   preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])
+        print "Feature set", featureSet
+        if len(featureSet) > 1:
+            curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
+                       classifier=classifier, classifierArgs=params, getCV=eval(cls["cv"]),
+                       numFolds=cls["folds"], verbose=verbose, parallel=parallel,
+                       preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])
         count += 1
         if count > cutoff:
             break
