@@ -194,10 +194,25 @@ def makeCGIFigure(projects, experiments, outdir):
     plt.savefig(os.path.join(outdir, 'cgi-fraction.pdf'))
     plt.show()
 
+def processProjects(projects):
+    classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
+    classifier["score-hidden"] = meta["results"]["hidden"]["score"]
+    classifier["score-train"] = meta["results"]["best"]["mean"]
+    classifier["std-train"] = meta["results"]["best"]["std"]
+    classifier.update(countExamples(meta))
+    
+    if "analysis" in meta:
+        classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
+        classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
+        classifier["top-features"] = []
+        for name, feature in meta["features"].items()[:numTopFeatures]:
+            feature["name"] = name
+            classifier["top-features"].append(feature)
+
 def process(indir, outdir, projectFilter, numTopFeatures=30, actions=""):
     if isinstance(projectFilter, basestring):
         projectFilter = projectFilter.split(",")
-    projects = result.getProjects(indir, projectFilter, "ALL_FEATURES", numTopFeatures)
+    projects = result.getProjects(indir, {"filename":projectFilter, "features":"ALL_FEATURES"}, numTopFeatures)
     if "PROJECTS" in actions:
         print "----------------------------", "Projects", "----------------------------"
         print makeProjectTable(projects)

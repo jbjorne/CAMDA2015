@@ -12,20 +12,22 @@ def countExamples(meta):
         counts[example["label"]] += 1
     return counts
 
-def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
+def getProjects(dirname, filter=None, numTopFeatures=0):
     projects = {}
     print "Reading results from", dirname
     filenames = os.listdir(dirname)
     index = 0
+    if filter == None:
+        filter = {}
     for dirpath, dirnames, filenames in os.walk(dirname):
         for filename in filenames:
             index += 1
             filePath = os.path.join(dirpath, filename)
             found = True
-            if projectFilter != None:
+            if filter.get("filename") != None:
                 found = False
-                for projectName in projectFilter:
-                    if projectName in filename:
+                for substring in filter["filename"]:
+                    if substring in filename:
                         found = True
                         break
             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
@@ -39,37 +41,28 @@ def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
                         key, value = optionPair.split("=")
                         options[key] = value
                 # Filter by features
-                if "features" in options and options["features"] == featuresFilter:
-                    print "Processing", filename, str(index+1) #+ "/" + str(len(filenames))
+                if filter.get("features") == None or ("features" in options and options["features"] == filter.get("features")):
                     # Add results for project...
                     projectName = meta["template"]["project"]
+                    if projectName not in filter.get("projects"):
+                        continue
                     if projectName not in projects:
                         projects[projectName] = {}
                     project = projects[projectName]
                     # ... for experiment ...
                     experimentName = meta["experiment"]["name"]
+                    if experimentName not in filter.get("experiments"):
+                        continue
                     if experimentName not in project:
                         project[experimentName] = {}
                     experiment = project[experimentName]
                     # ... for classifier ...
                     classifierName = meta["results"]["best"]["classifier"]
-                    if classifierName not in experiment:
-                        experiment[classifierName] = {}
-                    classifier = experiment[classifierName]
+                    if classifierName not in filter.get("classifiers"):
+                        continue
+                    experiment[classifierName] = meta
+                    print "Read", filename, str(index+1) #+ "/" + str(len(filenames))
                     #experiment["classifier"] = meta["results"]["best"]["classifier"]
-                    classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
-                    classifier["score-hidden"] = meta["results"]["hidden"]["score"]
-                    classifier["score-train"] = meta["results"]["best"]["mean"]
-                    classifier["std-train"] = meta["results"]["best"]["std"]
-                    classifier.update(countExamples(meta))
-                    
-                    if "analysis" in meta:
-                        classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
-                        classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
-                        classifier["top-features"] = []
-                        for name, feature in meta["features"].items()[:numTopFeatures]:
-                            feature["name"] = name
-                            classifier["top-features"].append(feature)
     return projects
 
 ###############################################################################

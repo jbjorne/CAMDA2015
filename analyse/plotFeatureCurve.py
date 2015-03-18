@@ -6,19 +6,30 @@ from collections import OrderedDict
 def loadData(sourcePath):
     print "Loading results from", sourcePath
     f = open(sourcePath, "rt")
-    results = json.load(f, object_pairs_hook=OrderedDict)
+    results = json.load(f, object_pairs_hook=OrderedDict)["results"]
     f.close()
-    return [x["score"] for x in results]
+    projects = {}
+    for project in sorted(results.keys()):
+        points = results[project]["REMISSION"]["ExtraTreesClassifier"]
+        projects[project] = [x["score"] for x in points]  
+    return projects
 
 def process(inPath):
-    data = loadData(inPath) 
-    x = range(0, len(data))
-    print x, data
-    plt.plot(x, data, linestyle="--", color="black", label="HSNC-US")
+    projects = loadData(inPath)
+    colors = ["red", "green", "blue"]
+    styles = ["--", "-", ":"]
+    minY = 0.0
+    maxY = 1.0
+    for project, color, style in zip(sorted(projects.keys()), colors, styles):
+        x = range(0, len(projects[project]))
+        points = projects[project]
+        plt.plot(x, points, linestyle=style, color=color, label=project)
+        minY = min(points)
+        maxY = max(points)
     plt.xlabel("#features")
     plt.ylabel("AUC")
-    plt.legend()
-    plt.ylim([min(data) - 0.1, max(data) + 0.1])
+    plt.legend(loc=4)
+    plt.ylim([minY - 0.1, maxY + 0.1])
     plt.show()
 
 if __name__ == "__main__":
