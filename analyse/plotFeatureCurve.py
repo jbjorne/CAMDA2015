@@ -16,20 +16,25 @@ def loadData(sourcePath):
 
 def process(inPath):
     projects = loadData(inPath)
-    colors = ["red", "green", "blue"]
+    colors = ["black", "blue", "red"]
     styles = ["--", "-", ":"]
     minY = 0.0
     maxY = 1.0
+    minX = 0.0
+    maxX = 1.0
     for project, color, style in zip(sorted(projects.keys()), colors, styles):
-        x = range(0, len(projects[project]))
+        x = range(2, len(projects[project]) + 2)
         points = projects[project]
         plt.plot(x, points, linestyle=style, color=color, label=project)
         minY = min(points)
         maxY = max(points)
+        minX = min(x)
+        maxX = max(x)
     plt.xlabel("#features")
     plt.ylabel("AUC")
     plt.legend(loc=4)
     plt.ylim([minY - 0.1, maxY + 0.1])
+    plt.xlim([minX, maxX])
     plt.show()
 
 if __name__ == "__main__":
