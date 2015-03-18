@@ -194,76 +194,10 @@ def makeCGIFigure(projects, experiments, outdir):
     plt.savefig(os.path.join(outdir, 'cgi-fraction.pdf'))
     plt.show()
 
-def countExamples(meta):
-    counts = {"1":0, "-1":0}
-    for example in meta["examples"]:
-        counts[example["label"]] += 1
-    return counts
-        
-def getProjects(dirname, projectFilter, featuresFilter, numTopFeatures=30):
-    projects = {}
-    print "Reading results from", dirname
-    filenames = os.listdir(dirname)
-    index = 0
-    for dirpath, dirnames, filenames in os.walk(dirname):
-        for filename in filenames:
-            index += 1
-            filePath = os.path.join(dirpath, filename)
-            found = True
-            if projectFilter != None:
-                found = False
-                for projectName in projectFilter:
-                    if projectName in filename:
-                        found = True
-                        break
-            if found and os.path.isfile(filePath) and filePath.endswith(".json"):
-                # Read project results
-                meta = result.getMeta(filePath)
-                options = {}
-                optionsList = meta["experiment"]["options"]
-                if optionsList != None:
-                    optionsList = optionsList.split(",")
-                    for optionPair in optionsList:
-                        key, value = optionPair.split("=")
-                        options[key] = value
-                # Filter by features
-                if "features" in options and options["features"] == featuresFilter:
-                    print "Processing", filename, str(index+1) #+ "/" + str(len(filenames))
-                    # Add results for project...
-                    projectName = meta["template"]["project"]
-                    if projectName not in projects:
-                        projects[projectName] = {}
-                    project = projects[projectName]
-                    # ... for experiment ...
-                    experimentName = meta["experiment"]["name"]
-                    if experimentName not in project:
-                        project[experimentName] = {}
-                    experiment = project[experimentName]
-                    # ... for classifier ...
-                    classifierName = meta["results"]["best"]["classifier"]
-                    if classifierName not in experiment:
-                        experiment[classifierName] = {}
-                    classifier = experiment[classifierName]
-                    #experiment["classifier"] = meta["results"]["best"]["classifier"]
-                    classifier["classifier-details"] = meta["results"]["hidden"]["classifier"]
-                    classifier["score-hidden"] = meta["results"]["hidden"]["score"]
-                    classifier["score-train"] = meta["results"]["best"]["mean"]
-                    classifier["std-train"] = meta["results"]["best"]["std"]
-                    classifier.update(countExamples(meta))
-                    
-                    if "analysis" in meta:
-                        classifier["gene-features-hidden"] = meta["analysis"]["CancerGeneIndex"]["hidden"]
-                        classifier["gene-features-nonselected"] = meta["analysis"]["CancerGeneIndex"]["non-selected"]
-                        classifier["top-features"] = []
-                        for name, feature in meta["features"].items()[:numTopFeatures]:
-                            feature["name"] = name
-                            classifier["top-features"].append(feature)
-    return projects
-
 def process(indir, outdir, projectFilter, numTopFeatures=30, actions=""):
     if isinstance(projectFilter, basestring):
         projectFilter = projectFilter.split(",")
-    projects = getProjects(indir, projectFilter, "ALL_FEATURES", numTopFeatures)
+    projects = result.getProjects(indir, projectFilter, "ALL_FEATURES", numTopFeatures)
     if "PROJECTS" in actions:
         print "----------------------------", "Projects", "----------------------------"
         print makeProjectTable(projects)
