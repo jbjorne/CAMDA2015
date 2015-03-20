@@ -138,6 +138,12 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         if submitJob(script, connection, jobDir, jobName, dummy, rerun, hideFinished):
             submitCount += 1
 
+def getConnection(slurm=False):
+    if slurm:
+        return SLURMConnection()
+    else:
+        return UnixConnection()
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
@@ -161,10 +167,7 @@ if __name__ == "__main__":
     parser.add_argument('--cgiDB', default=settings.CGI_DB_PATH, dest="cgiDB")
     options = parser.parse_args()
     
-    if options.slurm:
-        connection = SLURMConnection()
-    else:
-        connection = UnixConnection()
+    connection = getConnection(options.slurm)
     if not os.path.exists(options.jobDir):
         os.makedirs(options.jobDir)
     connection.debug = options.debug
