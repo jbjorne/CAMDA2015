@@ -34,16 +34,17 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
         resultSubDir = None
         if resultDir != None:
             resultSubDir = os.path.join(resultDir, "_".join([projectName, experiment, classifier]))
-        points = process(database, project, resultSubDir, cutoff, verbose=verbose, parallel=parallel, 
+        #points = 
+        process(database, project, resultSubDir, cutoff, verbose=verbose, parallel=parallel, 
                          preDispatch=preDispatch, randomize=randomize,
                          limit=limit)
-        results[projectName][experiment][classifier] = points
+        #results[projectName][experiment][classifier] = points
     
-    if resultDir != None:
-        f = open(os.path.join(resultDir, "results.json"), "wt")
-        json.dump(output, f, indent=4)
-        f.close()   
-    return output
+#     if resultDir != None:
+#         f = open(os.path.join(resultDir, "results.json"), "wt")
+#         json.dump(output, f, indent=4)
+#         f.close()   
+#     return output
 
 def makeDir(dirname, clear=False):
     if clear and os.path.exists(dirname):

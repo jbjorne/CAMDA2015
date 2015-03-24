@@ -37,7 +37,7 @@ def curvePoint(XPath, yPath, meta, resultPath, featureCount, classifier, classif
         classifier=classifier, classifierArgs=classifierArgs, getCV=eval(getCV), 
         numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
         randomize=randomize, analyzeResults=False, 
-        metric=metric, useFeatures=featureSet, reclassify=True)
+        metric=metric, useFeatures=featureSet, reclassify=True, details=False)
     return [meta, results, extras, hiddenResults, hiddenDetails]
 
 if __name__ == "__main__":

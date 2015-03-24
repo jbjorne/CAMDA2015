@@ -41,7 +41,7 @@ def getStratifiedKFoldCV(y, meta, numFolds=10):
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
          preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
-         databaseCGI=None, metric="roc_auc", useFeatures=None, reclassify=False):
+         databaseCGI=None, metric="roc_auc", useFeatures=None, reclassify=False, details=True):
     X, y = readAuto(XPath, yPath, useFeatures=useFeatures)
     meta = {}
     if metaPath != None:
@@ -108,7 +108,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
             print "ValueError in classification_report:", e
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI, reclassify=reclassify)
+        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI, reclassify=reclassify, details=details)
     return meta, results, extras, hiddenResults, hiddenDetails
 
 def saveDetails(meta, predictions, importances, fold, featureByIndex=None, reclassify=False):
@@ -142,7 +142,7 @@ def saveDetails(meta, predictions, importances, fold, featureByIndex=None, recla
                 #else:
                 #    result.setValue(feature, "sort", 0)
                 
-def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenResults=None, hiddenDetails=None, databaseCGI=None, reclassify=False):
+def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenResults=None, hiddenDetails=None, databaseCGI=None, reclassify=False, details=True):
     if extras == None:
         print "No detailed information for cross-validation"
         return
@@ -154,13 +154,20 @@ def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenRes
     if hiddenResults != None:
         meta["results"]["hidden"] = hiddenResults
     # Insert detailed results
-    featureByIndex = result.getFeaturesByIndex(meta)
-    if hiddenDetails != None:
-        saveDetails(meta, hiddenDetails.get("predictions", None), hiddenDetails.get("importances", None), "hidden", featureByIndex, reclassify=reclassify)
-    fold = 0
-    for extra in extras:
-        saveDetails(meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex, reclassify=reclassify)
-        fold += 1
+    if details:
+        featureByIndex = result.getFeaturesByIndex(meta)
+        if hiddenDetails != None:
+            saveDetails(meta, hiddenDetails.get("predictions", None), hiddenDetails.get("importances", None), "hidden", featureByIndex, reclassify=reclassify)
+        fold = 0
+        for extra in extras:
+            saveDetails(meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex, reclassify=reclassify)
+            fold += 1
+    else:
+        if "examples" in meta:
+            del meta["examples"]
+        if "features" in meta:
+            del meta["features"]
+    
     # Analyze results
     if analyze:
         print "Analyzing results"

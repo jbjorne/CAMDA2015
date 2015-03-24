@@ -79,7 +79,8 @@ def getMeta(meta, verbose=True):
     return meta
 
 def saveMeta(meta, filename, verbose=True):
-    sortFeatures(meta)
+    if "features" in meta:
+        sortFeatures(meta)
     meta = sortMeta(meta)
     print "Saving metadata to", filename
     f = open(filename, "wt")
