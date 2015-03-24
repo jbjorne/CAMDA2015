@@ -12,7 +12,7 @@ def countExamples(meta):
         counts[example["label"]] += 1
     return counts
 
-def getProjects(dirname, filter=None, numTopFeatures=0):
+def getProjects(dirname, filter=None, numTopFeatures=0, returnPaths=False):
     projects = {}
     print "Reading results from", dirname
     filenames = os.listdir(dirname)
@@ -25,10 +25,9 @@ def getProjects(dirname, filter=None, numTopFeatures=0):
             filePath = os.path.join(dirpath, filename)
             found = True
             if filter.get("filename") != None:
-                found = False
                 for substring in filter["filename"]:
-                    if substring in filename:
-                        found = True
+                    if substring not in filename:
+                        found = False
                         break
             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
                 # Read project results
@@ -60,7 +59,10 @@ def getProjects(dirname, filter=None, numTopFeatures=0):
                     classifierName = meta["results"]["best"]["classifier"]
                     if classifierName not in filter.get("classifiers"):
                         continue
-                    experiment[classifierName] = meta
+                    if returnPaths:
+                        experiment[classifierName] = filePath
+                    else:
+                        experiment[classifierName] = meta
                     print "Read", filename, str(index+1) #+ "/" + str(len(filenames))
                     #experiment["classifier"] = meta["results"]["best"]["classifier"]
     return projects

@@ -11,34 +11,28 @@ from collections import OrderedDict
 
 def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3, parallel=1, 
                preDispatch='2*n_jobs', randomize=False, slurm=False, limit=1, debug=False,
-               dummy=False, rerun=False, hideFinished=False):
+               dummy=False, rerun=None, hideFinished=False):
 #     _, _, _, argDict = inspect.getargvalues(inspect.currentframe())
 #     output = OrderedDict()
 #     output["call"] = argDict
 #     results = OrderedDict()
 #     output["results"] = results
-    projects = result.getProjects(inputDir, inputFilter)
-    experiment = inputFilter["experiments"]
-    classifier = inputFilter["classifiers"]
+    projects = result.getProjects(inputDir, inputFilter, returnPaths=True)
     for projectName in sorted(projects.keys()):
         print "---------", "Processing project", projectName, "---------"
-        # initialize results structure
-        project = projects[projectName][experiment][classifier]
-#         if projectName not in results:
-#             results[projectName] = OrderedDict()
-#         if experiment not in results[projectName]:
-#             results[projectName][experiment] = OrderedDict()
-#         if classifier not in results[projectName][experiment]:
-#             results[projectName][experiment][classifier] = OrderedDict()
-        # determine subdirectory for results
-        resultSubDir = None
-        if resultDir != None:
-            resultSubDir = os.path.join(resultDir, "_".join([projectName, experiment, classifier]))
-        #points = 
-        process(database, project, resultSubDir, cutoff, verbose=verbose, parallel=parallel, 
-                         preDispatch=preDispatch, randomize=randomize,
-                         limit=limit)
-        #results[projectName][experiment][classifier] = points
+        for experiment in projects[projectName]:
+            for classifier in projects[projectName][experiment]:
+                # initialize results structure
+                project = projects[projectName][experiment][classifier]
+                # determine subdirectory for results
+                #resultSubDir = None
+                #if resultDir != None:
+                #    resultSubDir = os.path.join(resultDir, "_".join([projectName, experiment, classifier]))
+                #points = 
+                process(database, project, resultDir, cutoff, verbose=verbose, parallel=parallel, 
+                                 preDispatch=preDispatch, randomize=randomize,
+                                 limit=limit, rerun=rerun)
+                #results[projectName][experiment][classifier] = points
     
 #     if resultDir != None:
 #         f = open(os.path.join(resultDir, "results.json"), "wt")
@@ -55,15 +49,15 @@ def makeDir(dirname, clear=False):
     
 def process(database, inputMetaPath, resultBaseDir, cutoff=50, verbose=3, parallel=1, 
             preDispatch='2*n_jobs', randomize=False, limit=1, debug=False,
-            dummy=False, rerun=False, hideFinished=False, slurm=False):
+            dummy=False, rerun=None, hideFinished=False, slurm=False):
     meta = result.getMeta(inputMetaPath)
     
     connection = batch.getConnection(slurm, debug)
     
     makeDir(resultBaseDir)
     cacheDir = makeDir(os.path.join(resultBaseDir, "cache"))
-    resultDir = makeDir(os.path.join(resultBaseDir, "results"), rerun)
-    jobDir = makeDir(os.path.join(resultBaseDir, "jobs"), rerun)
+    resultDir = makeDir(os.path.join(resultBaseDir, "results"))
+    jobDir = makeDir(os.path.join(resultBaseDir, "jobs"))
 
     #cachedMetaPath = os.path.join(cacheDir, "base.json")
     
@@ -99,7 +93,8 @@ def process(database, inputMetaPath, resultBaseDir, cutoff=50, verbose=3, parall
         print "Processing feature", featureName
         print feature
         featureSet.append(feature["id"])
-        pointResultPath = os.path.join(resultDir, "feature-" + str(feature["rank"]) + ".json")
+        jobName = "_".join([meta["experiment"]["name"], meta["template"]["project"], classifierName, "feature-" + str(feature["rank"])])
+        pointResultPath = os.path.join(resultDir, jobName + ".json")
         print "Feature set", featureSet
         if len(featureSet) > 1:
 #             hiddenResults = curvePoint(baseXPath, baseYPath, baseMetaPath, featureSet, pointResultPath, 
@@ -124,7 +119,6 @@ def process(database, inputMetaPath, resultBaseDir, cutoff=50, verbose=3, parall
                 command +=  " --randomize "
             command +=  " --metric " + cls["metric"]
             
-            jobName = "_".join([meta["experiment"]["name"], meta["template"]["project"], classifierName, "feature-" + str(feature["rank"])])
             if batch.submitJob(command, connection, jobDir, jobName, dummy, rerun, hideFinished):
                 submitCount += 1
         count += 1
@@ -177,7 +171,7 @@ if __name__ == "__main__":
     parser.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
     parser.add_argument('-o', '--output', help='Output directory', default=None)
     parser.add_argument('-i','--input', help='Input directory', default=None)
-    parser.add_argument('-f','--inputFilter', help='Input directory filter', default=None)
+    parser.add_argument('-f','--inputFilter', help='Input directory filter', default="default")
     parser.add_argument('-m','--meta', help='Metadata input file name', default=None)
     parser.add_argument('--cutoff', help='Number of features to test', type=int, default=30)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
@@ -189,15 +183,21 @@ if __name__ == "__main__":
     parser.add_argument('--slurm', help='', default=False, action="store_true")
     parser.add_argument("--debug", default=False, action="store_true", dest="debug", help="Print jobs on screen")
     parser.add_argument("--dummy", default=False, action="store_true", dest="dummy", help="Don't submit jobs")
-    parser.add_argument("--rerun", default=False, action="store_true", dest="rerun", help="Rerun all jobs")
+    parser.add_argument("--rerun", default=None, action="store_true", dest="rerun", help="Rerun all jobs")
     parser.add_argument("-l", "--limit", default=None, type=int, dest="limit", help="Maximum number of jobs in queue/running")
     parser.add_argument("--hideFinished", default=False, action="store_true", dest="hideFinished", help="")
     parser.add_argument("--runDir", default=None, dest="runDir", help="")
     parser.add_argument("--jobDir", default="/tmp/jobs", dest="jobDir", help="")
     options = parser.parse_args()
     
+    if options.rerun == True:
+        options.rerun = ["FINISHED","FAILED"]
+    
     if options.inputFilter != None:
-        options.inputFilter = eval(options.inputFilter)
+        if options.inputFilter == "default":
+            options.inputFilter = {"projects":["KIRC-US", "LUAD-US", "HNSC-US"], "experiments":["REMISSION"], "filename":["REMISSION", "ExtraTreesClassifier"]}
+        else:
+            options.inputFilter = eval(options.inputFilter)
     if options.inputFilter == None:
         options.inputFilter = {}
     options.inputFilter["classifiers"] = "ExtraTreesClassifier"
