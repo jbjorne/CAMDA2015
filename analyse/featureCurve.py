@@ -12,11 +12,11 @@ from collections import OrderedDict
 def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3, parallel=1, 
                preDispatch='2*n_jobs', randomize=False, slurm=False, limit=1, debug=False,
                dummy=False, rerun=False, hideFinished=False):
-    _, _, _, argDict = inspect.getargvalues(inspect.currentframe())
-    output = OrderedDict()
-    output["call"] = argDict
-    results = OrderedDict()
-    output["results"] = results
+#     _, _, _, argDict = inspect.getargvalues(inspect.currentframe())
+#     output = OrderedDict()
+#     output["call"] = argDict
+#     results = OrderedDict()
+#     output["results"] = results
     projects = result.getProjects(inputDir, inputFilter)
     experiment = inputFilter["experiments"]
     classifier = inputFilter["classifiers"]
@@ -24,12 +24,12 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
         print "---------", "Processing project", projectName, "---------"
         # initialize results structure
         project = projects[projectName][experiment][classifier]
-        if projectName not in results:
-            results[projectName] = OrderedDict()
-        if experiment not in results[projectName]:
-            results[projectName][experiment] = OrderedDict()
-        if classifier not in results[projectName][experiment]:
-            results[projectName][experiment][classifier] = OrderedDict()
+#         if projectName not in results:
+#             results[projectName] = OrderedDict()
+#         if experiment not in results[projectName]:
+#             results[projectName][experiment] = OrderedDict()
+#         if classifier not in results[projectName][experiment]:
+#             results[projectName][experiment][classifier] = OrderedDict()
         # determine subdirectory for results
         resultSubDir = None
         if resultDir != None:

@@ -21,6 +21,7 @@ def curvePoint(XPath, yPath, meta, resultPath, featureCount, classifier, classif
         if count > featureCount:
             break
     print "Testing", len(featureSet), "features", featureSet
+    meta["curve"] = {"count":len(featureSet), "indices":featureSet}
     
     classifierNameMap = {
         "LinearSVC":"svm.LinearSVC",
