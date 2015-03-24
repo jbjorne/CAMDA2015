@@ -9,28 +9,32 @@ import settings
 import inspect
 from collections import OrderedDict
 
-def curvePoint(XPath, yPath, meta, featureCount, resultPath, classifier, classifierArgs, getCV, numFolds, verbose, parallel, preDispatch, randomize, metric):
+def curvePoint(XPath, yPath, meta, resultPath, featureCount, classifier, classifierArgs, getCV, numFolds, verbose, parallel, preDispatch, randomize, metric):
     if isinstance(meta, basestring):
         meta = result.getMeta(meta)
     
-    features = meta["features"][:featureCount]
-    featureSet = [x["id"] for x in features]
+    count = 0
+    featureSet = []
+    for featureName in meta["features"]:
+        featureSet.append(meta["features"][featureName])
+        count += 1
+        if count > featureCount:
+            break
+    print "Testing", len(featureSet), "features", featureSet
     
-    cls = meta["results"]["best"]
-    paramSets = [x["params"] for x in meta["results"]["all"]]
-    params = {}
-    for paramSet in paramSets:
-        for key in paramSet:
-            if not key in params:
-                params[key] = []
-            params[key].append(paramSet[key])
-    classifierNameMap = {"LinearSVC":"svm.LinearSVC","ExtraTreesClassifier":"ensemble.ExtraTreesClassifier","RLScore":"RLScore"}
-    classifierName = classifierNameMap[cls["classifier"]]
-    classifier, params = learn.getClassifier(classifierName, params)
+    classifierNameMap = {
+        "LinearSVC":"svm.LinearSVC",
+        "svm.LinearSVC":"svm.LinearSVC",
+        "ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
+        "ensemble.ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
+        "RLScore":"RLScore"
+    }
+    classifierName = classifierNameMap[classifier]
+    classifier, classifierArgs = learn.getClassifier(classifierName, eval(classifierArgs))
     
     meta, results, extras, hiddenResults, hiddenDetails = learn.test(
         XPath, yPath, meta, resultPath, 
-        classifier=classifier, classifierArgs=params, getCV=eval(getCV), 
+        classifier=classifier, classifierArgs=classifierArgs, getCV=eval(getCV), 
         numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
         randomize=randomize, analyzeResults=False, 
         metric=metric, useFeatures=featureSet)
@@ -44,13 +48,20 @@ if __name__ == "__main__":
     parser.add_argument('-m','--meta', help='Metadata input file name', default=None)
     parser.add_argument('-o','--output', help='Result path', default=None)
     parser.add_argument('--cutoff', help='Number of features to test', type=int, default=30)
+    parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
+    parser.add_argument('-a','--classifierArgs', help='', default=None)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
+    parser.add_argument('--metric', help='', default="roc_auc")
+    parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
+    parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
     parser.add_argument('--randomize', help='', default=False, action="store_true")
     parser.add_argument('--clearCache', default=False, action="store_true")
     options = parser.parse_args()
     
-    curvePoint(options.X, options.y, options.meta, options.output, options.cutoff,
-            verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, 
+    curvePoint(options.features, options.classes, options.meta, options.output, options.cutoff,
+            classifier=options.classifier, classifierArgs=options.classifierArgs,
+            verbose=options.verbose, parallel=options.parallel, metric=options.metric,
+            getCV=options.iteratorCV,numFolds=options.numFolds,preDispatch=options.preDispatch, 
             randomize=options.randomize)

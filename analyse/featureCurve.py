@@ -10,7 +10,7 @@ import inspect
 from collections import OrderedDict
 
 def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3, parallel=1, 
-               preDispatch='2*n_jobs', randomize=False, slurm=False, limit=1,
+               preDispatch='2*n_jobs', randomize=False, slurm=False, limit=1, debug=False,
                dummy=False, rerun=False, hideFinished=False):
     _, _, _, argDict = inspect.getargvalues(inspect.currentframe())
     output = OrderedDict()
@@ -44,29 +44,33 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
         json.dump(output, f, indent=4)
         f.close()   
     return output
+
+def makeDir(dirname, clear=False):
+    if clear and os.path.exists(dirname):
+        shutil.rmtree(dirname)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    return dirname
     
 def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1, 
-            preDispatch='2*n_jobs', randomize=False, limit=1,
+            preDispatch='2*n_jobs', randomize=False, limit=1, debug=False,
             dummy=False, rerun=False, hideFinished=False, slurm=False):
     if isinstance(meta, basestring):
         meta = result.getMeta(meta)
     
-    connection = batch.getConnection(slurm)
+    connection = batch.getConnection(slurm, debug)
     
-    if not os.path.exists(resultBaseDir):
-        os.makedirs(resultBaseDir)
-    cacheDir = os.path.join(resultBaseDir, "cache")
-    if not os.path.exists(cacheDir):
-        os.makedirs(cacheDir)
-    resultDir = os.path.join(resultBaseDir, "results")
-    if os.path.exists(resultDir): # remove existing results
-        shutil.rmtree(resultDir)
-    os.makedirs(resultDir)
+    makeDir(resultBaseDir)
+    cacheDir = makeDir(os.path.join(resultBaseDir, "cache"))
+    resultDir = makeDir(os.path.join(resultBaseDir, "results"), rerun)
+    jobDir = makeDir(os.path.join(resultBaseDir, "jobs"), rerun)
+
     cachedMetaPath = os.path.join(cacheDir, "base.json")
     
     baseXPath, baseYPath, baseMetaPath = cache.getExperiment(
          experiment=meta["experiment"]["name"], experimentOptions=meta["experiment"]["options"], 
-         database=database, writer="writeNumpyText", useCached=True, metaFilePath=cachedMetaPath)
+         database=database, writer="writeNumpyText", useCached=True, metaFilePath=cachedMetaPath,
+         cacheDir=cacheDir)
 
     features = meta["features"]
     count = 0
@@ -79,10 +83,15 @@ def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1,
             if not key in classifierArgs:
                 classifierArgs[key] = []
             classifierArgs[key].append(paramSet[key])
-    classifierNameMap = {"LinearSVC":"svm.LinearSVC","ExtraTreesClassifier":"ensemble.ExtraTreesClassifier","RLScore":"RLScore"}
+    classifierNameMap = {
+        "LinearSVC":"svm.LinearSVC",
+        "svm.LinearSVC":"svm.LinearSVC",
+        "ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
+        "ensemble.ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
+        "RLScore":"RLScore"
+    }
     classifierName = classifierNameMap[cls["classifier"]]
     #classifier, classifierArgs = learn.getClassifier(classifierName, params)
-    results = []
     submitCount = 0
     sleepTime = 15
     for featureName in features:
@@ -102,21 +111,21 @@ def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1,
             command = "python curvePoint.py"
             command +=  " -X " + baseXPath
             command +=  " -y " + baseYPath
-            command +=  " -y " + baseMetaPath
-            command +=  " -r " + pointResultPath
-            command +=  " -f " + str(count)
+            command +=  " -m " + baseMetaPath
+            command +=  " -o " + pointResultPath
+            command +=  " --cutoff " + str(count)
             command +=  " --classifier " + classifierName
-            command +=  " --classifierArgs " + str(classifierArgs)
-            command +=  " --getCV " + cls["cv"]
+            command +=  " --classifierArgs \"" + str(classifierArgs) + "\"" 
+            command +=  " --iteratorCV " + cls["cv"]
             command +=  " --numFolds " + str(cls["folds"])
             command +=  " --verbose " + str(verbose)
             command +=  " --parallel " + str(parallel)
-            command +=  " --preDispatch " + str(preDispatch)
-            command +=  " --randomize " + str(randomize)
+            command +=  " --preDispatch \"" + str(preDispatch) + "\""
+            if randomize: 
+                command +=  " --randomize "
             command +=  " --metric " + cls["metric"]
             
-            jobDir = os.path.join(resultDir, "jobs")
-            jobName = "_".join(meta["experiment"]["name"], meta["template"]["project"], classifierName)
+            jobName = "_".join([meta["experiment"]["name"], meta["template"]["project"], classifierName, "feature-" + str(feature["rank"])])
             if batch.submitJob(command, connection, jobDir, jobName, dummy, rerun, hideFinished):
                 submitCount += 1
         count += 1
@@ -181,7 +190,7 @@ if __name__ == "__main__":
     parser.add_argument('--slurm', help='', default=False, action="store_true")
     parser.add_argument("--debug", default=False, action="store_true", dest="debug", help="Print jobs on screen")
     parser.add_argument("--dummy", default=False, action="store_true", dest="dummy", help="Don't submit jobs")
-    parser.add_argument("--rerun", default=None, dest="rerun", help="Rerun jobs which have one of these states (comma-separated list)")
+    parser.add_argument("--rerun", default=False, action="store_true", dest="rerun", help="Rerun all jobs")
     parser.add_argument("-l", "--limit", default=None, type=int, dest="limit", help="Maximum number of jobs in queue/running")
     parser.add_argument("--hideFinished", default=False, action="store_true", dest="hideFinished", help="")
     parser.add_argument("--runDir", default=None, dest="runDir", help="")
@@ -197,8 +206,8 @@ if __name__ == "__main__":
     if options.input != None:
         processDir(options.database, options.input, options.inputFilter, options.output, options.cutoff,
             verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, randomize=options.randomize,
-            slurm=options.slurm, limit=options.limit, dummy=options.dummy, rerun=options.rerun, hideFinished=options.hideFinished)
+            slurm=options.slurm, limit=options.limit, dummy=options.dummy, debug=options.debug, rerun=options.rerun, hideFinished=options.hideFinished)
     else:
         process(options.database, options.meta, options.output, options.cutoff,
             verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, randomize=options.randomize,
-            slurm=options.slurm, limit=options.limit, dummy=options.dummy, rerun=options.rerun, hideFinished=options.hideFinished)
+            slurm=options.slurm, limit=options.limit, dummy=options.dummy, debug=options.debug, rerun=options.rerun, hideFinished=options.hideFinished)

@@ -138,11 +138,11 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         if submitJob(script, connection, jobDir, jobName, dummy, rerun, hideFinished):
             submitCount += 1
 
-def getConnection(slurm=False):
+def getConnection(slurm=False, debug=False):
     if slurm:
-        return SLURMConnection()
+        return SLURMConnection(debug=debug)
     else:
-        return UnixConnection()
+        return UnixConnection(debug=debug)
 
 if __name__ == "__main__":
     import argparse
