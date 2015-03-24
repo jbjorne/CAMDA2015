@@ -31,7 +31,8 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
                 #points = 
                 process(database, project, resultDir, cutoff, verbose=verbose, parallel=parallel, 
                                  preDispatch=preDispatch, randomize=randomize,
-                                 limit=limit, rerun=rerun)
+                                 limit=limit, debug=debug, dummy=dummy, rerun=rerun, hideFinished=hideFinished,
+                                 slurm=slurm)
                 #results[projectName][experiment][classifier] = points
     
 #     if resultDir != None:

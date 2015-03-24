@@ -80,8 +80,8 @@ def writeNumpyText(fX, fY, example, cls, features):
         fX.write(line[:-1] + "\n") # remove trailing space before writing the line
 
 def padNumpyFeatureFile(filename, numFeatures):
-    temp = tempfile.mktemp()
     filename = os.path.abspath(os.path.expanduser(filename))
+    temp = filename + "-tempfile"
     os.rename(filename, temp)
     fI = open(temp, "rt")
     fO = open(filename, "wt")
