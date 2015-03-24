@@ -20,7 +20,6 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
     projects = result.getProjects(inputDir, inputFilter)
     experiment = inputFilter["experiments"]
     classifier = inputFilter["classifiers"]
-    connection = batch.getConnection(slurm)
     for projectName in sorted(projects.keys()):
         print "---------", "Processing project", projectName, "---------"
         # initialize results structure
@@ -36,7 +35,7 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
         if resultDir != None:
             resultSubDir = os.path.join(resultDir, "_".join([projectName, experiment, classifier]))
         points = process(database, project, resultSubDir, cutoff, verbose=verbose, parallel=parallel, 
-                         preDispatch=preDispatch, randomize=randomize, connection=connection,
+                         preDispatch=preDispatch, randomize=randomize,
                          limit=limit)
         results[projectName][experiment][classifier] = points
     
@@ -46,21 +45,28 @@ def processDir(database, inputDir, inputFilter, resultDir, cutoff=30, verbose=3,
         f.close()   
     return output
     
-def process(database, meta, resultDir, cutoff=50, verbose=3, parallel=1, 
-            preDispatch='2*n_jobs', randomize=False, connection=None, limit=1,
-            dummy=False, rerun=False, hideFinished=False):
+def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1, 
+            preDispatch='2*n_jobs', randomize=False, limit=1,
+            dummy=False, rerun=False, hideFinished=False, slurm=False):
     if isinstance(meta, basestring):
         meta = result.getMeta(meta)
     
-    baseResultPath = None
-    if resultDir != None:
-        if os.path.exists(resultDir):
-            shutil.rmtree(resultDir)
-        os.makedirs(resultDir)
-        baseResultPath = os.path.join(resultDir, "base.json")
+    connection = batch.getConnection(slurm)
+    
+    if not os.path.exists(resultBaseDir):
+        os.makedirs(resultBaseDir)
+    cacheDir = os.path.join(resultBaseDir, "cache")
+    if not os.path.exists(cacheDir):
+        os.makedirs(cacheDir)
+    resultDir = os.path.join(resultBaseDir, "results")
+    if os.path.exists(resultDir): # remove existing results
+        shutil.rmtree(resultDir)
+    os.makedirs(resultDir)
+    cachedMetaPath = os.path.join(cacheDir, "base.json")
+    
     baseXPath, baseYPath, baseMetaPath = cache.getExperiment(
          experiment=meta["experiment"]["name"], experimentOptions=meta["experiment"]["options"], 
-         database=database, writer="writeNumpyText", useCached=True, metaFilePath=baseResultPath)
+         database=database, writer="writeNumpyText", useCached=True, metaFilePath=cachedMetaPath)
 
     features = meta["features"]
     count = 0
@@ -94,20 +100,20 @@ def process(database, meta, resultDir, cutoff=50, verbose=3, parallel=1,
 #                        preDispatch=preDispatch, randomize=randomize, metric=cls["metric"])[3]
             #results.append(hiddenResults)
             command = "python curvePoint.py"
-            command +=  + " -X " + baseXPath
-            command +=  + " -y " + baseYPath
-            command +=  + " -y " + baseMetaPath
-            command +=  + " -r " + pointResultPath
-            command +=  + " -f " + str(count)
-            command +=  + " --classifier " + classifierName
-            command +=  + " --classifierArgs " + str(classifierArgs)
-            command +=  + " --getCV " + cls["cv"]
-            command +=  + " --numFolds " + str(cls["folds"])
-            command +=  + " --verbose " + str(verbose)
-            command +=  + " --parallel " + str(parallel)
-            command +=  + " --preDispatch " + str(preDispatch)
-            command +=  + " --randomize " + str(randomize)
-            command +=  + " --metric " + cls["metric"]
+            command +=  " -X " + baseXPath
+            command +=  " -y " + baseYPath
+            command +=  " -y " + baseMetaPath
+            command +=  " -r " + pointResultPath
+            command +=  " -f " + str(count)
+            command +=  " --classifier " + classifierName
+            command +=  " --classifierArgs " + str(classifierArgs)
+            command +=  " --getCV " + cls["cv"]
+            command +=  " --numFolds " + str(cls["folds"])
+            command +=  " --verbose " + str(verbose)
+            command +=  " --parallel " + str(parallel)
+            command +=  " --preDispatch " + str(preDispatch)
+            command +=  " --randomize " + str(randomize)
+            command +=  " --metric " + cls["metric"]
             
             jobDir = os.path.join(resultDir, "jobs")
             jobName = "_".join(meta["experiment"]["name"], meta["template"]["project"], classifierName)
@@ -161,7 +167,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Learning with examples')
     parser.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
-    parser.add_argument('-r', '--result', help='Output directory', default=None)
+    parser.add_argument('-o', '--output', help='Output directory', default=None)
     parser.add_argument('-i','--input', help='Input directory', default=None)
     parser.add_argument('-f','--inputFilter', help='Input directory filter', default=None)
     parser.add_argument('-m','--meta', help='Metadata input file name', default=None)
@@ -189,10 +195,10 @@ if __name__ == "__main__":
     options.inputFilter["classifiers"] = "ExtraTreesClassifier"
     
     if options.input != None:
-        processDir(options.database, options.input, options.inputFilter, options.result, options.cutoff,
+        processDir(options.database, options.input, options.inputFilter, options.output, options.cutoff,
             verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, randomize=options.randomize,
             slurm=options.slurm, limit=options.limit, dummy=options.dummy, rerun=options.rerun, hideFinished=options.hideFinished)
     else:
-        process(options.database, options.meta, options.result, options.cutoff,
+        process(options.database, options.meta, options.output, options.cutoff,
             verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, randomize=options.randomize,
             slurm=options.slurm, limit=options.limit, dummy=options.dummy, rerun=options.rerun, hideFinished=options.hideFinished)

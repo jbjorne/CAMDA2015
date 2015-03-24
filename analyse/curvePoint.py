@@ -42,7 +42,7 @@ if __name__ == "__main__":
     parser.add_argument('-X','--features', help='Metadata input file name', default=None)
     parser.add_argument('-y','--classes', help='Metadata input file name', default=None)
     parser.add_argument('-m','--meta', help='Metadata input file name', default=None)
-    parser.add_argument('-r','--result', help='Result path', default=None)
+    parser.add_argument('-o','--output', help='Result path', default=None)
     parser.add_argument('--cutoff', help='Number of features to test', type=int, default=30)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
@@ -51,6 +51,6 @@ if __name__ == "__main__":
     parser.add_argument('--clearCache', default=False, action="store_true")
     options = parser.parse_args()
     
-    curvePoint(options.X, options.y, options.meta, options.result, options.cutoff,
+    curvePoint(options.X, options.y, options.meta, options.output, options.cutoff,
             verbose=options.verbose, parallel=options.parallel, preDispatch=options.preDispatch, 
             randomize=options.randomize)

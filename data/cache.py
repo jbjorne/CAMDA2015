@@ -12,7 +12,7 @@ from data.result import getMeta
 import settings
 
 def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH, writer='writeNumpyText', useCached=True,
-                  featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014")):
+                  featureFilePath=None, labelFilePath=None, metaFilePath=None, cacheDir=os.path.join(tempfile.gettempdir(), "CAMDA2014"), verbose=False):
     """
     Get a cached experiment, or re-calculate if not cached.
     
@@ -44,7 +44,9 @@ def getExperiment(experiment, experimentOptions=None, database=settings.DB_PATH,
             metaFilePath = os.path.join(cacheDir, tId + "-meta.json")
         if os.path.exists(metaFilePath):
             print "Comparing to cached experiment", metaFilePath
-            cached = getCached(database, experiment, experimentOptions, metaFilePath)
+            cached = getCached(database, experiment, experimentOptions, metaFilePath, verbose)
+        else:
+            print "Metafile path does not exist:", metaFilePath
     
     if cached != None:
         print "Using cached examples"
@@ -79,12 +81,12 @@ def getCached(dbPath, experimentName, experimentOptions, meta, verbose=False):
     # Compare settings
     metaExp = meta["experiment"]
     if verbose:
-        print dbPath
-        print metaExp["dbFile"]
-        print dbModified
-        print metaExp["dbModified"]
-        print json.dumps(template)
-        print json.dumps(meta["template"])
+        print "dbPath", dbPath
+        print "dbFile", metaExp["dbFile"]
+        print "dbModified", dbModified
+        print "metaExp['dbModified']", metaExp["dbModified"]
+        print "template", json.dumps(template)
+        print "meta['template']", json.dumps(meta["template"])
     if metaExp["dbFile"] == dbPath and metaExp["dbModified"] == dbModified and template == meta["template"]:
         return meta # is the same experiment
     else:
