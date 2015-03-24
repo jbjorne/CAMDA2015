@@ -52,11 +52,10 @@ def makeDir(dirname, clear=False):
         os.makedirs(dirname)
     return dirname
     
-def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1, 
+def process(database, inputMetaPath, resultBaseDir, cutoff=50, verbose=3, parallel=1, 
             preDispatch='2*n_jobs', randomize=False, limit=1, debug=False,
             dummy=False, rerun=False, hideFinished=False, slurm=False):
-    if isinstance(meta, basestring):
-        meta = result.getMeta(meta)
+    meta = result.getMeta(inputMetaPath)
     
     connection = batch.getConnection(slurm, debug)
     
@@ -65,12 +64,11 @@ def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1,
     resultDir = makeDir(os.path.join(resultBaseDir, "results"), rerun)
     jobDir = makeDir(os.path.join(resultBaseDir, "jobs"), rerun)
 
-    cachedMetaPath = os.path.join(cacheDir, "base.json")
+    #cachedMetaPath = os.path.join(cacheDir, "base.json")
     
     baseXPath, baseYPath, baseMetaPath = cache.getExperiment(
          experiment=meta["experiment"]["name"], experimentOptions=meta["experiment"]["options"], 
-         database=database, writer="writeNumpyText", useCached=True, metaFilePath=cachedMetaPath,
-         cacheDir=cacheDir)
+         database=database, writer="writeNumpyText", useCached=True, cacheDir=cacheDir)
 
     features = meta["features"]
     count = 0
@@ -111,7 +109,7 @@ def process(database, meta, resultBaseDir, cutoff=50, verbose=3, parallel=1,
             command = "python curvePoint.py"
             command +=  " -X " + baseXPath
             command +=  " -y " + baseYPath
-            command +=  " -m " + baseMetaPath
+            command +=  " -m " + inputMetaPath
             command +=  " -o " + pointResultPath
             command +=  " --cutoff " + str(count)
             command +=  " --classifier " + classifierName

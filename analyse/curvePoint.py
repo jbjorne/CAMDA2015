@@ -15,8 +15,8 @@ def curvePoint(XPath, yPath, meta, resultPath, featureCount, classifier, classif
     
     count = 0
     featureSet = []
-    for featureName in meta["features"]:
-        featureSet.append(meta["features"][featureName])
+    for featureName in meta["features"]: # features must be already analysed
+        featureSet.append(meta["features"][featureName]["id"])
         count += 1
         if count > featureCount:
             break
@@ -37,7 +37,7 @@ def curvePoint(XPath, yPath, meta, resultPath, featureCount, classifier, classif
         classifier=classifier, classifierArgs=classifierArgs, getCV=eval(getCV), 
         numFolds=numFolds, verbose=verbose, parallel=parallel, preDispatch=preDispatch, 
         randomize=randomize, analyzeResults=False, 
-        metric=metric, useFeatures=featureSet)
+        metric=metric, useFeatures=featureSet, reclassify=True)
     return [meta, results, extras, hiddenResults, hiddenDetails]
 
 if __name__ == "__main__":

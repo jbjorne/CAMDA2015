@@ -41,7 +41,7 @@ def getStratifiedKFoldCV(y, meta, numFolds=10):
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
          preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
-         databaseCGI=None, metric="roc_auc", useFeatures=None):
+         databaseCGI=None, metric="roc_auc", useFeatures=None, reclassify=False):
     X, y = readAuto(XPath, yPath, useFeatures=useFeatures)
     meta = {}
     if metaPath != None:
@@ -53,6 +53,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
             y = [random.choice(classes) for x in range(len(y))]
             print "Randomized class distribution = ", getClassDistribution(y)
     X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
+    print "Sizes", [len(X_train), len(y_train)], [len(X_hidden), len(y_hidden)]
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
@@ -107,10 +108,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
             print "ValueError in classification_report:", e
     print "--------------------------------------------------------------------------------"
     if resultPath != None:
-        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI)
+        saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI, reclassify=reclassify)
     return meta, results, extras, hiddenResults, hiddenDetails
 
-def saveDetails(meta, predictions, importances, fold, featureByIndex=None):
+def saveDetails(meta, predictions, importances, fold, featureByIndex=None, reclassify=False):
     if featureByIndex == None:
         featureByIndex = result.getFeaturesByIndex(meta)
     if predictions != None:
@@ -119,6 +120,8 @@ def saveDetails(meta, predictions, importances, fold, featureByIndex=None):
                 example = result.getExampleFromSet(meta, index, "hidden")
             else:
                 example = result.getExampleFromSet(meta, index, "train")
+            if reclassify and ("classification" in example):
+                del example["classification"]
             if "classification" in example:
                 raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
             result.setValue(example, "prediction", predictions[index], "classification")
@@ -139,7 +142,7 @@ def saveDetails(meta, predictions, importances, fold, featureByIndex=None):
                 #else:
                 #    result.setValue(feature, "sort", 0)
                 
-def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenResults=None, hiddenDetails=None, databaseCGI=None):
+def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenResults=None, hiddenDetails=None, databaseCGI=None, reclassify=False):
     if extras == None:
         print "No detailed information for cross-validation"
         return
@@ -153,10 +156,10 @@ def saveResults(meta, resultPath, results, extras, bestIndex, analyze, hiddenRes
     # Insert detailed results
     featureByIndex = result.getFeaturesByIndex(meta)
     if hiddenDetails != None:
-        saveDetails(meta, hiddenDetails.get("predictions", None), hiddenDetails.get("importances", None), "hidden", featureByIndex)
+        saveDetails(meta, hiddenDetails.get("predictions", None), hiddenDetails.get("importances", None), "hidden", featureByIndex, reclassify=reclassify)
     fold = 0
     for extra in extras:
-        saveDetails(meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
+        saveDetails(meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex, reclassify=reclassify)
         fold += 1
     # Analyze results
     if analyze:
