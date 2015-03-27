@@ -12,15 +12,16 @@ class RLScore(object):
 
     def fit(self, X, y):
         keyw = {"train_features":X, "train_labels":y}
-        if self.fcount == None:
+        if self.subsetsize == None:
             learner = rls.RLS(**keyw)
+            learner.solve(self.alpha)
         else:
             keyw["subsetsize"] = self.subsetsize
-            learner = greedy_rls.GreedyRLS(**keyw)
-        learner.solve(self.alpha)
+            learner = greedy_rls.GreedyRLS(regparam=1.0, **keyw)
+            learner.solve_cython(self.alpha)
         self.model = learner.getModel()
         if self.subsetsize != None:
-            self.selected = learner.selected
+            self.feature_importances_ = learner.selected
     
     def decision_function(self, X):
         p = self.model.predict(X)
@@ -35,7 +36,7 @@ class RLScore(object):
 #         return p
     
     def get_params(self, deep=True):
-        return {"alpha": self.alpha}
+        return {"alpha":self.alpha, "subsetsize":self.subsetsize}
 
     def set_params(self, **parameters):
         for parameter, value in parameters.items():
