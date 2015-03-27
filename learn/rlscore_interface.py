@@ -21,7 +21,22 @@ class RLScore(object):
             learner.solve_cython(self.alpha)
         self.model = learner.getModel()
         if self.subsetsize != None:
-            self.feature_importances_ = learner.selected
+            self.numFeatures = X.shape[1]
+            self.feature_importances_ = self._getImportances(learner.selected)
+    
+    def _getImportances(self, selected):
+        # Map selected features to their importances
+        selectedImportances = {}
+        for i in range(len(selected)): # 'selected' is assumed to be an ordered list of feature indices
+            selectedImportances[selected[i]] = 1.0 / (i + 1) # use 1 / rank to get descending order
+        # Make a list of importances for the whole feature space
+        importances = []
+        for i in range(self.numFeatures):
+            if i in selectedImportances:
+                importances.append(selectedImportances[i]) # This was a selected feature
+            else:
+                importances.append(0) # This was a non-selected feature
+        return importances
     
     def decision_function(self, X):
         p = self.model.predict(X)
