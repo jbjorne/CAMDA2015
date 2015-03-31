@@ -25,8 +25,14 @@ def getProjects(dirname, filter=None, numTopFeatures=0, returnPaths=False):
             filePath = os.path.join(dirpath, filename)
             found = True
             if filter.get("filename") != None:
-                for substring in filter["filename"]:
-                    if substring not in filename:
+                for substrings in filter["filename"]:
+                    if isinstance(substrings, basestring):
+                        substrings = [substrings]
+                    match = False
+                    for substring in substrings: 
+                        if substring in filename:
+                            match = True
+                    if not match:
                         found = False
                         break
             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
