@@ -16,7 +16,7 @@ class RLScore(object):
             learner = rls.RLS(**keyw)
             learner.solve(self.alpha)
         else:
-            keyw["subsetsize"] = self.subsetsize
+            keyw["subsetsize"] = min(self.subsetsize, X.shape[1])
             learner = greedy_rls.GreedyRLS(regparam=1.0, **keyw)
             learner.solve_cython(self.alpha)
         self.model = learner.getModel()
