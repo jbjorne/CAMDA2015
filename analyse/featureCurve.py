@@ -196,12 +196,12 @@ if __name__ == "__main__":
     
     if options.inputFilter != None:
         if options.inputFilter == "default":
-            options.inputFilter = {"projects":["KIRC-US", "LUAD-US", "HNSC-US"], "experiments":["REMISSION"], "filename":["REMISSION", "ExtraTreesClassifier"]}
+            options.inputFilter = {"projects":["KIRC-US", "LUAD-US", "HNSC-US"], "experiments":["REMISSION"], "filename":["REMISSION", ["ExtraTreesClassifier", "RLScore"]]}
         else:
             options.inputFilter = eval(options.inputFilter)
     if options.inputFilter == None:
         options.inputFilter = {}
-    options.inputFilter["classifiers"] = "ExtraTreesClassifier"
+    options.inputFilter["classifiers"] = ["ExtraTreesClassifier", "RLScore"]
     
     if options.input != None:
         processDir(options.database, options.input, options.inputFilter, options.output, options.cutoff,
