@@ -11,7 +11,7 @@ CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
     'ensemble.ExtraTreesClassifier':'n_estimators=[10000]',
     'svm.LinearSVC':'C=logrange(-10, 10)',
-    'RLScore':'alpha=logrange(-10, 10),subsetsize=[50]',
+    'RLScore':'alpha=logrange(-10, 10),subsetsize=[200]',
     'linear_model.Ridge':'alpha=logrange(5, 10)'}
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
