@@ -17,6 +17,7 @@ import data.hidden as hidden
 import random
 import gene.analyze
 from rlscore_interface import RLScore
+from RFEWrapper import RFEWrapper
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -198,6 +199,8 @@ def importNamed(name):
 def getClassifier(classifierName, classifierArgs):
     if classifierName == "RLScore":
         classifier = RLScore
+    elif classifierName == "RFEWrapper":
+        classifier = RFEWrapper
     else:
         classifier = importNamed(classifierName)
     if isinstance(classifierArgs, basestring):
