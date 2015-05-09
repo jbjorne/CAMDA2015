@@ -20,7 +20,7 @@ class RFEWrapper(object):
         # Convert ranking to an ordered list of feature indices
         selected = [None] * len(ranking)
         for i in range(len(ranking)):
-            selected[ranking[i]] = i
+            selected[ranking[i] - 1] = i
         # Map selected features to their importances
         selectedImportances = {}
         for i in range(len(selected)): # 'selected' is assumed to be an ordered list of feature indices
