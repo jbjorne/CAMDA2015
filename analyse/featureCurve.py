@@ -82,7 +82,8 @@ def process(database, inputMetaPath, resultBaseDir, cutoff=50, verbose=3, parall
         "svm.LinearSVC":"svm.LinearSVC",
         "ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
         "ensemble.ExtraTreesClassifier":"ensemble.ExtraTreesClassifier",
-        "RLScore":"RLScore"
+        "RLScore":"RLScore",
+        "RFEWrapper":"svm.LinearSVC"
     }
     classifierName = classifierNameMap[cls["classifier"]]
     #classifier, classifierArgs = learn.getClassifier(classifierName, params)
@@ -196,12 +197,14 @@ if __name__ == "__main__":
     
     if options.inputFilter != None:
         if options.inputFilter == "default":
-            options.inputFilter = {"projects":["KIRC-US", "LUAD-US", "HNSC-US"], "experiments":["REMISSION"], "filename":["REMISSION", ["ExtraTreesClassifier", "RLScore"]]}
+            options.inputFilter = {"projects":["KIRC-US", "LUAD-US", "HNSC-US"], "experiments":["REMISSION"], "filename":["REMISSION", ["ExtraTreesClassifier", "RLScore", "RFEWrapper"]]}
         else:
             options.inputFilter = eval(options.inputFilter)
     if options.inputFilter == None:
         options.inputFilter = {}
-    options.inputFilter["classifiers"] = ["ExtraTreesClassifier", "RLScore"]
+    options.inputFilter["classifiers"] = ["ExtraTreesClassifier", "RLScore", "RFEWrapper"]
+    
+    print "Input filter:", options.inputFilter
     
     if options.input != None:
         processDir(options.database, options.input, options.inputFilter, options.output, options.cutoff,
