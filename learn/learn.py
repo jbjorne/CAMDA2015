@@ -67,6 +67,9 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
         print search.best_estimator_
+        if hasattr(search.best_estimator_, "doRFE"):
+            print "*** RFE ***"
+            search.best_estimator_.doRFE(X_train, y_train)
     #print "--------------------------------------------------------------------------------"
     print "---------------------- Grid scores on development set --------------------------"
     results = []

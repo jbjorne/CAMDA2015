@@ -10,7 +10,10 @@ class RFEWrapper(object):
         # fit SVC
         svc = SVC(kernel="linear", C=self.C)
         self.model = svc.fit(X, y)
+    
+    def doRFE(self, X, y):
         # do RFE
+        self.numFeatures = X.shape[1]
         svc = SVC(kernel="linear", C=self.C)
         rfe = RFE(estimator=svc, n_features_to_select=1, step=1)
         rfe.fit(X, y)
