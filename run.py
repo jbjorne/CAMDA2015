@@ -24,7 +24,7 @@ if __name__ == "__main__":
     ####
     parser.add_argument('-e','--experiments', help='', default="ALL")
     parser.add_argument('-p','--projects', help='', default="ALL")
-    parser.add_argument('-c','--classifiers', help='', default="svm.LinearSVC,ensemble.ExtraTreesClassifier,RLScore")
+    parser.add_argument('-c','--classifiers', help='', default="default")
     parser.add_argument('-f','--features', help='', default="ALL")
     parser.add_argument('-m','--metric', help='', default="roc_auc")
     options = parser.parse_args()
@@ -40,6 +40,11 @@ if __name__ == "__main__":
         os.makedirs(jobDir)
     connection.debug = options.debug
     runDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "learn")
+    
+    if options.classifiers == "default":
+        options.classifiers = "svm.LinearSVC,ensemble.ExtraTreesClassifier,RLScore"
+    elif options.classifiers == "features":
+        options.classifiers = "RFEWrapper,ensemble.ExtraTreesClassifier,RLScore"
     
     learn.batch.batch(runDir=runDir, jobDir=jobDir, resultPath=resultDir, 
           experiments=options.experiments, projects=options.projects, features=options.features,
