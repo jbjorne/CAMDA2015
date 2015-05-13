@@ -227,7 +227,7 @@ def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Import ICGC data')
-    parser.add_argument('-d','--directory', default=settings.DATA_PATH)
+    parser.add_argument('-d','--directory', default=None)
     parser.add_argument('-p','--project', help='ICGC project code(s) in a comma-separated list or ALL for all projects', default=None)
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     parser.add_argument('-b','--database', help='Database location', default=settings.DB_PATH)
