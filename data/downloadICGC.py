@@ -1,5 +1,5 @@
 import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.download import download
 import wget
 
 def parseReadme(url, filename, outDir):
@@ -30,5 +30,6 @@ def downloadProject(url, projectCode, filePatterns, downloadDir):
     for pattern in filePatterns:
         filePath = os.path.join(downloadDir, pattern.replace("[ICGC project code]", projectCode))
         if not os.path.exists(filePath):
-            wget.download("/".join([url, projectCode, pattern.replace("[ICGC project code]", projectCode)]), downloadDir)
+            #wget.download("/".join([url, projectCode, pattern.replace("[ICGC project code]", projectCode)]), downloadDir)
+            download("/".join([url, projectCode, pattern.replace("[ICGC project code]", projectCode)]), downloadDir, clear=False)
     

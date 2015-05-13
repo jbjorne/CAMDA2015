@@ -13,7 +13,7 @@ def preprocessCGIAliasValues(tableName, elem, valueLists):
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 
-DB_PATH = os.path.join(DATA_PATH, "ICGC/ICGC-18.sqlite")
+DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18.sqlite")
 ICGC_FTP = "data.dcc.icgc.org"
 ICGC_URL = "https://dcc.icgc.org/api/v1/download?fn=/release_18/Projects/"
 ICGC_VERSION = "version_15.1"

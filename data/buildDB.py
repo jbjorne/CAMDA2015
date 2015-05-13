@@ -193,7 +193,7 @@ def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None,
     if dbPath == None:
         dbPath = settings.DATA_PATH
     if downloadDir == None:
-        downloadDir = settings.DATA_PATH
+        downloadDir = os.path.join(settings.DATA_PATH, "download")
     
     print "Building ICGC database"
     # Define locations
