@@ -172,11 +172,11 @@ def initDB(dbName):
     #tableFromDefinition(dbName, "cosmic_gene_census", 
     #                    settings.TABLE_FORMAT["cosmic_gene_census"])
 
-def addProject(dbName, projectCode, downloadDir=None, tables = None):
+def addProject(dbName, projectCode, filePatterns, downloadDir=None, tables = None):
     print "Adding project", projectCode, "to database", dbName
     if downloadDir == None:
         downloadDir = os.path.dirname(dbName)
-    downloadICGC.downloadProject(projectCode, downloadDir) # Update the local files
+    downloadICGC.downloadProject(settings.ICGC_URL, projectCode, filePatterns, downloadDir) # Update the local files
     if tables != None:
         tables = set(tables.split(","))
     for table in sorted(settings.TABLE_FILES.keys()):
@@ -184,10 +184,10 @@ def addProject(dbName, projectCode, downloadDir=None, tables = None):
             continue
         if table in settings.TABLE_FORMAT:
             tableFormat = settings.TABLE_FORMAT[table]
-            tableFile = downloadICGC.getProjectPath(projectCode, downloadDir, table)
-            if not os.path.exists(tableFile):
+            tableFilePath = os.path.join(downloadDir, projectCode, settings.TABLE_FILES[table].replace("%c", projectCode))
+            if not os.path.exists(tableFilePath):
                 continue
-            tableFromDefinition(dbName, table, tableFormat, tableFile)
+            tableFromDefinition(dbName, table, tableFormat, tableFilePath)
 
 def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None, tables=None):
     if dbPath == None:
@@ -208,17 +208,20 @@ def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None,
         os.makedirs(os.path.dirname(dbPath))
     initDB(dbPath)
     
+    # Get projects
+    allProjects, filePatterns = downloadICGC.parseReadme(settings.ICGC_URL, "README.txt", downloadDir)
+    
     # Add projects
     if projects != None:
         if isinstance(projects, basestring):
             if projects == "ALL":
-                projects = enumerateValues(dbPath, "project_ftp_directory", "Project_Code")
+                projects = allProjects
             else:
                 projects = projects.split(",")
         count = 1
         for project in projects:
             print "Processing project", project, "(" + str(count) + "/" + str(len(projects)) + ")"
-            addProject(dbPath, project, downloadDir, tables)
+            addProject(dbPath, project, filePatterns, downloadDir, tables)
             count += 1
 
 if __name__ == "__main__":
