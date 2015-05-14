@@ -5,6 +5,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import settings
 import downloadICGC
+from utils import Stream
 #dataPath = os.path.expanduser("~/data/CAMDA2014-data/ICGC/Breast_Invasive_Carcinoma-TCGA-US/")
 #dataPath = settings.DATA_PATH
 #dbName = settings.DB_NAME
@@ -194,6 +195,9 @@ def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None,
         dbPath = settings.DATA_PATH
     if downloadDir == None:
         downloadDir = os.path.join(settings.DATA_PATH, "download")
+        
+    # Open log
+    Stream.openLog(os.path.join(dbPath, "log.txt"))
     
     print "Building ICGC database"
     # Define locations
