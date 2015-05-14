@@ -210,6 +210,7 @@ def buildICGCDatabase(dbPath=None, projects="ALL", clear=True, downloadDir=None,
     
     # Get projects
     allProjects, filePatterns = downloadICGC.parseReadme(settings.ICGC_URL, "README.txt", downloadDir)
+    filePatterns = [x for x in filePatterns if "meth" not in x] # Skip methylation data
     
     # Add projects
     if projects != None:
