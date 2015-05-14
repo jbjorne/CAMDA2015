@@ -72,6 +72,8 @@ TABLE_FILES = {
     "clinicalsample":"clinicalsample.%c.tsv.gz",
     "copy_number_somatic_mutation":"copy_number_somatic_mutation.%c.tsv.gz",
     "gene_expression":"gene_expression.%c.tsv.gz",
+    "exp_array":"exp_array.%c.tsv.gz",
+    "exp_seq":"exp_seq.%c.tsv.gz",
     "mirna_expression":"mirna_expression.%c.tsv.gz",
     "protein_expression":"protein_expression.%c.tsv.gz",
     "simple_somatic_mutation_open":"simple_somatic_mutation.open.%c.tsv.gz"
@@ -120,6 +122,16 @@ TABLE_FORMAT = {
             "analysis_id|gene_chromosome|gene_strand|gene_start|gene_end|normalized_read_count|raw_read_count":"int",
             "normalized_expression_level|fold_change|quality_score|probability":"REAL"},
         #"primary_key":["icgc_sample_id","gene_stable_id"], 
+        "foreign_keys":{"icgc_specimen_id":"clinical"},
+        "indices":["icgc_specimen_id"]},
+    "exp_array":{
+        "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_expression_value", "fold_change"],
+        "types":{"normalized_expression_level|fold_change":"REAL"},
+        "foreign_keys":{"icgc_specimen_id":"clinical"},
+        "indices":["icgc_specimen_id"]},
+    "exp_seq":{
+        "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_read_count", "fold_change"],
+        "types":{"normalized_read_count|fold_change":"REAL"},
         "foreign_keys":{"icgc_specimen_id":"clinical"},
         "indices":["icgc_specimen_id"]},
     "mirna_expression":{
