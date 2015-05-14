@@ -52,6 +52,10 @@ def downloadWget(url, filename):
     import subprocess
     subprocess.call(["wget", "--output-document=" + filename, url])
 
+class ExceptionOn404(urllib.FancyURLopener):
+    def http_error_404(self, url, fp, errcode, errmsg, headers, data=None):
+        raise Exception()
+
 def download(url, destPath=None, addName=True, clear=False):
     global pbar
     
@@ -74,19 +78,22 @@ def download(url, destPath=None, addName=True, clear=False):
         pbar = ProgressBar(widgets=widgets, maxval=100)
         pbar.start()
         try:
-            urllib.FancyURLopener().retrieve(redirectedUrl, destFileName, reporthook=downloadProgress)
-        except IOError, e:
-            print >> sys.stderr, e.errno
-            print >> sys.stderr, "Error downloading file", redirectedUrl
-            pbar.finish()
-            pbar = None
-            print >> sys.stderr, "Attempting download with wget"
-            downloadWget(origUrl, destFileName)
-            if os.path.exists(destFileName):
-                return destFileName
-            else:
-                print >> sys.stderr, "Error downloading file", origUrl, "with wget"
-                return None
+            try:
+                ExceptionOn404().retrieve(redirectedUrl, destFileName, reporthook=downloadProgress)
+            except IOError, e:
+                print >> sys.stderr, e.errno
+                print >> sys.stderr, "Error downloading file", redirectedUrl
+                pbar.finish()
+                pbar = None
+                print >> sys.stderr, "Attempting download with wget"
+                downloadWget(origUrl, destFileName)
+                if os.path.exists(destFileName):
+                    return destFileName
+                else:
+                    print >> sys.stderr, "Error downloading file", origUrl, "with wget"
+                    return None
+        except:
+            pass
         pbar.finish()
         pbar = None
     else:
