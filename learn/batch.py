@@ -9,7 +9,7 @@ from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':'n_estimators=[10000],random_state=1',
+    'ensemble.ExtraTreesClassifier':'n_estimators=[10000],random_state=[1]',
     'svm.LinearSVC':'C=logrange(-10, 10)',
     'RFEWrapper':'C=logrange(-10, 10)',
     'RLScore':'alpha=logrange(-10, 10),subsetsize=[200]',
@@ -17,13 +17,15 @@ CLASSIFIER_ARGS = {
 
 ANALYZE = ['ensemble.ExtraTreesClassifier']
 ALL_CAMDA_PROJECTS = ["KIRC-US", "LUAD-US", "HNSC-US"]
-ALL_PROJECTS = ["BLCA-US","BOCA-UK","BRCA-UK","BRCA-US","CESC-US","CLLE-ES",
-                "CMDI-UK","COAD-US","EOPC-DE","ESAD-UK","GBM-US","HNSC-US",
-                "KIRC-US","KIRP-US","LAML-US","LGG-US","LICA-FR","LIHC-US",
-                "LINC-JP","LIRI-JP","LUAD-US","LUSC-US","MALY-DE","NBL-US",
-                "ORCA-IN","OV-AU","OV-US","PAAD-US","PACA-AU","PACA-CA",
-                "PAEN-AU","PBCA-DE","PRAD-CA","PRAD-US","READ-US","RECA-CN",
-                "RECA-EU","SKCM-US","STAD-US","THCA-SA","THCA-US","UCEC-US"]
+ALL_PROJECTS = [
+    'ALL-US', 'BLCA-CN', 'BLCA-US', 'BOCA-FR', 'BOCA-UK', 'BRCA-UK', 'BRCA-US', 
+    'CESC-US', 'CLLE-ES', 'CMDI-UK', 'COAD-US', 'COCA-CN', 'EOPC-DE', 'ESAD-UK', 
+    'ESCA-CN', 'GACA-CN', 'GBM-US', 'HNSC-US', 'KIRC-US', 'KIRP-US', 'LAML-KR', 
+    'LAML-US', 'LGG-US', 'LIAD-FR', 'LICA-FR', 'LIHC-US', 'LIHM-FR', 'LINC-JP', 
+    'LIRI-JP', 'LUAD-US', 'LUSC-CN', 'LUSC-KR', 'LUSC-US', 'MALY-DE', 'NBL-US', 
+    'ORCA-IN', 'OV-AU', 'OV-US', 'PAAD-US', 'PACA-AU', 'PACA-CA', 'PACA-IT', 
+    'PAEN-AU', 'PBCA-DE', 'PRAD-CA', 'PRAD-UK', 'PRAD-US', 'READ-US', 'RECA-CN', 
+    'RECA-EU', 'SKCM-US', 'STAD-US', 'THCA-SA', 'THCA-US', 'UCEC-US']
 
 ALL_FEATURES = ["[EXP]","[PEXP]","[MIRNA]","[SSM]","[CNSM]","ALL_FEATURES"]
 

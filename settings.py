@@ -174,7 +174,8 @@ EXP_SEQ = "SELECT ('EXP_SEQ:'||gene_id),100000*normalized_read_count FROM exp_se
 PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-CNSM = "SELECT ('CNSM:'||gene_affected||':'||chromosome||':'||chromosome_start||':'||chromosome_end||':'||mutation_type),1 FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+#CNSM = "SELECT ('CNSM:'||gene_affected||':'||chromosome||':'||chromosome_start||':'||chromosome_end||':'||mutation_type),1 FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+CNSM = "SELECT ('CNSM:'||gene_affected),copy_number FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']} AND copy_number != ''"
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
 ALL_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
@@ -187,15 +188,21 @@ PEXP_FILTER = "SELECT * FROM protein_expression WHERE icgc_specimen_id={example[
 SSM_FILTER = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
 CNSM_FILTER = "SELECT * FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
 MIRNA_FILTER = "SELECT * FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
+
+
 #def require(table):
 #    return "SELECT * FROM " + table + " WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1"
+
+
+SSM_GENE_ONLY = "SELECT ('SSM:'||gene_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 
 # Experiments #################################################################
 
 REMISSION = {
     "project":"KIRC-US",
     "example":"""
-        SELECT icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
         FROM clinical
         WHERE project_code IN {'project'} AND 
         length(specimen_type) > 0 AND 
@@ -206,11 +213,33 @@ REMISSION = {
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
-    "features":[SSM],
-    "filter":SSM_FILTER,
+    "features":[EXP_SEQ],
+    "filter":EXP_SEQ_FILTER,
     "hidden":0.3,
     "meta":META
 }
+
+REGRESSION = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,donor_survival_time,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
+        FROM clinical
+        WHERE project_code IN {'project'} AND
+        donor_vital_status IS 'deceased' AND
+        donor_survival_time != '' AND
+        length(specimen_type) > 0 AND 
+        specimen_type LIKE '%umour%'
+    """,
+    "label":"{example['donor_survival_time']}",
+    "features":[EXP_SEQ],
+    "filter":EXP_SEQ_FILTER,
+    "hidden":0.3,
+    "meta":META
+}
+
+REGRESSION_ALL = dict(REGRESSION)
+del REGRESSION_ALL["project"]
+REGRESSION_ALL["example"] = REGRESSION_ALL["example"].replace("project_code IN {'project'} AND", "")
 
 REMISSION_ALL = dict(REMISSION)
 del REMISSION_ALL["project"]

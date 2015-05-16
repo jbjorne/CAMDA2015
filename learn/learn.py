@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.example import exampleOptions, readAuto
 from data.template import parseOptionString
 from data.cache import getExperiment
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.cross_validation import StratifiedKFold, KFold
 #from sklearn.grid_search import GridSearchCV
 from skext.gridSearch import ExtendedGridSearchCV
 #from skext.crossValidation import GroupedKFold
@@ -38,6 +38,12 @@ def getClassDistribution(y):
 
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)
+
+def getKFoldCV(y, meta, numFolds=10):
+    return KFold(y, n_folds=numFolds)
+
+def getNoneCV(y, meta, numFolds=10):
+    return None
 
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
@@ -243,6 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--analyze', help='Analyze feature selection results', default=False, action="store_true")
     parser.add_argument('--databaseCGI', help='Analysis database', default=None)
     parser.add_argument('--clearCache', default=False, action="store_true")
+    parser.add_argument('--buildOnly', default=False, action="store_true")
     options = parser.parse_args()
     
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
@@ -251,6 +258,8 @@ if __name__ == "__main__":
                                                                  database=options.database, writer=options.writer, 
                                                                  useCached=not options.noCache, featureFilePath=options.features, 
                                                                  labelFilePath=options.labels, metaFilePath=options.meta)
+    if options.buildOnly:
+        sys.exit()
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
          preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze, databaseCGI=options.databaseCGI, metric=options.metric)
