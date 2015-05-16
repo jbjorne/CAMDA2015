@@ -197,7 +197,7 @@ MIRNA_FILTER = "SELECT * FROM mirna_expression WHERE icgc_specimen_id={example['
 SSM_GENE_ONLY = "SELECT ('SSM:'||gene_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM_GENE_AA = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-SSM_TEMP = "SELECT ('SSM:'||transcript_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM_TEMP = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 
 # Experiments #################################################################
 
@@ -325,19 +325,25 @@ CONTROL_EXP_FILTER = """
 #        project_code='KIRC-US' AND
 CANCER_OR_CONTROL = {
     "project":"KIRC-US",
+#     "example":"""
+#         SELECT project_code,icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
+#         FROM clinical WHERE
+#         project_code IN {'project'} AND
+#         length(specimen_type) > 0 AND
+#         specimen_type LIKE '%primary%'
+#     """,
     "example":"""
         SELECT project_code,icgc_donor_id,icgc_specimen_id,donor_vital_status,disease_status_last_followup,specimen_type 
         FROM clinical WHERE
         project_code IN {'project'} AND
-        length(specimen_type) > 0 AND
-        specimen_type LIKE '%primary%'
+        length(specimen_type) > 0
     """,
-    "label":"{'control' not in example['specimen_type']}",
+    "label":"{'umour' in example['specimen_type']}",
     "classes":{'True':1, 'False':-1},
     #"label":"{example['specimen_type']}",
     #"classes":{},
-    "features":[EXP],
-    "filter":CONTROL_EXP_FILTER,
+    "features":[SSM_GENE_AA],
+    "filter":SSM_FILTER, #CONTROL_EXP_FILTER,
     "hidden":0.3,
     "meta":META
 }
@@ -347,7 +353,7 @@ del CANCER_OR_CONTROL_ALL["project"]
 CANCER_OR_CONTROL_ALL["example"] = CANCER_OR_CONTROL_ALL["example"].replace("project_code IN {'project'} AND", "")
 #CANCER_OR_CONTROL_ALL["sample"] = {"1":0.05, "-1":0.5}
 #CANCER_OR_CONTROL_ALL["sample"] = {"1":0.1}
-CANCER_OR_CONTROL_ALL["sample"] = {"1":0.075, "-1":0.75}
+#CANCER_OR_CONTROL_ALL["sample"] = {"1":0.075, "-1":0.75}
 
 SURVIVAL = {
     "project":"KIRC-US",
