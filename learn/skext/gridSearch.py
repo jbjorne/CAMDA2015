@@ -13,10 +13,11 @@ import numpy as np
 import time, numbers, warnings
 from sklearn.externals.joblib import logger
 from sklearn.cross_validation import _index_param_value, _safe_split, _score, FitFailedWarning
+from sklearn.utils import safe_mask
 
 def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
                    parameters, fit_params, return_train_score=False,
-                   return_parameters=False, error_score='raise'):
+                   return_parameters=False, error_score='raise', extraOut="auto"):
     if verbose > 1:
         if parameters is None:
             msg = "no parameters to be set"
@@ -77,6 +78,24 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
     ret.extend([test_score, _num_samples(X_test), scoring_time])
     if return_parameters:
         ret.append(parameters)
+    
+    # Add additional return values
+    extraRVs = {}
+    if extraOut != None:
+        if "estimator" in extraOut:
+            extraRVs["estimator"] = estimator
+        if extraOut == "auto" or "predictions" in extraOut:
+            predictions = estimator.predict(X)
+            predictionIndex = 0
+            predictionByIndex = {}
+            for exampleIndex in safe_mask(X, test):
+                predictionByIndex[exampleIndex] = predictions[predictionIndex]
+                predictionIndex += 1
+            extraRVs["predictions"] = predictionByIndex
+        if (extraOut == "auto" or "importances" in extraOut) and hasattr(estimator, "feature_importances_"):
+            extraRVs["importances"] = estimator.feature_importances_
+    ret.append(extraRVs)
+    
     return ret
 
 class ExtendedGridSearchCV(GridSearchCV):
