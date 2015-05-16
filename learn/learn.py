@@ -6,8 +6,7 @@ from data.template import parseOptionString
 from data.cache import getExperiment
 from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
-#from skext.gridSearch import ExtendedGridSearchCV
-from sklearn.grid_search import GridSearchCV
+from skext.gridSearch import ExtendedGridSearchCV
 #from skext.crossValidation import GroupedKFold
 from sklearn.metrics import classification_report
 from sklearn.metrics import average_precision_score, make_scorer
@@ -63,7 +62,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
     scorer = getScorer(metric)
-    search = GridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
@@ -86,7 +85,10 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
         if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
             bestIndex = index
             if hasattr(search, "extras_"):
+                print "EXTRAS"
                 extras = search.extras_[index]
+            else:
+                print "NO_EXTRAS"
         index += 1
     print "---------------------- Best scores on development set --------------------------"
     params, mean_score, scores = search.grid_scores_[bestIndex]

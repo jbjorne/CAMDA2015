@@ -109,7 +109,7 @@ class ExtendedGridSearchCV(GridSearchCV):
             refit, cv, verbose, pre_dispatch)
 
     def fit(self, X, y=None):
-        return self._fit(X, y, ParameterGrid(self.param_grid))
+        return self._extendedFit(X, y, ParameterGrid(self.param_grid))
     
     def _extendedFit(self, X, y, parameter_iterable):
         estimator = self.estimator
