@@ -100,8 +100,13 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
 
 class ExtendedGridSearchCV(GridSearchCV):
 
-    def __init__(self, *args, **kwargs):
-        super(GridSearchCV, self).__init__(*args, **kwargs)
+    def __init__(self, estimator, param_grid, scoring=None, loss_func=None,
+                 score_func=None, fit_params=None, n_jobs=1, iid=True,
+                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs'):
+        super(ExtendedGridSearchCV, self).__init__(
+            estimator, param_grid, scoring, loss_func, 
+            score_func, fit_params, n_jobs, iid,
+            refit, cv, verbose, pre_dispatch)
 
     def fit(self, X, y=None):
         return self._fit(X, y, ParameterGrid(self.param_grid))
@@ -149,13 +154,16 @@ class ExtendedGridSearchCV(GridSearchCV):
 
         scores = list()
         grid_scores = list()
+        grid_extras = list()
         for grid_start in range(0, n_fits, n_folds):
             n_test_samples = 0
             score = 0
             all_scores = []
-            for this_score, this_n_test_samples, _, parameters in \
+            all_extras = []
+            for this_score, this_n_test_samples, _, parameters, extra in \
                     out[grid_start:grid_start + n_folds]:
                 all_scores.append(this_score)
+                all_extras.append(extra)
                 if self.iid:
                     this_score *= this_n_test_samples
                     n_test_samples += this_n_test_samples
@@ -170,8 +178,10 @@ class ExtendedGridSearchCV(GridSearchCV):
                 parameters,
                 score,
                 np.array(all_scores)))
+            grid_extras.append(all_extras)
         # Store the computed scores
         self.grid_scores_ = grid_scores
+        self.extras_ = grid_extras
 
         # Find the best parameters by comparing on the mean validation score:
         # note that `sorted` is deterministic in the way it breaks ties
