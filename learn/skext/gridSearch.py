@@ -15,48 +15,48 @@ def fit_grid_point_extended(X, y, base_estimator, parameters, train, test, score
                    verbose, loss_func=None, extraOut="auto", **fit_params):
     """Run fit on one set of parameters.
 
-Parameters
-----------
-X : array-like, sparse matrix or list
-Input data.
-
-y : array-like or None
-Targets for input data.
-
-base_estimator : estimator object
-This estimator will be cloned and then fitted.
-
-parameters : dict
-Parameters to be set on base_estimator clone for this grid point.
-
-train : ndarray, dtype int or bool
-Boolean mask or indices for training set.
-
-test : ndarray, dtype int or bool
-Boolean mask or indices for test set.
-
-scorer : callable or None.
-If provided must be a scorer callable object / function with signature
-``scorer(estimator, X, y)``.
-
-verbose : int
-Verbosity level.
-
-**fit_params : kwargs
-Additional parameter passed to the fit function of the estimator.
-
-
-Returns
--------
-score : float
-Score of this parameter setting on given training / test split.
-
-parameters : dict
-The parameters that have been evaluated.
-
-n_samples_test : int
-Number of test samples in this split.
-"""
+    Parameters
+    ----------
+    X : array-like, sparse matrix or list
+    Input data.
+    
+    y : array-like or None
+    Targets for input data.
+    
+    base_estimator : estimator object
+    This estimator will be cloned and then fitted.
+    
+    parameters : dict
+    Parameters to be set on base_estimator clone for this grid point.
+    
+    train : ndarray, dtype int or bool
+    Boolean mask or indices for training set.
+    
+    test : ndarray, dtype int or bool
+    Boolean mask or indices for test set.
+    
+    scorer : callable or None.
+    If provided must be a scorer callable object / function with signature
+    ``scorer(estimator, X, y)``.
+    
+    verbose : int
+    Verbosity level.
+    
+    **fit_params : kwargs
+    Additional parameter passed to the fit function of the estimator.
+    
+    
+    Returns
+    -------
+    score : float
+    Score of this parameter setting on given training / test split.
+    
+    parameters : dict
+    The parameters that have been evaluated.
+    
+    n_samples_test : int
+    Number of test samples in this split.
+    """
     if verbose > 1:
         start_time = time.time()
         msg = '%s' % (', '.join('%s=%s' % (k, v)

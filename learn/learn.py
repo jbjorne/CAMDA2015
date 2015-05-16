@@ -6,8 +6,9 @@ from data.template import parseOptionString
 from data.cache import getExperiment
 from sklearn.cross_validation import StratifiedKFold
 #from sklearn.grid_search import GridSearchCV
-from skext.gridSearch import ExtendedGridSearchCV
-from skext.crossValidation import GroupedKFold
+#from skext.gridSearch import ExtendedGridSearchCV
+from sklearn.grid_search import GridSearchCV
+#from skext.crossValidation import GroupedKFold
 from sklearn.metrics import classification_report
 from sklearn.metrics import average_precision_score, make_scorer
 from collections import defaultdict
@@ -16,7 +17,7 @@ import data.result as result
 import data.hidden as hidden
 import random
 import gene.analyze
-from rlscore_interface import RLScore
+#from rlscore_interface import RLScore
 from RFEWrapper import RFEWrapper
 
 def getClassDistribution(y):
@@ -27,14 +28,14 @@ def getClassDistribution(y):
     #bincount = numpy.nonzero(numpy.bincount(y))[0]
     #return zip(bincount,y[bincount])
 
-def getDonorCV(y, meta, numFolds=10):
-    groups = []
-    examples = meta["meta"]
-    for i in range(len(examples)):
-        groups.append(examples[i]["icgc_donor_id"])
-    if not len(groups) == len(y):
-        raise Exception("Metadata example count differs from y: " + str((len(examples), len(y))))
-    return GroupedKFold(groups, n_folds=numFolds, shuffle=True)
+# def getDonorCV(y, meta, numFolds=10):
+#     groups = []
+#     examples = meta["meta"]
+#     for i in range(len(examples)):
+#         groups.append(examples[i]["icgc_donor_id"])
+#     if not len(groups) == len(y):
+#         raise Exception("Metadata example count differs from y: " + str((len(examples), len(y))))
+#     return GroupedKFold(groups, n_folds=numFolds, shuffle=True)
 
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)
@@ -62,7 +63,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
     scorer = getScorer(metric)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search = GridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
@@ -201,7 +202,8 @@ def importNamed(name):
     
 def getClassifier(classifierName, classifierArgs):
     if classifierName == "RLScore":
-        classifier = RLScore
+        #classifier = RLScore
+        raise NotImplementedError()
     elif classifierName == "RFEWrapper":
         classifier = RFEWrapper
     else:

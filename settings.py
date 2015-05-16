@@ -13,7 +13,7 @@ def preprocessCGIAliasValues(tableName, elem, valueLists):
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 
-DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18.sqlite")
+DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 ICGC_FTP = "data.dcc.icgc.org"
 ICGC_URL = "https://dcc.icgc.org/api/v1/download?fn=/release_18/Projects/"
 ICGC_VERSION = "version_15.1"
@@ -169,6 +169,8 @@ TABLE_FORMAT["cosmic_gene_census"] = {
 CAMDA_PROJECTS = "HNSC-US','LUAD-US','KIRC-US"
 META = "{dict(dict(example), label=str(label), features=len(features))}"
 EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
+EXP_ARRAY = "SELECT ('EXP_ARRAY:'||gene_id),100000*normalized_expression_value FROM exp_array WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_value != 0"
+EXP_SEQ = "SELECT ('EXP_SEQ:'||gene_id),100000*normalized_read_count FROM exp_seq WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_read_count != 0"
 PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
@@ -179,6 +181,8 @@ ALL_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 EXP_CUTOFF = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level) > 0.005"
 
 EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
+EXP_ARRAY_FILTER = "SELECT * FROM exp_array WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
+EXP_SEQ_FILTER = "SELECT * FROM exp_seq WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
 PEXP_FILTER = "SELECT * FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
 SSM_FILTER = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
 CNSM_FILTER = "SELECT * FROM copy_number_somatic_mutation WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require SSM
@@ -202,8 +206,8 @@ REMISSION = {
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
-    "features":[EXP],
-    "filter":EXP_FILTER,
+    "features":[SSM],
+    "filter":SSM_FILTER,
     "hidden":0.3,
     "meta":META
 }
@@ -211,7 +215,7 @@ REMISSION = {
 REMISSION_ALL = dict(REMISSION)
 del REMISSION_ALL["project"]
 REMISSION_ALL["example"] = REMISSION_ALL["example"].replace("project_code IN {'project'} AND", "")
-REMISSION_ALL["sample"] = {"1":0.1, "-1":0.1}
+#REMISSION_ALL["sample"] = {"1":0.1, "-1":0.1}
 
 TUMOUR_STAGE_AT_DIAGNOSIS = {
     "project":"NBL-US",
