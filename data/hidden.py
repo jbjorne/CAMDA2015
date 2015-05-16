@@ -5,6 +5,7 @@ import sys, os
 import result
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.pymersennetwister.mtwister import MTwister
+import numpy
 
 __hiddenRandom = MTwister()
 __hiddenRandom.set_seed(1)
@@ -70,7 +71,7 @@ def split(*arrays, **options):
             if example.get("set", None) == 'hidden':
                 hidden.add(index)
     
-    numColumns = len(arrays[0])
+    numColumns = arrays[0].shape[0] #len(arrays[0])
     #print numColumns
     train = set()
     for index in range(numColumns):
@@ -82,8 +83,14 @@ def split(*arrays, **options):
     
     splitted = []
     for a in arrays:
-        if len(a) != numColumns:
+        if a.shape[0] != numColumns: #len(a) != numColumns:
             raise Exception("Array sizes differ")
-        splitted.append(a[train])
-        splitted.append(a[hidden])
+        if len(train) > 0:
+            splitted.append(a[train])
+        else:
+            splitted.append(numpy.zeros(0))
+        if len(hidden) > 0:
+            splitted.append(a[hidden])
+        else:
+            splitted.append(numpy.zeros(0))
     return splitted

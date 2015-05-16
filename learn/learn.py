@@ -60,7 +60,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
             y = [random.choice(classes) for x in range(len(y))]
             print "Randomized class distribution = ", getClassDistribution(y)
     X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
-    print "Sizes", [len(X_train), len(y_train)], [len(X_hidden), len(y_hidden)]
+    print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
 
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs

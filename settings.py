@@ -196,8 +196,35 @@ MIRNA_FILTER = "SELECT * FROM mirna_expression WHERE icgc_specimen_id={example['
 
 SSM_GENE_ONLY = "SELECT ('SSM:'||gene_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM_GENE_AA = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM_TEMP = "SELECT ('SSM:'||transcript_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 
 # Experiments #################################################################
+
+REMISSION_MUT = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
+        FROM clinical
+        WHERE project_code IN {'project'} AND 
+        length(specimen_type) > 0 AND 
+        length(disease_status_last_followup) > 0 AND
+        ((disease_status_last_followup LIKE '%remission%') OR
+        (donor_vital_status IS 'deceased')) AND
+        specimen_type NOT LIKE '%Normal%'
+    """,
+    "label":"{'remission' in example['disease_status_last_followup']}",
+    "classes":{'True':1, 'False':-1},
+    "features":[SSM_GENE_ONLY],
+    "filter":SSM_FILTER,
+    "hidden":0.3,
+    "meta":META
+}
+
+REMISSION_MUT_ALL = dict(REMISSION_MUT)
+del REMISSION_MUT_ALL["project"]
+REMISSION_MUT_ALL["example"] = REMISSION_MUT_ALL["example"].replace("project_code IN {'project'} AND", "")
+
 
 REMISSION = {
     "project":"KIRC-US",
