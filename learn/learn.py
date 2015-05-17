@@ -18,6 +18,7 @@ import random
 import gene.analyze
 #from rlscore_interface import RLScore
 from RFEWrapper import RFEWrapper
+from utils import Stream
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -256,12 +257,16 @@ if __name__ == "__main__":
     parser.add_argument('--buildOnly', default=False, action="store_true")
     options = parser.parse_args()
     
+    if options.result != None:
+        Stream.openLog(options.result + "-log.txt")
+    
     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
     cvFunction = eval(options.iteratorCV)
     featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
                                                                  database=options.database, writer=options.writer, 
                                                                  useCached=not options.noCache, featureFilePath=options.features, 
-                                                                 labelFilePath=options.labels, metaFilePath=options.meta)
+                                                                 labelFilePath=options.labels, metaFilePath=options.meta,
+                                                                 cacheDir=options.cacheDir)
     if options.buildOnly:
         sys.exit()
     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
