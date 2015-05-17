@@ -169,7 +169,7 @@ TABLE_FORMAT["cosmic_gene_census"] = {
 CAMDA_PROJECTS = "HNSC-US','LUAD-US','KIRC-US"
 META = "{dict(dict(example), label=str(label), features=len(features))}"
 EXP = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
-EXP_ARRAY = "SELECT ('EXP_ARRAY:'||gene_id),100000*normalized_expression_value FROM exp_array WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_value != 0"
+EXP_ARRAY = "SELECT ('EXP_ARRAY:'||gene_id),CAST(normalized_expression_value as decimal) FROM exp_array WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_value != 0"
 EXP_SEQ = "SELECT ('EXP_SEQ:'||gene_id),100000*normalized_read_count FROM exp_seq WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_read_count != 0"
 PEXP = "SELECT ('PEXP:'||antibody_id||':'||gene_name),normalized_expression_level FROM protein_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND normalized_expression_level != 0"
 MIRNA = "SELECT ('MIRNA:'||mirna_seq),log(normalized_expression_level+1) FROM mirna_expression WHERE icgc_specimen_id={example['icgc_specimen_id']}"
@@ -179,7 +179,7 @@ CNSM = "SELECT ('CNSM:'||gene_affected),copy_number FROM copy_number_somatic_mut
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
 ALL_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
-EXP_CUTOFF = "SELECT ('EXP:'||gene_stable_id),100000*normalized_expression_level FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_expression_level) > 0.005"
+EXP_SEQ_CUTOFF = "SELECT ('EXP_SEQ:'||gene_id),100000*normalized_read_count FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_read_count) > 0.005"
 
 EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
 EXP_ARRAY_FILTER = "SELECT * FROM exp_array WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP
@@ -195,11 +195,95 @@ MIRNA_FILTER = "SELECT * FROM mirna_expression WHERE icgc_specimen_id={example['
 
 
 SSM_GENE_ONLY = "SELECT ('SSM:'||gene_affected),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+#SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
 SSM_GENE_AA = "SELECT ('SSM:'||gene_affected),1, ('SSM:'||gene_affected||':'||aa_mutation),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
-SSM_TEMP = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+
+SSM_ID = "SELECT ('SSM:'||icgc_mutation_id),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id={example['icgc_specimen_id']}"
+
+def makeAll(template):
+    templateAll = dict(template)
+    del templateAll["project"]
+    templateAll["example"] = templateAll["example"].replace("project_code IN {'project'} AND", "")
+    return templateAll
 
 # Experiments #################################################################
+
+gradeMap = {"g1":1, "g2":2, "g3":3, 
+            "G1":1, "G2":2, "G3":3, "G4":4,
+            "G1 to G3":2, "G2 and G3":3,
+            "FL grade I":1, "FL grade II":2, "FL grade III":3, "FL grade IIIa":3, "FL grade IIIb":3,
+            
+            "1":1, "2":2, "3":3, "4":4,
+            "1 - Well differentiated":1, "2 - Moderately differentiated":2, "3 - Poorly differentiated":3,
+            "3+3":3, "3+4":4, "4+3":4,
+            "4 - Undifferentiated":4,
+            "Grade 1":1, "Grade 2":2, "Grade 3":3,
+            "I":1, "II":2, "III":3, "I-III":2, "I-II":2, "II-I":2, "II-III":3,
+            "IV":4, "NET-G1":1, "NET-G2":2, "NET-G3":3,
+            "T1a":1, "T1b":1, "T2a":2, "T2b":2, "T3":3,
+            "Undifferentiated":4,
+            "moderate":2, "poor":3, "well":1,
+            
+            
+}
+def getGrade(stage):
+    global gradeMap
+    assert stage in gradeMap
+    numGrade = gradeMap[stage]
+    if numGrade < 3:
+        return -1
+    else:
+        return 1
+
+def getStage(stage):
+    if "T1" in stage:
+        return 1
+    elif "T2" in stage:
+        return 1
+    elif "T3" in stage:
+        return -1
+    elif "T4" in stage:
+        return -1
+
+STAGE = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,tumour_stage,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
+        FROM clinical
+        WHERE project_code IN {'project'} AND 
+        length(tumour_stage) > 0 AND
+        specimen_type NOT LIKE '%Normal%' AND
+        (tumour_stage LIKE '%T1%' OR tumour_stage LIKE '%T2%' OR
+        tumour_stage LIKE '%T3%' OR tumour_stage LIKE '%T4%')
+    """,
+    "label":"{settings.getStage(example['tumour_stage'])}",
+    "features":[SSM_GENE_ONLY],
+    "filter":SSM_FILTER,
+    "hidden":0.3,
+    "meta":META
+}
+STAGE_ALL = makeAll(STAGE)
+
+GRADE = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,tumour_grade,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup 
+        FROM clinical
+        WHERE project_code IN {'project'} AND 
+        length(tumour_grade) > 0 AND
+        specimen_type NOT LIKE '%blood%' AND
+        specimen_type NOT LIKE '%Normal%' AND
+        tumour_grade != 'NA' AND tumour_grade != 'TNM' AND tumour_grade != 'X - Cannot be assessed' AND
+        tumour_grade != 'x' AND tumour_grade NOT LIKE '%DLBCL%'
+    """,
+    "label":"{settings.getGrade(example['tumour_grade'])}",
+    "features":[SSM_GENE_ONLY],
+    "filter":SSM_FILTER,
+    "hidden":0.3,
+    "meta":META
+}
+GRADE_ALL = makeAll(GRADE)
 
 REMISSION_MUT = {
     "project":"KIRC-US",
@@ -215,15 +299,12 @@ REMISSION_MUT = {
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
-    "features":[SSM_GENE_ONLY],
+    "features":[SSM_GENE_CONSEQUENCE],
     "filter":SSM_FILTER,
     "hidden":0.3,
     "meta":META
 }
-
-REMISSION_MUT_ALL = dict(REMISSION_MUT)
-del REMISSION_MUT_ALL["project"]
-REMISSION_MUT_ALL["example"] = REMISSION_MUT_ALL["example"].replace("project_code IN {'project'} AND", "")
+REMISSION_MUT_ALL = makeAll(REMISSION_MUT)
 
 
 REMISSION = {
@@ -236,7 +317,7 @@ REMISSION = {
         length(disease_status_last_followup) > 0 AND
         ((disease_status_last_followup LIKE '%remission%') OR
         (donor_vital_status IS 'deceased')) AND
-        specimen_type NOT LIKE '%control%'
+        specimen_type NOT LIKE '%Normal%'
     """,
     "label":"{'remission' in example['disease_status_last_followup']}",
     "classes":{'True':1, 'False':-1},
