@@ -68,7 +68,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     if preDispatch.isdigit():
         preDispatch = int(preDispatch)
     scorer = getScorer(metric)
-    search = ExtendedGridSearchCV(classifier(), [classifierArgs], refit=len(X_hidden) > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+    search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=X_hidden.shape[0] > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
     search.fit(X_train, y_train) 
     if hasattr(search, "best_estimator_"):
         print "----------------------------- Best Estimator -----------------------------------"
@@ -102,7 +102,7 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
     hiddenResults = None
     hiddenDetails = None
-    if len(X_hidden) > 0:
+    if X_hidden.shape[0] > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
         hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
                          "score":search.score(X_hidden, y_hidden),
@@ -225,8 +225,12 @@ def getScorer(metric):
     print "Using metric", metric
     if metric == "roc_auc":
         return metric
-    metric = importNamed(metric)
-    return make_scorer(metric)
+    try:
+        metric = importNamed(metric)
+        return make_scorer(metric)
+    except Exception as e:
+        print "Couldn't import named metric:", e
+        return metric
     
 if __name__ == "__main__":
     import argparse
