@@ -1,4 +1,14 @@
 import csv
+import matplotlib.pyplot as plt
+
+def visualize(hits):
+    num_bins = 50
+    # the histogram of the data
+    n, bins, patches = plt.hist(hits, bins=num_bins)#, facecolor='green', alpha=0.5, normed=1)
+    #plt.xlabel('Smarts')
+    #plt.ylabel('Probability')
+    plt.title(r'Title')
+    plt.show()
 
 def getFeatures(inPath, featureTag="SSM", maxCount=None):
     f = open(inPath, "rt")
@@ -50,15 +60,24 @@ def getGenes(inPath, outPath):
     if outPath:
         out = open(outPath, "wt")
     processed = []
+    featureCount = 0
+    hitCount = 0
+    hits = []
     for feature in features:
+        featureCount += 1
         name = mapping.get(feature[1], "")
-        processed = feature + [name]
+        processed = [str(featureCount)] + feature + [name]
         hit = cosmic.get(name)
         if hit != None:
             processed += ["True"]
+            hitCount += 1
+            hits.append(featureCount) #hits.append(1)
         else:
             processed += [""]
+            #hits.append(0)
+        processed.append(str(float(hitCount) / featureCount))
         out.write("\t".join(processed) + "\n")
+    visualize(hits)
 #     for feature in features:
 #         if feature[1] in mapping:
 #             print mapping[feature[1]]
