@@ -1,3 +1,5 @@
+import csv
+
 def getFeatures(inPath, featureTag="SSM", maxCount=50):
     f = open(inPath)
     section = None
@@ -27,11 +29,27 @@ def getMapping():
         mapping[splits[0]] = splits[1]
     return mapping
 
+def getCOSMIC():
+    cosmic = {}
+    with open("cancer_gene_census.csv", "rU") as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        reader.next() # skip headers
+        for row in reader:
+            assert row[0] not in cosmic
+            print row
+            cosmic[row[0]] = row
+            #for name in set([x for x in row[-1].split(",") if x != ""]):
+            #    assert name not in cosmic, ("name", name)
+            #    cosmic[name] = row
+    return cosmic
+
 def getGenes(inPath, outPath):
     features = getFeatures(inPath)
     mapping = getMapping()
+    cosmic = getCOSMIC()
     for feature in features:
-        print feature, mapping.get(feature[1])
+        name = mapping.get(feature[1])
+        print feature, name, cosmic.get(name)
     for feature in features:
         if feature[1] in mapping:
             print mapping[feature[1]]
