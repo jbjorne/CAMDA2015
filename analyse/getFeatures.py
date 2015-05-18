@@ -1,20 +1,20 @@
 import csv
 
-def getFeatures(inPath, featureTag="SSM", maxCount=50):
-    f = open(inPath)
+def getFeatures(inPath, featureTag="SSM", maxCount=None):
+    f = open(inPath, "rt")
     section = None
     features = []
-    for line in f:
+    for line in f:       
         line = line.strip()
         if line == "\"features\": {":
             section = "features"
-        
         if section == "features" and featureTag in line:
-            feature = line.split("\"")[1]
-            feature = feature.split(":")
-            features.append(feature)
-            if len(features) >= maxCount:
-                break
+            if "{" in line:
+                feature = line.split("\"")[1]
+                feature = feature.split(":")
+                features.append(feature)
+                if maxCount != None and len(features) >= maxCount:
+                    break
     f.close()
     return features
 
@@ -47,14 +47,23 @@ def getGenes(inPath, outPath):
     features = getFeatures(inPath)
     mapping = getMapping()
     cosmic = getCOSMIC()
+    if outPath:
+        out = open(outPath, "wt")
+    processed = []
     for feature in features:
-        name = mapping.get(feature[1])
-        print feature, name, cosmic.get(name)
-    for feature in features:
-        if feature[1] in mapping:
-            print mapping[feature[1]]
+        name = mapping.get(feature[1], "")
+        processed = feature + [name]
+        hit = cosmic.get(name)
+        if hit != None:
+            processed += ["True"]
         else:
-            print feature
+            processed += [""]
+        out.write("\t".join(processed) + "\n")
+#     for feature in features:
+#         if feature[1] in mapping:
+#             print mapping[feature[1]]
+#         else:
+#             print feature
         
 if __name__ == "__main__":
     import argparse
