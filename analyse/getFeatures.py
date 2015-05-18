@@ -1,14 +1,16 @@
 import csv
 import matplotlib.pyplot as plt
 
-def visualize(hits):
-    num_bins = 50
+def visualize(hits, outPath):
+    num_bins = 100
     # the histogram of the data
     n, bins, patches = plt.hist(hits, bins=num_bins)#, facecolor='green', alpha=0.5, normed=1)
-    #plt.xlabel('Smarts')
-    #plt.ylabel('Probability')
-    plt.title(r'Title')
-    plt.show()
+    plt.xlabel('Feature Importance Rank')
+    plt.ylabel('Cancer Census Genes / ' + str(num_bins) +  ' features')
+    plt.title(r'COSMIC Cancer Census genes in the features')
+    #plt.show()
+    if outPath != None:
+        plt.savefig(outPath)
 
 def getFeatures(inPath, featureTag="SSM", maxCount=None):
     f = open(inPath, "rt")
@@ -77,7 +79,7 @@ def getGenes(inPath, outPath):
             #hits.append(0)
         processed.append(str(float(hitCount) / featureCount))
         out.write("\t".join(processed) + "\n")
-    visualize(hits)
+    visualize(hits, outPath + "-hist.png")
 #     for feature in features:
 #         if feature[1] in mapping:
 #             print mapping[feature[1]]
