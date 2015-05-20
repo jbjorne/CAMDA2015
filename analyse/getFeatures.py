@@ -7,7 +7,7 @@ def visualize(hits, outPath):
     n, bins, patches = plt.hist(hits, bins=num_bins, facecolor='blue')#, facecolor='green', alpha=0.5, normed=1)
     plt.xlabel('Feature Importance Rank')
     plt.ylabel('Cancer Census Genes / ' + str(num_bins) +  ' features')
-    plt.title(r'COSMIC Cancer Census Gene Frequency')
+    plt.title(r'COSMIC Cancer Gene Census Frequency')
     #plt.show()
     if outPath != None:
         plt.savefig(outPath)

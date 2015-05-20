@@ -51,7 +51,10 @@ def setSet(example, templateHidden):
         example["set"] = "train"
     return example["set"]
 
+hiddenFilter = None
+
 def split(*arrays, **options):
+    global hiddenFilter
     """
     Get train and hidden sets using example metadata. Call with e.g.
     X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
@@ -68,7 +71,12 @@ def split(*arrays, **options):
         meta = result.getMeta(meta)
         hidden = set()
         for index, example in enumerate(meta["examples"]):
+            addToHidden = False
             if example.get("set", None) == 'hidden':
+                addToHidden = True
+            if hiddenFilter != None and example.get(hiddenFilter[0], None) != hiddenFilter[1]:
+                addToHidden = False
+            if addToHidden:
                 hidden.add(index)
     
     numColumns = arrays[0].shape[0] #len(arrays[0])

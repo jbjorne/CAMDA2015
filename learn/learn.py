@@ -258,7 +258,12 @@ if __name__ == "__main__":
     parser.add_argument('--buildOnly', default=False, action="store_true")
     parser.add_argument('--batch', default=False, action="store_true")
     parser.add_argument('--dummy', default=False, action="store_true")
+    parser.add_argument('--hiddenFilter', default=None)
     options = parser.parse_args()
+    
+    if options.hiddenFilter != None:
+        options.hiddenFilter = options.hiddenFilter.split(",")
+        hidden.hiddenFilter = options.hiddenFilter
     
     if options.batch:
         connection = batch.getConnection(options.slurm)
