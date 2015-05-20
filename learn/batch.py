@@ -9,7 +9,7 @@ from connection.SLURMConnection import SLURMConnection
 
 CLASSIFIER_ARGS = {
     #'ensemble.RandomForest':{'n_estimators':[10,100],'max_features':['auto',None]},
-    'ensemble.ExtraTreesClassifier':'n_estimators=[10000],random_state=[1]',
+    'ensemble.ExtraTreesClassifier':'n_estimators=[10,100,1000],random_state=[1]',
     'svm.LinearSVC':'C=logrange(-10, 10)',
     'RFEWrapper':'C=logrange(-10, 10)',
     'RLScore':'alpha=logrange(-10, 10),subsetsize=[200]',
@@ -128,7 +128,7 @@ def batch(runDir, jobDir, resultPath, experiments, projects, classifiers, featur
         script += " -c " + job["classifier"] + " -a \"" + CLASSIFIER_ARGS[job["classifier"]] + "\""
         script += " --metric \"" + metric + "\""
         script += " -r " + job["result"]
-        script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2014", os.path.basename(job["result"]))
+        script += " --cacheDir " + os.path.join(tempfile.gettempdir(), "CAMDA2015", os.path.basename(job["result"]))
         if job["classifier"] in ANALYZE:
             script += " --analyze"
         if clearCache:

@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 def visualize(hits, outPath):
     num_bins = 100
     # the histogram of the data
-    n, bins, patches = plt.hist(hits, bins=num_bins)#, facecolor='green', alpha=0.5, normed=1)
+    n, bins, patches = plt.hist(hits, bins=num_bins, facecolor='blue')#, facecolor='green', alpha=0.5, normed=1)
     plt.xlabel('Feature Importance Rank')
     plt.ylabel('Cancer Census Genes / ' + str(num_bins) +  ' features')
-    plt.title(r'COSMIC Cancer Census genes in the features')
+    plt.title(r'COSMIC Cancer Census Gene Frequency')
     #plt.show()
     if outPath != None:
         plt.savefig(outPath)
@@ -68,18 +68,19 @@ def getGenes(inPath, outPath):
     for feature in features:
         featureCount += 1
         name = mapping.get(feature[1], "")
-        processed = [str(featureCount)] + feature + [name]
+        processed = [str(featureCount)] + [feature[1], name, feature[2].replace("_", " ")] 
         hit = cosmic.get(name)
         if hit != None:
-            processed += ["True"]
+            processed += ["\\bullet"]
             hitCount += 1
             hits.append(featureCount) #hits.append(1)
         else:
             processed += [""]
             #hits.append(0)
-        processed.append(str(float(hitCount) / featureCount))
-        out.write("\t".join(processed) + "\n")
+        #processed.append(str(float(hitCount) / featureCount))
+        out.write(" & ".join(processed) + " \\\\" + "\n")
     visualize(hits, outPath + "-hist.png")
+    visualize(hits, outPath + "-hist.pdf")
 #     for feature in features:
 #         if feature[1] in mapping:
 #             print mapping[feature[1]]

@@ -285,6 +285,30 @@ GRADE = {
 }
 GRADE_ALL = makeAll(GRADE)
 
+SURVIVAL = {
+    "project":"KIRC-US",
+    "example":"""
+        SELECT icgc_donor_id,icgc_specimen_id,project_code,tumour_grade,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup, 
+        donor_age_at_last_followup, donor_age_at_diagnosis, 
+        cast(donor_age_at_last_followup as int) - cast(donor_age_at_diagnosis as int) as delta
+        FROM clinical
+        WHERE project_code IN {'project'} AND
+        length(donor_age_at_diagnosis) > 0 AND 
+        length(donor_age_at_last_followup) > 0 AND 
+        length(donor_vital_status) > 0 AND
+        ((delta >= 5 and donor_vital_status='alive') OR
+        (delta >= 0 and delta < 5 and donor_vital_status='deceased')) AND
+        specimen_type NOT LIKE '%Normal%'
+    """,
+    "label":"{'alive' in example['donor_vital_status']}",
+    "classes":{'True':1, 'False':-1},
+    "features":[SSM_GENE_CONSEQUENCE],
+    "filter":SSM_FILTER,
+    "hidden":0.3,
+    "meta":META
+}
+SURVIVAL_ALL = makeAll(SURVIVAL)
+
 REMISSION_MUT = {
     "project":"KIRC-US",
     "example":"""
@@ -436,18 +460,18 @@ CANCER_OR_CONTROL_ALL["example"] = CANCER_OR_CONTROL_ALL["example"].replace("pro
 #CANCER_OR_CONTROL_ALL["sample"] = {"1":0.1}
 #CANCER_OR_CONTROL_ALL["sample"] = {"1":0.075, "-1":0.75}
 
-SURVIVAL = {
-    "project":"KIRC-US",
-    "example":"""
-        SELECT donor_age_at_diagnosis,donor_vital_status,icgc_donor_id,donor_survival_time,icgc_specimen_id,disease_status_last_followup,specimen_type 
-        FROM clinical 
-        WHERE project_code IN {'project'} AND 
-            length(specimen_type) > 0 AND 
-            specimen_type NOT LIKE '%control%' AND 
-            ((length(donor_survival_time) > 0 AND donor_vital_status IS 'deceased') OR disease_status_last_followup LIKE '%remission%')
-    """,
-    "label":"{0 if 'remission' in example['disease_status_last_followup'] else 1.0/(int(example['donor_survival_time'])+1)}",
-    "features":[EXP,SSM],
-    "hidden":0.3,
-    "meta":META
-}
+# SURVIVAL = {
+#     "project":"KIRC-US",
+#     "example":"""
+#         SELECT donor_age_at_diagnosis,donor_vital_status,icgc_donor_id,donor_survival_time,icgc_specimen_id,disease_status_last_followup,specimen_type 
+#         FROM clinical 
+#         WHERE project_code IN {'project'} AND 
+#             length(specimen_type) > 0 AND 
+#             specimen_type NOT LIKE '%control%' AND 
+#             ((length(donor_survival_time) > 0 AND donor_vital_status IS 'deceased') OR disease_status_last_followup LIKE '%remission%')
+#     """,
+#     "label":"{0 if 'remission' in example['disease_status_last_followup'] else 1.0/(int(example['donor_survival_time'])+1)}",
+#     "features":[EXP,SSM],
+#     "hidden":0.3,
+#     "meta":META
+# }

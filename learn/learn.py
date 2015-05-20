@@ -19,6 +19,7 @@ import gene.analyze
 #from rlscore_interface import RLScore
 from RFEWrapper import RFEWrapper
 from utils import Stream
+import batch
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -255,7 +256,16 @@ if __name__ == "__main__":
     parser.add_argument('--databaseCGI', help='Analysis database', default=None)
     parser.add_argument('--clearCache', default=False, action="store_true")
     parser.add_argument('--buildOnly', default=False, action="store_true")
+    parser.add_argument('--batch', default=False, action="store_true")
+    parser.add_argument('--dummy', default=False, action="store_true")
     options = parser.parse_args()
+    
+    if options.batch:
+        connection = batch.getConnection(options.slurm)
+        if not os.path.exists(options.jobDir):
+            os.makedirs(options.jobDir)
+        connection.debug = True
+        batch.batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features, limit, sleepTime, dummy, rerun, hideFinished, clearCache, icgcDB, cgiDB, connection, metric)
     
     if options.result != None:
         Stream.openLog(options.result + "-log.txt")
