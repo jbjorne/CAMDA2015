@@ -1,7 +1,7 @@
 University of Turku in the CAMDA 2015 Challenge
 ===============================================
 
-This code implements the experiments of the University of Turku IT Department for the [CAMDA 2015 Challenge](http://camda2014.bioinf.jku.at). The program concerns analysis of the ICGC cancer dataset using various machine learning methods. The data processing and experiment handling code builds on our work for the 2014 CAMDA challenge.
+This code implements the experiments of the University of Turku IT Department for the [CAMDA 2015 Challenge](http://camda2015.bioinf.jku.at). The program concerns analysis of the ICGC cancer dataset using various machine learning methods. The data processing and experiment pipeline code builds on our work for the 2014 CAMDA challenge.
 
 Using the code
 ----------------------------------------
