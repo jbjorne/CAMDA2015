@@ -12,7 +12,7 @@ def visualize(hits, outPath):
     if outPath != None:
         plt.savefig(outPath)
 
-def getFeatures(inPath, featureTag="SSM", maxCount=None):
+def getFeatures(inPath, featureTags=["SSM", "code"], maxCount=None):
     f = open(inPath, "rt")
     section = None
     features = []
@@ -20,13 +20,18 @@ def getFeatures(inPath, featureTag="SSM", maxCount=None):
         line = line.strip()
         if line == "\"features\": {":
             section = "features"
-        if section == "features" and featureTag in line:
-            if "{" in line:
-                feature = line.split("\"")[1]
-                feature = feature.split(":")
-                features.append(feature)
-                if maxCount != None and len(features) >= maxCount:
+        if section == "features":
+            match = False
+            for tag in featureTags:
+                if tag in line and "{" in line:
+                    feature = line.split("\"")[1]
+                    feature = feature.split(":")
+                    while len(feature) < 3:
+                        feature += [""]
+                    features.append(feature)
                     break
+            if match and maxCount != None and len(features) >= maxCount:
+                break
     f.close()
     return features
 

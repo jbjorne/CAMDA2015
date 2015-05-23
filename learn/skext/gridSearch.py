@@ -85,11 +85,11 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
         if "estimator" in extraOut:
             extraRVs["estimator"] = estimator
         if extraOut == "auto" or "predictions" in extraOut:
-            predictions = estimator.predict(X)
+            predictions = estimator.predict_proba(X)
             predictionIndex = 0
             predictionByIndex = {}
             for exampleIndex in safe_mask(X, test):
-                predictionByIndex[exampleIndex] = predictions[predictionIndex]
+                predictionByIndex[exampleIndex] = list(predictions[predictionIndex])
                 predictionIndex += 1
             extraRVs["predictions"] = predictionByIndex
         if (extraOut == "auto" or "importances" in extraOut) and hasattr(estimator, "feature_importances_"):

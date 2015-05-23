@@ -179,6 +179,8 @@ CNSM = "SELECT ('CNSM:'||gene_affected),copy_number FROM copy_number_somatic_mut
 MAIN_FEATURES = [EXP,PEXP,MIRNA,SSM]#,CNSM]
 ALL_FEATURES = [EXP,PEXP,MIRNA,SSM,CNSM]
 
+PROJECT_CODE = "SELECT ('code:'||project_code),1 FROM clinical WHERE icgc_specimen_id={example['icgc_specimen_id']} AND length(project_code) > 0"
+
 EXP_SEQ_CUTOFF = "SELECT ('EXP_SEQ:'||gene_id),100000*normalized_read_count FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} AND abs(normalized_read_count) > 0.005"
 
 EXP_FILTER = "SELECT * FROM gene_expression WHERE icgc_specimen_id={example['icgc_specimen_id']} LIMIT 1" # Require EXP

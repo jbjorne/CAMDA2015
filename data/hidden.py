@@ -8,6 +8,7 @@ from lib.pymersennetwister.mtwister import MTwister
 import numpy
 
 __hiddenRandom = MTwister()
+#__hiddenRandom.set_seed(300000) #__hiddenRandom.set_seed(1)
 __hiddenRandom.set_seed(1)
 __hidden = []
 
@@ -87,8 +88,11 @@ def split(*arrays, **options):
             train.add(index)
     train = sorted(list(train))
     hidden = sorted(list(hidden))
-    #print train, hidden
+    #print "Train", train
+    #print "Hidden", hidden
     
+    #for a in arrays:
+    #    print "A", a
     splitted = []
     for a in arrays:
         if a.shape[0] != numColumns: #len(a) != numColumns:
@@ -101,4 +105,6 @@ def split(*arrays, **options):
             splitted.append(a[hidden])
         else:
             splitted.append(numpy.zeros(0))
+    #for a in splitted:
+    #    print "S", a
     return splitted

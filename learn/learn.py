@@ -16,10 +16,12 @@ import data.result as result
 import data.hidden as hidden
 import random
 import gene.analyze
+import sklearn.metrics
 #from rlscore_interface import RLScore
 from RFEWrapper import RFEWrapper
 from utils import Stream
 import batch
+import numpy
 
 def getClassDistribution(y):
     counts = defaultdict(int)
@@ -47,6 +49,35 @@ def getKFoldCV(y, meta, numFolds=10):
 def getNoneCV(y, meta, numFolds=10):
     return None
 
+def checkSets(X, y, X_train, X_hidden, y_train, y_hidden, meta):
+    trainIndex = 0
+    hiddenIndex = 0
+    for index, example in enumerate(meta["examples"]): 
+        if example.get("set", None) == 'hidden':
+            print "hidden", (index, y[index]), (hiddenIndex, y_hidden[hiddenIndex])
+            assert y[index] == y_hidden[hiddenIndex], (y[index], y_hidden[trainIndex], index, hiddenIndex, example)
+            #assert X[index] == X_hidden[hiddenIndex]
+            hiddenIndex += 1
+        else:
+            print "train", (index, y[index]), (trainIndex, y_train[trainIndex])
+            assert y[index] == y_train[trainIndex], (y[index], y_hidden[trainIndex], index, trainIndex, example)
+            #assert X[index] == X_hidden[trainIndex]
+            trainIndex += 1
+
+def checkExamples(meta):
+    hidden = {}
+    train = {}
+    for index, example in enumerate(meta["examples"]):
+        if example.get("set", None) == 'hidden':
+            group = hidden
+        else:
+            group = train
+        if example["project_code"] not in group:
+            group[example["project_code"]] = {"-1":0, "1":0}
+        group[example["project_code"]][example["label"]] += 1
+    print "Examples hidden", hidden
+    print "Examples train", train
+
 def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs, 
          getCV=getStratifiedKFoldCV, numFolds=10, verbose=3, parallel=1, 
          preDispatch='2*n_jobs', randomize=False, analyzeResults=False,
@@ -59,11 +90,16 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
         print "Class distribution = ", getClassDistribution(y)
         if randomize:
             classes = meta["classes"].values()
-            y = [random.choice(classes) for x in range(len(y))]
+            y = numpy.asarray([random.choice(classes) for x in range(len(y))])
             print "Randomized class distribution = ", getClassDistribution(y)
     X_train, X_hidden, y_train, y_hidden = hidden.split(X, y, meta=meta)
     print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
-
+    if "classes" in meta:
+        print "Classes y_train = ", getClassDistribution(y_train)
+        print "Classes y_hidden = ", getClassDistribution(y_hidden)
+    #checkSets(X, y, X_train, X_hidden, y_train, y_hidden, meta)
+    #checkExamples(meta)
+    
     print "Cross-validating for", numFolds, "folds"
     print "Args", classifierArgs
     cv = getCV(y_train, meta, numFolds=numFolds)
@@ -106,18 +142,28 @@ def test(XPath, yPath, metaPath, resultPath, classifier, classifierArgs,
     hiddenDetails = None
     if X_hidden.shape[0] > 0:
         print "----------------------------- Classifying Hidden Set -----------------------------------"
+        print "search.scoring", search.scoring
+        print "search.scorer_", search.scorer_
+        print "search.best_estimator_.score", search.best_estimator_.score
+        print search.scorer_(search.best_estimator_, X_hidden, y_hidden)
+        y_hidden_score = search.predict_proba(X_hidden)
+        y_hidden_score = [x[1] for x in y_hidden_score]
+        print "AUC", sklearn.metrics.roc_auc_score(y_hidden, y_hidden_score)
         hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
+                         #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
                          "score":search.score(X_hidden, y_hidden),
                          "metric":metric,
                          "params":search.best_params_}
         print "Score =", hiddenResults["score"], "(" + metric + ")"
-        y_hidden_pred = search.predict(X_hidden)
+        y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
         #print y_hidden_pred
         #print search.predict_proba(X_hidden)
         hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
         if hasattr(search.best_estimator_, "feature_importances_"):
             hiddenDetails["importances"] = search.best_estimator_.feature_importances_
         try:
+            #print y_hidden
+            #print y_hidden_pred
             print classification_report(y_hidden, y_hidden_pred)
         except ValueError, e:
             print "ValueError in classification_report:", e
