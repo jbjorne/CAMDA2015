@@ -46,9 +46,11 @@ def getMapping():
         mapping[splits[0]] = splits[1]
     return mapping
 
-def getCOSMIC():
+def getCOSMIC(censusPath=None):
     cosmic = {}
-    with open("cancer_gene_census.csv", "rU") as csvfile:
+    if censusPath == None:
+        censusPath = "cancer_gene_census.csv"
+    with open(censusPath, "rU") as csvfile:
         reader = csv.reader(csvfile, delimiter=',', quotechar='"')
         reader.next() # skip headers
         for row in reader:
@@ -60,9 +62,9 @@ def getCOSMIC():
             #    cosmic[name] = row
     return cosmic
 
-def getGenes(inPath, outPath):
+def getGenes(inPath, outPath, censusPath=None):
     features = getFeatures(inPath)
-    mapping = getMapping()
+    mapping = getMapping(censusPath)
     cosmic = getCOSMIC()
     if outPath:
         out = open(outPath, "wt")
@@ -95,8 +97,9 @@ def getGenes(inPath, outPath):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-i','--input', help='', default=None)
-    parser.add_argument('-o','--output', help='', default=None)
+    parser.add_argument('-i','--input', help='Input file in JSON format', default=None)
+    parser.add_argument('-c','--census', help='COSMIC cancer gene census "cancer_gene_census.csv" file', default=None)
+    parser.add_argument('-o','--output', help='Output file stem', default=None)
     options = parser.parse_args()
     
-    getGenes(options.input, options.output)
+    getGenes(options.input, options.output, options.census)
