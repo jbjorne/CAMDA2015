@@ -5,7 +5,7 @@ This code implements the experiments of the University of Turku IT Department fo
 
 Using the code
 ----------------------------------------
-1. Install [Scikit-learn](http://scikit-learn.org/). Everything has been developed for version 0.16.1. Other versions may of may not work.
+1. Install [Scikit-learn](http://scikit-learn.org/). Everything has been developed for version 0.16.1. Other versions may or may not work.
 2. Run `python setup.py` and wait for the program to download the ICGC release 18 dataset and construct the database. This will take a few hours on a normal desktop machine. Make sure you have enough disk space (~30 Gb) for the resulting database.
 3. Run `python run.py` to produce the classification results reported in the extended abstract.
 4. To produce the feature importance analysis reported in the extended abstract, please use the program analyse/getFeatures.py. For this, you will need the "cancer_gene_census.csv" file from the COSMIC project (http://cancer.sanger.ac.uk/cosmic). You will need to register at the COSMIC site and download the CSV file from their FTP site. The getFeatures program will produce a txt file with the importance ranked features mapped to the COSMIC genes as well as a figure showing the frequency of the COSMIC genes among the importance ranked features.
