@@ -1,4 +1,7 @@
+import itertools
+from numbers import Number
 import math
+import hidden
 import sqlite3
 
 def connect(con):
@@ -31,31 +34,71 @@ class Project:
         if self.projects != None:
             query += " project_code IN " + self.projects + " AND" + "\n"
         query += self.getExampleConditions()
+        return [x for x in self.getConnection().execute(query)]
     
     def getLabel(self, example):
         return 'remission' in example['disease_status_last_followup']
     
+    def getConnection(self):
+        if self._connection == None:
+            self._connection = sqlite3.connect(con) # @UndefinedVariable
+            self._connection.row_factory = sqlite3.Row # @UndefinedVariable
+            self._connection.create_function("log", 1, math.log)
+        return self._connection
+    
     def __init__(self):
-        self.name
+        # Database
+        self.databaseName = None
+        self._connection = None
+        # Id sets
+        self._featureIds = {}
+        # General
+        self.name = None
         self.projects = None
         self.classes = {'True':1, 'False':-1},
-        self.features = [SSM_GENE_CONSEQUENCE],
+        self.featureGroups = [SSM_GENE_CONSEQUENCE],
         self.filter = SSM_FILTER
-        self.hidden = 0.3
+        self.hiddenCutoff = 0.3
         self.meta = META
+        self.includeHiddenSet = True
+        self.includeTrainingSet = True
     
-    def process(con, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None):
-        con = connect(con)
-        template = parseExperiment(experimentName).copy()
-        template = parseTemplateOptions(options, template)
-        #con = connect(con, template.get("functions", None))
-        #options = updateTemplateOptions(template, options)
+    def generateOrNot(self, example, verbose=True):
+        if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
+            if verbose:
+                print "Skipping example from hidden donor", example["icgc_donor_id"]
+            return False
+        elif not self.includeTrainingSet and example["hidden"] >= self.hiddenCutoff:
+            if verbose:
+                print "Skipping example " + str(example) + " from non-hidden donor", example["icgc_donor_id"]
+            return False
+        else:
+            return True
+    
+    def getFeatureId(self, featureName):
+        if featureName not in self._featureIds:
+            self._featureIds[featureName] = len(self._featureIds)
+        return self._featureIds[featureName]
+        
+    def _buildFeatures(self, example):
+        features = {}
+        for featureGroup in self.featureGroups:
+            groupIndex = self.featureGroups.index(featureGroup)
+            for row in featureGroup(con=self.getConnection(), example=example):
+                for key, value in itertools.izip(*[iter(row)] * 2): # iterate over each consecutive key,value columns pair
+                    if not isinstance(key, basestring):
+                        raise Exception("Non-string feature key '" + str(key) + "' in feature group " + str(groupIndex))
+                    if not isinstance(value, Number):
+                        raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(groupIndex))
+                    features[self.getFeatureId(key)] = value
+        if len(features) == 0:
+            print "WARNING: example has no features"
+        return features
+    
+    def process(self, experimentName, callback, callbackArgs, metaDataFileName=None, options=None, experimentMeta=None):
         print "Template:", self.name
-        print json.dumps(template, indent=4)
-        compiled, lambdaArgs = compileTemplate(template)
-        print "Compiled experiment"
-        examples = [dict(x) for x in compiled["example"](con=con, **lambdaArgs)]
-        numHidden = hidden.setHiddenValues(examples, compiled)
+        examples = self.getExamples()
+        numHidden = hidden.setHiddenValuesByFraction(examples, self.hidden)
         numExamples = len(examples)
         print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
         count = 0
@@ -68,11 +111,11 @@ class Project:
         sampleRandom.set_seed(2)
         for example in examples:
             count += 1
-            if not hidden.getInclude(example, compiled.get("hidden", None), hiddenRule):
+            if not self.generateOrNot(example):
                 continue
             hidden.setSet(example, compiled.get("hidden", None))
-            #print experiment["class"](con, example)
-            #if count % 10 == 0:
+            example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
+
             print "Processing example", example,
             cls = getIdOrValue(compiled["label"](con=con, example=example, **lambdaArgs), clsIds)
             print cls, str(count) + "/" + str(numExamples)
@@ -83,20 +126,11 @@ class Project:
             if "filter" in compiled and compiled["filter"] != None and len([x for x in compiled["filter"](con=con, example=example, **lambdaArgs)]) == 0:
                 print "NOTE: Filtered example"
                 continue
-            features = {}
-            for featureGroup in featureGroups:
-                for row in featureGroup(con=con, example=example, **lambdaArgs):
-                    for key, value in itertools.izip(*[iter(row)] * 2): # iterate over each consecutive key,value columns pair
-                        if not isinstance(key, basestring):
-                            raise Exception("Non-string feature key '" + str(key) + "' in feature group " + str(featureGroups.index(featureGroup)))
-                        if not isinstance(value, Number):
-                            raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(featureGroups.index(featureGroup)))
-                        features[getId(key, featureIds)] = value
-            if len(features) == 0:
-                print "WARNING: example has no features"
-            if callback != None:
-                callback(example=example, cls=cls, features=features, **callbackArgs)
+            
+            features = self._buildFeatures(example)
+
             if "meta" in compiled:
                 meta.append(compiled["meta"](label=cls, features=features, example=example, **lambdaArgs))
+        
         saveMetaData(metaDataFileName, con, template, experimentName, options, clsIds, featureIds, meta, experimentMeta)
         return featureIds

@@ -29,6 +29,15 @@ def setHiddenValues(examples, template, donorIdKey="icgc_donor_id"):
                 numHidden += 1
     return numHidden
 
+def setHiddenValuesByFraction(examples, hiddenFraction, donorIdKey="icgc_donor_id"):
+    numHidden = 0
+    if hiddenFraction > 0:
+        for example in examples:
+            example["hidden"] = getDonorHiddenValue(example[donorIdKey])
+            if example["hidden"] < hiddenFraction:
+                numHidden += 1
+    return numHidden
+
 def getInclude(example, templateHidden, hiddenRule, verbose=True):
     if hiddenRule not in ("train", "hidden", "both"):
         raise Exception("Unknown hidden set rule '" + str(hiddenRule) + "'")
