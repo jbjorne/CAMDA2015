@@ -43,20 +43,6 @@ def closeOutputFiles(opened, writer, featureFilePath, numFeatures):
     if writer == writeNumpyText and featureFilePath != None:
         padNumpyFeatureFile(featureFilePath, numFeatures)
         
-# def splitFiles(examples, features, meta):
-#     hidden = set()
-#     for index, example in enumerate(meta["examples"]):
-#         addToHidden = False
-#         if example.get("set", None) == 'hidden':
-#             hidden.add(index)
-#     
-#     fExamples = open(examples, "rt")
-#     fFeatures = open(features, "rt")
-#     
-#     index = 0
-#     for line in fExamples:
-#         index += 1
-        
 def readAuto(featureFilePath, labelFilePath, useFeatures=None):
     if labelFilePath == None or featureFilePath == labelFilePath or not os.path.exists(labelFilePath):
         from sklearn.datasets import load_svmlight_file
