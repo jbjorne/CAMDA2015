@@ -9,6 +9,7 @@ import time
 import json
 import inspect
 from collections import OrderedDict
+import writer
 
 def connect(con):
     if isinstance(con, basestring):
@@ -23,8 +24,12 @@ class Experiment:
         query += "FROM " + self.exampleTable + "\n"
         query += "WHERE "
         if self.projects != None:
-            query += " project_code IN " + self.projects + " AND" + "\n"
+            query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
         query += self.exampleWhere
+        self.meta["query"] = query
+        print "=========================== Example generation query ==========================="
+        print query
+        print "================================================================================"
         return [dict(x) for x in self.getConnection().execute(query)]
     
     def getLabel(self, example):
@@ -41,6 +46,8 @@ class Experiment:
         return self._connection
     
     def __init__(self):
+        # Processing
+        self.debug = False
         # Database
         self.databasePath = None
         self._connection = None
@@ -59,11 +66,8 @@ class Experiment:
         self.includeHiddenSet = True
         self.includeTrainingSet = True
         # Generated data
-        self.examples = []
-        self.meta = []
-        # Output files
-        self.metaDataFileName = None
-        self.writer = None
+        self.examples = None
+        self.meta = None
     
     def generateOrNot(self, example, verbose=True):
         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
@@ -119,8 +123,9 @@ class Experiment:
     
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
         print "Template:", self.__class__.__name__
+        self.meta = {"name":self.__class__.__name__, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
+        self.exampleMeta = []
         self.examples = self._queryExamples()
-        self.meta = []
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
         print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
@@ -132,34 +137,45 @@ class Experiment:
             example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
 
             print "Processing example", example,
-            classId = self.getClassId(example)
+            classId = self.getClassId(self.getLabel(example))
             print classId, str(count) + "/" + str(numExamples)
             if self._filterExample(example):
                 print "NOTE: Filtered example"
                 continue
             
             features = self._buildFeatures(example)
-            self.meta.append(self.getExampleMeta(example, classId, features))
+            self.exampleMeta.append(self.getExampleMeta(example, classId, features))
             if exampleWriter != None:
                 exampleWriter.writeExample(classId, features)
         
-        self.saveMetaData()
+        self.saveMetaData(metaDataFileName)
     
     def getFingerprint(self):
         return inspect.getsource(self.__class__)
     
-    def saveMetaData(self):
-        if self.metaDataFileName != None:
-            if not os.path.exists(os.path.dirname(self.metaDataFileName)):
-                os.makedirs(os.path.dirname(self.metaDataFileName))
-            f = open(self.metaDataFileName, "wt")
-            experimentMeta = {"name":self.name, "time":time.strftime("%c"), "dbFile":self.databasePath,
-                              "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
-            output = OrderedDict((("experiment", experimentMeta), ("source", inspect.getsource(self.__class__)), ("classes", self.classIds), ("features", self.featureIds)))
-            if len(self.meta) > 0:
-                output["examples"] = self.meta
+    def saveMetaData(self, metaDataFileName):
+        if metaDataFileName != None:
+            print "Writing metadata to", metaDataFileName
+            if not os.path.exists(os.path.dirname(metaDataFileName)):
+                os.makedirs(os.path.dirname(metaDataFileName))
+            f = open(metaDataFileName, "wt")
+            output = OrderedDict((("experiment", self.meta), ("source", inspect.getsource(self.__class__)), ("classes", self.classIds), ("features", self.featureIds)))
+            if len(self.exampleMeta) > 0:
+                output["examples"] = self.exampleMeta
             json.dump(output, f, indent=4)#, separators=(',\n', ':'))
             f.close()
+        else:
+            print "Experiment metadata not saved"
+    
+    def writeExamples(self, outDir, fileStem=None, exampleIO=None):
+        if fileStem == None:
+            fileStem = "examples"
+        if exampleIO == None:
+            exampleIO = writer.SVMLightExampleIO(os.path.join(outDir, fileStem))
+        
+        exampleIO.newFiles()
+        self.buildExamples(os.path.join(outDir, fileStem + ".meta.json"), exampleIO)
+        exampleIO.closeFiles()
         
 #     def writeExample(self, example, classId, features):
 #         self.writer()
