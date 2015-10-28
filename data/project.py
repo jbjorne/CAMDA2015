@@ -1,22 +1,14 @@
 import os
 import itertools
 from numbers import Number
-import math
-import hidden
 import sqlite3
-import example
+import math
 import time
 import json
 import inspect
 from collections import OrderedDict
+import hidden
 import writer
-
-def connect(con):
-    if isinstance(con, basestring):
-        con = sqlite3.connect(con) # @UndefinedVariable
-        con.row_factory = sqlite3.Row # @UndefinedVariable
-        con.create_function("log", 1, math.log)
-    return con
 
 class Experiment:
     def _queryExamples(self):
@@ -175,17 +167,4 @@ class Experiment:
         
         exampleIO.newFiles()
         self.buildExamples(os.path.join(outDir, fileStem + ".meta.json"), exampleIO)
-        exampleIO.closeFiles()
-        
-#     def writeExample(self, example, classId, features):
-#         self.writer()
-#     
-#     def writeExamples(self, exampleIO, metaFilePath): 
-#         con = self.getConnection()
-#         writerArgs, opened = example.openOutputFiles(featureFilePath, labelFilePath, writer)
-#         experimentMeta = {"X":featureFilePath, "y":labelFilePath, "writer":self.writer.__name__}
-#         if "fY" not in writerArgs:
-#             del experimentMeta["y"]
-#         featureIds = getExamples(con, experimentName, writer, writerArgs, metaFilePath, experimentOptions, experimentMeta)
-#         example.closeOutputFiles(opened, writer, featureFilePath, len(featureIds))
-    
+        exampleIO.closeFiles()  

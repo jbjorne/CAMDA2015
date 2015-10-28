@@ -1,6 +1,7 @@
 import sys, os
 from data.project import Experiment
 import data.writer
+from utils.Database import Database
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
