@@ -42,9 +42,19 @@ class Classification():
         # Settings
         self.randomize = False
         self.numFolds = 10
+        self.classifierName = None
         self.classifierArgs = None
         self.getCV = getStratifiedKFoldCV
         self.preDispatch = '2*n_jobs'
+        self.metric = 'roc_auc'
+        self.verbose = 3
+        self.parallel = 1
+        # Results
+        self.bestIndex = None
+        self.results = None
+        self.extras = None
+        self.hiddenResults = None
+        self.hiddenDetails = None
     
     def buildExamples(self, experiment, outDir):
         experiment.writeExamples(outDir)
@@ -61,11 +71,39 @@ class Classification():
         if os.path.exists(metaPath):
             self.meta = result.getMeta(metaPath)
     
+    def _getClassifier(self):
+        if self.classifierName == "RLScore":
+            raise NotImplementedError()
+        elif self.classifierName == "RFEWrapper":
+            classifier = RFEWrapper
+        else:
+            classifier = importNamed(self.classifierName)
+        if isinstance(self.classifierArgs, basestring):
+            classifierArgs = parseOptionString(self.classifierArgs)
+        print "Using classifier", self.classifierName, "with arguments", self.classifierArgs
+        return classifier, classifierArgs
+    
+    def _getScorer(self):
+        print "Using metric", self.metric
+        if self.metric == "roc_auc":
+            return self.metric
+        try:
+            metric = importNamed(self.metric)
+            return make_scorer(metric)
+        except Exception as e:
+            print "Couldn't import named metric:", e
+            return metric
+    
     def _getClassDistribution(self, labels):
         counts = defaultdict(int)
         for value in labels:
             counts[value] += 1
         return dict(counts)
+    
+    def _getPreDispatch(self):
+        if self.preDispatch.isdigit():
+            return int(self.preDispatch)
+        return self.preDispatch
     
     def _randomizeLabels(self):
         if self.randomize:
@@ -73,7 +111,7 @@ class Classification():
             self.y = numpy.asarray([random.choice(classes) for x in range(len(self.y))])
             print "Randomized class distribution = ", self._getClassDistribution(self.y)
                 
-    def classify(self):
+    def classify(self, resultPath):
         if "classes" in self.meta:
             print "Class distribution = ", self._getClassDistribution(self.y)
             if self.randomize:
@@ -85,12 +123,10 @@ class Classification():
             print "Classes y_hidden = ", self._getClassDistribution(y_hidden)
         
         print "Cross-validating for", self.numFolds, "folds"
-        print "Args", classifierArgs
+        print "Args", self.classifierArgs
         cv = self.getCV(y_train, self.meta, numFolds=self.numFolds)
-        if self.preDispatch.isdigit():
-            preDispatch = int(self.preDispatch)
-        scorer = getScorer(metric)
-        search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=X_hidden.shape[0] > 0, cv=cv, scoring=scorer, verbose=verbose, n_jobs=parallel, pre_dispatch=preDispatch)
+        scorer = self._getScorer()
+        search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=X_hidden.shape[0] > 0, cv=cv, scoring=scorer, verbose=self.verbose, n_jobs=self.parallel, pre_dispatch=self.getPreDispatch())
         search.fit(X_train, y_train) 
         if hasattr(search, "best_estimator_"):
             print "----------------------------- Best Estimator -----------------------------------"
@@ -100,30 +136,30 @@ class Classification():
                 search.best_estimator_.doRFE(X_train, y_train)
         #print "--------------------------------------------------------------------------------"
         print "---------------------- Grid scores on development set --------------------------"
-        results = []
-        extras = None
+        self.results = []
+        self.extras = None
         index = 0
-        bestIndex = 0
+        self.bestIndex = 0
         for params, mean_score, scores in search.grid_scores_:
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-            results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":numFolds,
-                       "metric":metric,"scores":list(scores), 
+            self.results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
+                       "metric":self.metric,"scores":list(scores), 
                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
-            if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
-                bestIndex = index
+            if index == 0 or float(mean_score) > self.results[self.bestIndex]["mean"]:
+                self.bestIndex = index
                 if hasattr(search, "extras_"):
                     print "EXTRAS"
-                    extras = search.extras_[index]
+                    self.extras = search.extras_[index]
                 else:
                     print "NO_EXTRAS"
             index += 1
         print "---------------------- Best scores on development set --------------------------"
-        params, mean_score, scores = search.grid_scores_[bestIndex]
+        params, mean_score, scores = search.grid_scores_[self.bestIndex]
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-        hiddenResults = None
-        hiddenDetails = None
+        self.hiddenResults = None
+        self.hiddenDetails = None
         if X_hidden.shape[0] > 0:
             print "----------------------------- Classifying Hidden Set -----------------------------------"
             print "search.scoring", search.scoring
@@ -133,18 +169,18 @@ class Classification():
             y_hidden_score = search.predict_proba(X_hidden)
             y_hidden_score = [x[1] for x in y_hidden_score]
             print "AUC", sklearn.metrics.roc_auc_score(y_hidden, y_hidden_score)
-            hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
+            self.hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
                              #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
                              "score":search.score(X_hidden, y_hidden),
-                             "metric":metric,
+                             "metric":self.metric,
                              "params":search.best_params_}
-            print "Score =", hiddenResults["score"], "(" + metric + ")"
+            print "Score =", self.hiddenResults["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred
             #print search.predict_proba(X_hidden)
-            hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+            self.hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
             if hasattr(search.best_estimator_, "feature_importances_"):
-                hiddenDetails["importances"] = search.best_estimator_.feature_importances_
+                self.hiddenDetails["importances"] = search.best_estimator_.feature_importances_
             try:
                 #print y_hidden
                 #print y_hidden_pred
@@ -153,8 +189,61 @@ class Classification():
                 print "ValueError in classification_report:", e
         print "--------------------------------------------------------------------------------"
         if resultPath != None:
-            saveResults(meta, resultPath, results, extras, bestIndex, analyzeResults, hiddenResults, hiddenDetails, databaseCGI=databaseCGI, reclassify=reclassify, details=details)
-        return meta, results, extras, hiddenResults, hiddenDetails
+            saveResults(resultPath)
+        return self.meta
+    
+    def _saveResults(self, resultPath, details=True):
+        if self.extras == None:
+            print "No detailed information for cross-validation"
+            return
+        if not os.path.exists(os.path.dirname(resultPath)):
+            os.makedirs(os.path.dirname(resultPath))
+        self.meta = result.getMeta(self.meta)
+        # Add general results
+        self.meta["results"] = {"best":self.results[self.bestIndex], "all":self.results}
+        if self.hiddenResults != None:
+            self.meta["results"]["hidden"] = self.hiddenResults
+        # Insert detailed results
+        if details:
+            featureByIndex = result.getFeaturesByIndex(self.meta)
+            if self.hiddenDetails != None:
+                saveDetails(self.meta, self.hiddenDetails.get("predictions", None), self.hiddenDetails.get("importances", None), "hidden", featureByIndex)
+            fold = 0
+            for extra in self.extras:
+                saveDetails(self.meta, extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
+                fold += 1
+        else:
+            if "examples" in self.meta:
+                del self.meta["examples"]
+            if "features" in self.meta:
+                del self.meta["features"]
+                
+        # Save results
+        if resultPath != None:
+            result.saveMeta(self.meta, resultPath)
+
+    def _saveDetails(self, meta, predictions, importances, fold, featureByIndex=None):
+        if featureByIndex == None:
+            featureByIndex = result.getFeaturesByIndex(meta)
+        if predictions != None:
+            for index in predictions:
+                if fold == "hidden":
+                    example = result.getExampleFromSet(meta, index, "hidden")
+                else:
+                    example = result.getExampleFromSet(meta, index, "train")
+                if "classification" in example:
+                    raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
+                result.setValue(example, "prediction", predictions[index], "classification")
+                result.setValue(example, "fold", fold, "classification")
+        if importances != None:
+            for i in range(len(importances)):
+                if importances[i] != 0:
+                    feature = result.getFeature(meta, i, featureByIndex)
+                    if fold != "hidden":
+                        result.setValue(feature, fold, importances[i], "importances")
+                    else:
+                        result.setValue(feature, "hidden-importance", importances[i])
+                        result.setValue(feature, "sort", importances[i])
 
 
 def checkSets(X, y, X_train, X_hidden, y_train, y_hidden, meta):
