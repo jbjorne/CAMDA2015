@@ -30,8 +30,8 @@ class ExampleIO():
     def _newFile(self, filePath, mode):
         if os.path.exists(filePath):
             os.remove(filePath)
-        if not os.path.exists(os.path.basename(filePath)):
-            os.makedirs(os.path.basename(filePath))
+        if not os.path.exists(os.path.dirname(filePath)):
+            os.makedirs(os.path.dirname(filePath))
         return open(filePath, mode)
     
     def readFiles(self, readFeatures=None):

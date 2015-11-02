@@ -1,7 +1,6 @@
-import sys, os
+import os
 from data.project import Experiment
-import data.writer
-from utils.Database import Database
+from learn.Classification import Classification
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
@@ -26,13 +25,36 @@ class RemissionMutTest(Experiment):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2014')
+    parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
     parser.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
+    parser.add_argument('-n', "--noBuild", default=False, action="store_true", dest="noBuild")
+    parser.add_argument('-c','--classifier', help='', default=None)
+    parser.add_argument('-a','--classifierArguments', help='', default=None)
+    parser.add_argument('-m','--metric', help='', default="roc_auc")
+    parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
+    parser.add_argument('-f','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
+    parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
+    parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
+    parser.add_argument('--preDispatch', help='', default='2*n_jobs')
     options = parser.parse_args()
     
-    e = RemissionMutTest()
-    e.databasePath = options.icgcDB
-    e.debug = options.debug
-    e.writeExamples(options.output)
+    if not options.noBuild:
+        print "======================================================"
+        print "Building Examples"
+        print "======================================================"
+        e = RemissionMutTest()
+        e.databasePath = options.icgcDB
+        e.debug = options.debug
+        e.writeExamples(options.output)
+    if options.classifier != None:
+        print "======================================================"
+        print "Classifying"
+        print "======================================================"
+        classification = Classification()
+        classification.classifierName = options.classifier
+        classification.classifierArgs = options.classifierArguments
+        classification.metric = options.metric
+        classification.readExamples(options.output)
+        classification.classify(os.path.join(options.output, "classification.json"))
