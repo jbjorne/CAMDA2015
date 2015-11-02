@@ -28,21 +28,23 @@ def getNoneCV(y, meta, numFolds=10):
     return None
 
 class Classification():
-    def __init__(self):
+    def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs'):
         # Data
         self.X = None
         self.y = None
         self.meta = None
         # Settings
         self.randomize = False
-        self.numFolds = 10
+        self.numFolds = numFolds
         self.classifierName = None
         self.classifierArgs = None
-        self.getCV = getStratifiedKFoldCV
-        self.preDispatch = '2*n_jobs'
-        self.metric = 'roc_auc'
+        if getCV == None:
+            getCV = getStratifiedKFoldCV
+        self.getCV = getCV
+        self.preDispatch = preDispatch
+        self.metric = metric
         self.verbose = 3
-        self.parallel = 1
+        self.parallel = parallel
         # Results
         self.bestIndex = None
         self.results = None
