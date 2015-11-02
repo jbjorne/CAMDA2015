@@ -38,6 +38,7 @@ if __name__ == "__main__":
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
+    parser.add_argument("--cosmic", default=False, action="store_true", dest="cosmic")
     options = parser.parse_args()
     
     if not options.noBuild:
@@ -48,6 +49,8 @@ if __name__ == "__main__":
         e.databasePath = options.icgcDB
         e.debug = options.debug
         e.writeExamples(options.output)
+    
+    resultPath = os.path.join(options.output, "classification.json")
     if options.classifier != None:
         print "======================================================"
         print "Classifying"
@@ -57,4 +60,15 @@ if __name__ == "__main__":
         classification.classifierArgs = options.classifierArguments
         classification.metric = options.metric
         classification.readExamples(options.output)
-        classification.classify(os.path.join(options.output, "classification.json"))
+        classification.classify(resultPath)
+    
+    if options.cosmic:
+        print "======================================================"
+        print "Analysing"
+        print "======================================================"
+        from learn.Analysis import COSMICAnalysis
+        meta = resultPath
+        if options.classifier != None:
+            meta = classification.meta
+        analysis = COSMICAnalysis(meta, dataPath=DATA_PATH)
+        analysis.analyse(options.output, "cosmic")

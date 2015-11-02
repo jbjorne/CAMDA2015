@@ -108,7 +108,7 @@ class Meta():
             filePath = self.filePath
         if filePath == None:
             raise Exception("Metadata file path not defined")
-        self.sortFeatures()
+        self.meta["features"] = self.getFeaturesSorted()
         self.sortKeys()
         print "Saving metadata to", filePath
         f = open(filePath, "wt")
@@ -184,9 +184,26 @@ class Meta():
         for index in indices:
             name = featuresByIndex[index]
             if isinstance(features[name], int):
-                features[name] = {"id":features[name]}
-            rv[index] = features[name]
+                rv[index] = {"id":features[name]}
+            else:
+                rv[index] = features[name]
         return rv
+    
+    def getFeaturesSorted(self, featuresByIndex=None, addRank=True):
+        if featuresByIndex == None:
+            featuresByIndex = self.getFeaturesByIndex()
+        # Sort features
+        featureValues = self.meta["features"].values()
+        featureValues.sort(cmp=compareFeatures)
+        features = OrderedDict()
+        for index, feature in enumerate(featureValues):
+            if isinstance(feature, int):
+                features[featuresByIndex[feature]] = feature
+            else:
+                features[featuresByIndex[feature["id"]]] = feature
+                if addRank:
+                    feature["rank"] = index + 1
+        return features
 
     ###############################################################################
     # Utilities
@@ -205,18 +222,4 @@ class Meta():
             sortedMeta[key] = self.meta[key]
         self.meta = sortedMeta
     
-    def sortFeatures(self, featuresByIndex=None, addRank=True):
-        if featuresByIndex == None:
-            featuresByIndex = self.getFeaturesByIndex()
-        # Sort features
-        featureValues = self.meta["features"].values()
-        featureValues.sort(cmp=compareFeatures)
-        features = OrderedDict()
-        for index, feature in enumerate(featureValues):
-            if isinstance(feature, int):
-                features[featuresByIndex[feature]] = feature
-            else:
-                features[featuresByIndex[feature["id"]]] = feature
-                if addRank:
-                    feature["rank"] = index + 1
-        self.meta["features"] = features
+    
