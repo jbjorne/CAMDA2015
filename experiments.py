@@ -1,12 +1,16 @@
 import os
 from data.project import Experiment
 from learn.Classification import Classification
+from learn.FeatureGroup import FeatureGroup
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
-SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
-SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chromosome||':'||chromosome_start||':'||chromosome_end),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
+#SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
+#SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chromosome||':'||chromosome_start||':'||chromosome_end),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
+
+SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
+SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
 
 class RemissionMutTest(Experiment):
     def __init__(self):
@@ -30,36 +34,41 @@ class RemissionMutTest(Experiment):
 class RemissionMutSites(RemissionMutTest):
     def __init__(self):
         super(RemissionMutSites, self).__init__()
-        self.projects = ["KIRC-US"]
+        #self.projects = ["KIRC-US"]
         self.featureGroups = [SSM_GENE_POS]
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
-    parser.add_argument('-x', '--experiment', help='Output directory', default="RemissionMutTest")
     parser.add_argument('-o', '--output', help='Output directory', default=None)
-    parser.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
-    parser.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
-    parser.add_argument('-c','--classifier', help='', default=None)
-    parser.add_argument('-a','--classifierArguments', help='', default=None)
-    parser.add_argument('-m','--metric', help='', default="roc_auc")
-    parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
-    parser.add_argument('-f','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
-    parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
-    parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
-    parser.add_argument("--hidden", default=False, action="store_true", dest="hidden")
-    parser.add_argument('--preDispatch', help='', default='2*n_jobs')
-    parser.add_argument("--cosmic", default=False, action="store_true", dest="cosmic")
+    groupE = parser.add_argument_group('Examples', 'Example Generation')
+    groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
+    groupE.add_argument('-x', '--experiment', help='Output directory', default="RemissionMutTest")
+    groupE.add_argument('--projects', help='Projects used in example generation', default=None)
+    groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
+    groupC = parser.add_argument_group('Classification', 'Example Classification')
+    groupC.add_argument('-c','--classifier', help='', default=None)
+    groupC.add_argument('-a','--classifierArguments', help='', default=None)
+    groupC.add_argument('-m','--metric', help='', default="roc_auc")
+    groupC.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
+    groupC.add_argument('-f','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
+    groupC.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
+    groupC.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
+    groupC.add_argument("--hidden", default=False, action="store_true", dest="hidden")
+    groupC.add_argument('--preDispatch', help='', default='2*n_jobs')
+    groupA = parser.add_argument_group('Analysis', 'Analysis for classified data')
+    groupA.add_argument("--cosmic", default=False, action="store_true", dest="cosmic")
     options = parser.parse_args()
-    
-    ExperimentClass = eval(options.experiment)
     
     if options.examples:
         print "======================================================"
         print "Building Examples"
         print "======================================================"
+        ExperimentClass = eval(options.experiment)
         e = ExperimentClass()
+        if options.projects != None:
+            e.projects = options.projects.split(",")
         e.databasePath = options.icgcDB
         e.debug = options.debug
         e.writeExamples(options.output)

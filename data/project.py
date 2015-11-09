@@ -60,10 +60,6 @@ class Experiment(object):
         # Generated data
         self.examples = None
         self.meta = None
-#         # Delayed writing
-#         self.delayWriting = False
-#         self.features = None
-#         self.classIds = None
     
     def generateOrNot(self, example, verbose=True):
         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
@@ -93,15 +89,18 @@ class Experiment(object):
         
     def _buildFeatures(self, example):
         features = {}
-        for groupIndex in range(len(self.featureGroups)):
-            featureGroup = self.featureGroups[groupIndex]
-            for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
-                for key, value in itertools.izip(*[iter(row)] * 2): # iterate over each consecutive key,value columns pair
-                    if not isinstance(key, basestring):
-                        raise Exception("Non-string feature key '" + str(key) + "' in feature group " + str(groupIndex))
-                    if not isinstance(value, Number):
-                        raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(groupIndex))
-                    features[self.getFeatureId(key)] = value
+        connection = self.getConnection()
+        for featureGroup in self.featureGroups:
+            featureGroup.buildFeatures(self, connection, example, features, self.featureIds)
+#         for groupIndex in range(len(self.featureGroups)):
+#             featureGroup = self.featureGroups[groupIndex]
+#             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
+#                 for key, value in itertools.izip(*[iter(row)] * 2): # iterate over each consecutive key,value columns pair
+#                     if not isinstance(key, basestring):
+#                         raise Exception("Non-string feature key '" + str(key) + "' in feature group " + str(groupIndex))
+#                     if not isinstance(value, Number):
+#                         raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(groupIndex))
+#                     features[self.getFeatureId(key)] = value
         if len(features) == 0:
             print "WARNING: example has no features"
         return features
@@ -121,9 +120,6 @@ class Experiment(object):
         print "Template:", self.__class__.__name__
         self.meta = {"name":self.__class__.__name__, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
         self.exampleMeta = []
-        #if self.delayWriting:
-        #    self.features = []
-        #    self.classIds = []
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
@@ -144,20 +140,9 @@ class Experiment(object):
             
             features = self._buildFeatures(example)
             self.exampleMeta.append(self.getExampleMeta(example, classId, features))
-            #if self.delayWriting:
-            #    self.features.append(features)
-            #    self.classIds.append(classId)
-            #elif exampleWriter != None:
             exampleWriter.writeExample(classId, features)
         
-#         if self.delayWriting:
-#             self.postBuild()
-#             self._writeExamples(self.examples, self.features)
-        
         self.saveMetaData(metaDataFileName)
-    
-    def postBuild(self):
-        pass
     
     def _writeExamples(self, classIds, featureVectors, exampleWriter):
         if exampleWriter != None:
