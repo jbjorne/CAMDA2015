@@ -10,7 +10,7 @@ SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chrom
 
 class RemissionMutTest(Experiment):
     def __init__(self):
-        Experiment.__init__(self)
+        super(RemissionMutTest, self).__init__()
         #self.projects = ["KIRC-US"]
         self.exampleTable = "clinical"
         self.exampleFields = "icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup"
@@ -23,11 +23,14 @@ class RemissionMutTest(Experiment):
             """
         self.featureGroups = [SSM_GENE_CONSEQUENCE]
         self.filter = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id=? LIMIT 1"
+    
+    def getLabel(self, example):
+        return 'remission' in example['disease_status_last_followup']
 
 class RemissionMutSites(RemissionMutTest):
     def __init__(self):
+        super(RemissionMutSites, self).__init__()
         self.projects = ["KIRC-US"]
-        RemissionMutTest.__init__(self)
         self.featureGroups = [SSM_GENE_POS]
 
 if __name__ == "__main__":
@@ -45,6 +48,7 @@ if __name__ == "__main__":
     parser.add_argument('-f','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
+    parser.add_argument("--hidden", default=False, action="store_true", dest="hidden")
     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
     parser.add_argument("--cosmic", default=False, action="store_true", dest="cosmic")
     options = parser.parse_args()
@@ -65,7 +69,7 @@ if __name__ == "__main__":
         print "======================================================"
         print "Classifying"
         print "======================================================"
-        classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric)
+        classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
         classification.classifierName = options.classifier
         classification.classifierArgs = options.classifierArguments
         classification.metric = options.metric

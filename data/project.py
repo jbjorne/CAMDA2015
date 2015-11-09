@@ -10,7 +10,7 @@ from collections import OrderedDict
 import hidden
 import writer
 
-class Experiment:
+class Experiment(object):
     def _queryExamples(self):
         query = "SELECT " + self.exampleFields + "\n"
         query += "FROM " + self.exampleTable + "\n"
@@ -25,7 +25,7 @@ class Experiment:
         return [dict(x) for x in self.getConnection().execute(query)]
     
     def getLabel(self, example):
-        return 'remission' in example['disease_status_last_followup']
+        raise NotImplementedError
     
     def getConnection(self):
         if self._connection == None:
@@ -60,10 +60,10 @@ class Experiment:
         # Generated data
         self.examples = None
         self.meta = None
-        # Delayed writing
-        self.delayWriting = False
-        self.features = None
-        self.classIds = None
+#         # Delayed writing
+#         self.delayWriting = False
+#         self.features = None
+#         self.classIds = None
     
     def generateOrNot(self, example, verbose=True):
         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
@@ -121,9 +121,9 @@ class Experiment:
         print "Template:", self.__class__.__name__
         self.meta = {"name":self.__class__.__name__, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
         self.exampleMeta = []
-        if self.delayWriting:
-            self.features = []
-            self.classIds = []
+        #if self.delayWriting:
+        #    self.features = []
+        #    self.classIds = []
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
@@ -144,22 +144,22 @@ class Experiment:
             
             features = self._buildFeatures(example)
             self.exampleMeta.append(self.getExampleMeta(example, classId, features))
-            if self.delayWriting:
-                self.features.append(features)
-                self.classIds.append(classId)
-            elif exampleWriter != None:
-                exampleWriter.writeExamples([classId], [features])
+            #if self.delayWriting:
+            #    self.features.append(features)
+            #    self.classIds.append(classId)
+            #elif exampleWriter != None:
+            exampleWriter.writeExample(classId, features)
         
-        if self.delayWriting:
-            self.postBuild()
-            self.writeExamples(self.examples, self.features)
+#         if self.delayWriting:
+#             self.postBuild()
+#             self._writeExamples(self.examples, self.features)
         
         self.saveMetaData(metaDataFileName)
     
     def postBuild(self):
         pass
     
-    def writeExamples(self, classIds, featureVectors, exampleWriter):
+    def _writeExamples(self, classIds, featureVectors, exampleWriter):
         if exampleWriter != None:
             for classId, features in zip(classIds, featureVectors):
                 exampleWriter.writeExample(classId, features)

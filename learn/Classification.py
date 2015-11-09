@@ -28,7 +28,7 @@ def getNoneCV(y, meta, numFolds=10):
     return None
 
 class Classification():
-    def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs'):
+    def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
         # Data
         self.X = None
         self.y = None
@@ -45,6 +45,7 @@ class Classification():
         self.metric = metric
         self.verbose = 3
         self.parallel = parallel
+        self.classifyHidden = classifyHidden
         # Results
         self.bestIndex = None
         self.results = None
@@ -155,8 +156,9 @@ class Classification():
             print "Classes y_train = ", self._getClassDistribution(y_train)
             print "Classes y_hidden = ", self._getClassDistribution(y_hidden)
         
-        search = self._crossValidate(y_train, X_train, X_hidden.shape[0] > 0)
-        self._predictHidden(y_hidden, X_hidden, search)
+        search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
+        if self.classifyHidden:
+            self._predictHidden(y_hidden, X_hidden, search)
         self._saveResults(resultPath)
         
     def _crossValidate(self, y_train, X_train, refit=False):

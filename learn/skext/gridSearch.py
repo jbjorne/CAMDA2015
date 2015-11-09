@@ -191,6 +191,7 @@ class ExtendedGridSearchCV(GridSearchCV):
         self.best_score_ = best.mean_validation_score
 
         if self.refit:
+            print "Refitting best estimator"
             # fit the best estimator using the entire dataset
             # clone first to work around broken estimators
             best_estimator = clone(base_estimator).set_params(
