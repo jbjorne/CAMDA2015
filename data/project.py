@@ -91,7 +91,7 @@ class Experiment(object):
         features = {}
         connection = self.getConnection()
         for featureGroup in self.featureGroups:
-            featureGroup.buildFeatures(self, connection, example, features, self.featureIds)
+            featureGroup.buildFeatures(connection, example, features, self.featureIds)
 #         for groupIndex in range(len(self.featureGroups)):
 #             featureGroup = self.featureGroups[groupIndex]
 #             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
@@ -117,7 +117,7 @@ class Experiment(object):
         return dict(example, label=str(classId), features=len(features))
     
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
-        print "Template:", self.__class__.__name__
+        print "Experiment:", self.__class__.__name__
         self.meta = {"name":self.__class__.__name__, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
         self.exampleMeta = []
         self.examples = self._queryExamples()
@@ -142,15 +142,16 @@ class Experiment(object):
             self.exampleMeta.append(self.getExampleMeta(example, classId, features))
             exampleWriter.writeExample(classId, features)
         
+        print "Built", len(self.exampleMeta), "examples with", len(self.featureIds), "unique features"
         self.saveMetaData(metaDataFileName)
     
-    def _writeExamples(self, classIds, featureVectors, exampleWriter):
-        if exampleWriter != None:
-            for classId, features in zip(classIds, featureVectors):
-                exampleWriter.writeExample(classId, features)
+#     def _writeExamples(self, classIds, featureVectors, exampleWriter):
+#         if exampleWriter != None:
+#             for classId, features in zip(classIds, featureVectors):
+#                 exampleWriter.writeExample(classId, features)
     
-    def getFingerprint(self):
-        return inspect.getsource(self.__class__)
+#     def getFingerprint(self):
+#         return inspect.getsource(self.__class__)
     
     def saveMetaData(self, metaDataFileName):
         if metaDataFileName != None:
