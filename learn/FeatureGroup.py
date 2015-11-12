@@ -1,4 +1,4 @@
-class FeatureGroup:
+class FeatureGroup(object):
     def __init__(self, name, query=None, keys=None):
         self.name = name # "SSM"
         self.query = query # "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"

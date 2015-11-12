@@ -9,8 +9,16 @@ DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 #SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 #SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chromosome||':'||chromosome_start||':'||chromosome_end),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 
+class SSMCluster(FeatureGroup):
+    def __init__(self):
+        super(SSMCluster, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
+    
+    def getFeatureName(self, row):
+        return ":".join([str(x) for x in [self.name, row["chromosome"], row["chromosome_start"] / 100, row["consequence_type"]]])
+
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
+SSM_CLUSTER = SSMCluster()
 
 class RemissionMutTest(Experiment):
     def __init__(self):
@@ -34,8 +42,12 @@ class RemissionMutTest(Experiment):
 class RemissionMutSites(RemissionMutTest):
     def __init__(self):
         super(RemissionMutSites, self).__init__()
-        #self.projects = ["KIRC-US"]
         self.featureGroups = [SSM_GENE_POS]
+
+class RemissionMutCluster(RemissionMutTest):
+    def __init__(self):
+        super(RemissionMutCluster, self).__init__()
+        self.featureGroups = [SSM_CLUSTER]
 
 if __name__ == "__main__":
     import argparse
