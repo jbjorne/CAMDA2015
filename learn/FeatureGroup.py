@@ -9,14 +9,17 @@ class FeatureGroup(object):
     def buildFeatures(self, connection, example, features, featureIds):
         queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
         for row in queryResult:
-            featureName = self.getFeatureName(row)
+            featureName = self._getFeatureNameAsString(row)
             features[self.getFeatureId(featureName, featureIds)] = self.getFeatureValue(row)
     
     def getFeatureValue(self, row):
         return 1
+    
+    def _getFeatureNameAsString(self, row):
+        return self.name + ":" + ":".join([str(x) for x in self.getFeatureName(row)])
         
     def getFeatureName(self, row):
-        return self.name + ":" + ":".join([str(row[key]) for key in self.keys])
+        return [row[key] for key in self.keys]
         #return self.name + ":" + queryResult['gene_affected'] + ":" + queryResult['consequence_type']
     
     def getFeatureId(self, featureName, featureIds):
