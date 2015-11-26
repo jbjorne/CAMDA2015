@@ -21,11 +21,21 @@ class SSMClusterSimple(SSMClusterBase):
 class SSMCluster(SSMClusterBase):
     def __init__(self):
         super(SSMCluster, self).__init__()
-        self.step = 10000
-        self.halfStep = self.step / 2
+        self.steps = [10,1000,10000]
+        #self.halfStep = self.step / 2
     def buildFeatures(self, row):
-        return [("S0", row["chromosome"], row["chromosome_start"] / self.step, row["consequence_type"]),
-                ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step, row["consequence_type"])]
+        features = []
+        for step in self.steps:
+            features.append((row["chromosome"], row["chromosome_start"] / step, row["consequence_type"]))
+        return features
+    
+    #     ---------------------- Best scores on development set --------------------------
+    #     [ 0.51881322  0.47312086  0.39220871  0.25795435  0.47840649  0.75779902
+    #       0.80282313  0.76598522  0.84503739  0.54922784]
+    #     0.584 (+/-0.094) for {'n_estimators': 10, 'random_state': 1}
+    #def buildFeatures(self, row):
+    #    return [("S0", row["chromosome"], row["chromosome_start"] / self.step, row["consequence_type"]),
+    #            ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step, row["consequence_type"])]
 
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
@@ -71,5 +81,5 @@ class RemissionMutClusterSimple(RemissionBase):
 
 class RemissionMutCluster(RemissionBase):
     def __init__(self):
-        super(RemissionMutClusterSimple, self).__init__()
+        super(RemissionMutCluster, self).__init__()
         self.featureGroups = [SSM_CLUSTER]
