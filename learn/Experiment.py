@@ -52,7 +52,7 @@ class Experiment(object):
         self.exampleFields = "icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup"
         self.exampleWhere = None
         self.featureGroups = None
-        self.filter = None
+        #self.filter = None
         self.hiddenCutoff = 0.3
         self.includeHiddenSet = True
         self.includeTrainingSet = True
@@ -90,7 +90,7 @@ class Experiment(object):
         features = {}
         connection = self.getConnection()
         for featureGroup in self.featureGroups:
-            featureGroup.buildFeatures(connection, example, features, self.featureIds)
+            featureGroup.processExample(connection, example, features, self.featureIds)
 #         for groupIndex in range(len(self.featureGroups)):
 #             featureGroup = self.featureGroups[groupIndex]
 #             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
@@ -100,16 +100,22 @@ class Experiment(object):
 #                     if not isinstance(value, Number):
 #                         raise Exception("Non-number feature value '" + str(value) + "' in feature group " + str(groupIndex))
 #                     features[self.getFeatureId(key)] = value
-        if len(features) == 0:
-            print "WARNING: example has no features"
+        #if len(features) == 0:
+        #    print "WARNING: example has no features"
         return features
     
     def _queryFeatures(self, featureGroup, example):
         return self.getConnection().execute(featureGroup, (example['icgc_specimen_id'], ) )
     
-    def _filterExample(self, example):
-        if self.filter != None:
-            return len([x for x in self.getConnection().execute(self.filter, (example['icgc_specimen_id'], ) )]) == 0
+#     def _filterExample(self, example):
+#         if self.filter != None:
+#             return len([x for x in self.getConnection().execute(self.filter, (example['icgc_specimen_id'], ) )]) == 0
+#         return False
+
+    def filter(self, example, features):
+        if len(features) == 0:
+            print "Filtered example with 0 features"
+            return True
         return False
     
     def getExampleMeta(self, example, classId, features):
@@ -133,11 +139,13 @@ class Experiment(object):
             print "Processing example", example,
             classId = self.getClassId(self.getLabel(example))
             print classId, str(count) + "/" + str(numExamples)
-            if self._filterExample(example):
-                print "NOTE: Filtered example"
-                continue
+            #if self._filterExample(example):
+            #    print "NOTE: Filtered example"
+            #    continue
             
             features = self._buildFeatures(example)
+            if self.filter(example, features):
+                continue
             self.exampleMeta.append(self.getExampleMeta(example, classId, features))
             exampleWriter.writeExample(classId, features)
         

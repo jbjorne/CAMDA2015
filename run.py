@@ -40,7 +40,7 @@ if __name__ == "__main__":
     
     actions = splitOptions(options.action, ["build", "classify", "analyse"])
     
-    Stream.openLog(os.path.join(options.output, "log.txt"), clear = False)
+    Stream.openLog(os.path.join(options.output, "log.txt"), clear = "build" in actions)
     print "Options:", options.__dict__
     
     if "build" in actions:

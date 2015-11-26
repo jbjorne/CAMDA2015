@@ -16,7 +16,7 @@ import sklearn.metrics
 import numpy
 #import data.writer
 from ExampleIO import SVMLightExampleIO
-import settings
+#import settings
 from Meta import Meta
 
 def getStratifiedKFoldCV(y, meta, numFolds=10):
@@ -94,7 +94,7 @@ class Classification():
         options = {}
         for key, value in zip(*[iter(splits)] * 2):
             try:
-                options[key] = eval(value, globals(), {x:getattr(settings, x) for x in dir(settings)})
+                options[key] = eval(value, globals()) #, {x:getattr(settings, x) for x in dir(settings)})
             except:
                 options[key] = value
         return options

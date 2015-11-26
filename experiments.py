@@ -1,22 +1,44 @@
 from learn.Experiment import Experiment
 from learn.FeatureGroup import FeatureGroup
 
+###############################################################################
+# Features
+###############################################################################
+
 #SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 #SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chromosome||':'||chromosome_start||':'||chromosome_end),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 
-class SSMCluster(FeatureGroup):
+class SSMClusterBase(FeatureGroup):
     def __init__(self):
-        super(SSMCluster, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
-    def getFeatureName(self, row):
-        return [row["chromosome"], row["chromosome_start"] / 10000, row["consequence_type"]]
+        super(SSMClusterBase, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
+
+class SSMClusterSimple(SSMClusterBase):
+    def __init__(self):
+        super(SSMClusterSimple, self).__init__()   
+    def buildFeatures(self, row):
+        return [(row["chromosome"], row["chromosome_start"] / 10000, row["consequence_type"])]
+
+class SSMCluster(SSMClusterBase):
+    def __init__(self):
+        super(SSMCluster, self).__init__()
+        self.step = 10000
+        self.halfStep = self.step / 2
+    def buildFeatures(self, row):
+        return [("S0", row["chromosome"], row["chromosome_start"] / self.step, row["consequence_type"]),
+                ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step, row["consequence_type"])]
 
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
+SSM_CLUSTER_SIMPLE = SSMClusterSimple()
 SSM_CLUSTER = SSMCluster()
 
-class RemissionMutTest(Experiment):
+###############################################################################
+# Experiments
+###############################################################################
+
+class RemissionBase(Experiment):
     def __init__(self):
-        super(RemissionMutTest, self).__init__()
+        super(RemissionBase, self).__init__()
         #self.projects = ["KIRC-US"]
         self.exampleTable = "clinical"
         self.exampleFields = "icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup"
@@ -27,18 +49,27 @@ class RemissionMutTest(Experiment):
             (donor_vital_status IS 'deceased')) AND
             specimen_type NOT LIKE '%Normal%'
             """
-        self.featureGroups = [SSM_GENE_CONSEQUENCE]
-        self.filter = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id=? LIMIT 1"
+        #self.filter = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id=? LIMIT 1"
     
     def getLabel(self, example):
         return 'remission' in example['disease_status_last_followup']
 
-class RemissionMutSites(RemissionMutTest):
+class RemissionMutTest(RemissionBase):
+    def __init__(self):
+        super(RemissionMutTest, self).__init__()
+        self.featureGroups = [SSM_GENE_CONSEQUENCE]
+
+class RemissionMutSites(RemissionBase):
     def __init__(self):
         super(RemissionMutSites, self).__init__()
         self.featureGroups = [SSM_GENE_POS]
 
-class RemissionMutCluster(RemissionMutTest):
+class RemissionMutClusterSimple(RemissionBase):
     def __init__(self):
-        super(RemissionMutCluster, self).__init__()
+        super(RemissionMutClusterSimple, self).__init__()
+        self.featureGroups = [SSM_CLUSTER_SIMPLE]
+
+class RemissionMutCluster(RemissionBase):
+    def __init__(self):
+        super(RemissionMutClusterSimple, self).__init__()
         self.featureGroups = [SSM_CLUSTER]
