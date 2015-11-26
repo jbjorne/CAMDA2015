@@ -1,14 +1,13 @@
-import os
-import itertools
-from numbers import Number
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
 import time
 import json
 import inspect
 from collections import OrderedDict
-import hidden
-import writer
+import data.hidden as hidden
+import data.writer as writer
 
 class Experiment(object):
     def _queryExamples(self):
