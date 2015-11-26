@@ -1,5 +1,5 @@
 import os
-from data.project import Experiment
+from learn.Experiment import Experiment
 from learn.Classification import Classification
 from learn.FeatureGroup import FeatureGroup
 import utils.Stream as Stream

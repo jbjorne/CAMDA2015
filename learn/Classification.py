@@ -12,9 +12,10 @@ import data.hidden as hidden
 import random
 import sklearn.metrics
 #from rlscore_interface import RLScore
-from RFEWrapper import RFEWrapper
+#from RFEWrapper import RFEWrapper
 import numpy
-import data.writer
+#import data.writer
+from ExampleIO import SVMLightExampleIO
 import settings
 from Meta import Meta
 
@@ -61,7 +62,7 @@ class Classification():
             fileStem = "examples"
         # Read examples
         if exampleIO == None:
-            exampleIO = data.writer.SVMLightExampleIO(os.path.join(inDir, fileStem))
+            exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.json"))
@@ -69,8 +70,8 @@ class Classification():
     def _getClassifier(self):
         if self.classifierName == "RLScore":
             raise NotImplementedError()
-        elif self.classifierName == "RFEWrapper":
-            classifier = RFEWrapper
+        #elif self.classifierName == "RFEWrapper":
+        #    classifier = RFEWrapper
         else:
             classifier = self._importNamed(self.classifierName)
         classifierArgs = self._getClassifierArgs()

@@ -7,7 +7,7 @@ import json
 import inspect
 from collections import OrderedDict
 import data.hidden as hidden
-import data.writer as writer
+from ExampleIO import SVMLightExampleIO
 
 class Experiment(object):
     def _queryExamples(self):
@@ -170,7 +170,7 @@ class Experiment(object):
         if fileStem == None:
             fileStem = "examples"
         if exampleIO == None:
-            exampleIO = writer.SVMLightExampleIO(os.path.join(outDir, fileStem))
+            exampleIO = SVMLightExampleIO(os.path.join(outDir, fileStem))
         
         exampleIO.newFiles()
         self.buildExamples(os.path.join(outDir, fileStem + ".meta.json"), exampleIO)
