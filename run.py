@@ -1,4 +1,5 @@
 import os
+import inspect
 from experiments import *
 from learn.Classification import Classification
 import utils.Stream as Stream
@@ -22,6 +23,7 @@ if __name__ == "__main__":
     groupE = parser.add_argument_group('build', 'Example Generation')
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
     groupE.add_argument('-e', '--experiment', help='', default="RemissionMutTest")
+    groupE.add_argument('-g', '--featureGroups', help='', default=None)
     groupE.add_argument('--projects', help='Projects used in example generation', default=None)
     groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     groupC = parser.add_argument_group('classify', 'Example Classification')
@@ -51,6 +53,12 @@ if __name__ == "__main__":
         e = ExperimentClass()
         if options.projects != None:
             e.projects = options.projects.split(",")
+        if options.featureGroups != None:
+            print "Using feature groups:", options.featureGroups
+            e.featureGroups = [eval(x) for x in options.featureGroups.split(",")]
+            for i in range(len(e.featureGroups)): # Initialize classes
+                if inspect.isclass(e.featureGroups[i]):
+                    e.featureGroups[i] = e.featureGroups[i]()
         e.databasePath = options.icgcDB
         e.debug = options.debug
         e.writeExamples(options.output)
