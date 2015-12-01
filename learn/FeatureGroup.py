@@ -11,7 +11,7 @@ class FeatureGroup(object):
     def processExample(self, connection, example, exampleFeatures, featureIds):
         queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
         for feature in self.buildRows([x for x in queryResult]):
-            if len(feature) > 1 and isinstance(feature[-1], int):
+            if len(feature) > 1 and not isinstance(feature[-1], basestring):
                 featureName, featureValue = feature[:-1], feature[-1]
             else:
                 featureName = feature
@@ -20,7 +20,7 @@ class FeatureGroup(object):
             exampleFeatures[self._getFeatureId(featureName, featureIds)] = featureValue
 
     def buildRows(self, rows):
-        return itertools.chain([self.buildFeatures(row) for row in rows])
+        return itertools.chain(*[self.buildFeatures(row) for row in rows])
     
     def buildFeatures(self, row):
         return [[row[key] for key in self.keys]]
