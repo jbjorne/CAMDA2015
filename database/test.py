@@ -1,31 +1,14 @@
 import os
-import wget
 import requests
 from clint.textui import progress
-from urllib import urlopen
-import json
 import shutil
+import tempfile
 
 dataTypes = {"ssm":"simple_somatic_mutation.open",
              "pexp":"protein_expression"}
 
-#url = "https://dcc.icgc.org/api/v1/download?fn=/release_20/Projects/ALL-US/simple_somatic_mutation.open.ALL-US.tsv.gz"
 downloadTemplate = "https://dcc.icgc.org/api/v1/download?fn=/release_20/Projects/PROJECT_CODE/DATA_TYPE.PROJECT_CODE.tsv.gz"
 projectsURL = "https://dcc.icgc.org/api/v1/projects?size=100"
-
-
-def download(project, dataType, outDir, clear=False):
-    downloadURL = downloadTemplate.replace("PROJECT_CODE", project).replace("DATA_TYPE", dataTypes.get(dataType, dataType))
-    downloadFile(downloadURL, outDir, clear=clear)
-    #filename = wget.download(downloadURL, outDir)
-    
-def test(dataTypes):
-    response = requests.get(projectsURL)
-    response = response.json()
-    for project in response["hits"]:
-        print project["id"], project.get("availableDataTypes")
-        if "ssm" in project.get("availableDataTypes"):
-            download(project["id"], "ssm", "/tmp/download")
 
 def downloadFile(url, outDir, clear=False):
     if not os.path.exists(outDir):
@@ -36,16 +19,19 @@ def downloadFile(url, outDir, clear=False):
         if clear:
             os.remove(filename)
         else:
-            print "Skipping", filename
+            print "Not downloading existing", filename
             return
     print "Downloading", filename
     r = requests.get(url, stream=True)
-    with open(filename, 'wb') as f:
+    tempFile = tempfile.mkstemp() #filename + "-part"
+    print tempFile
+    with open(tempFile, 'wb') as f:
         total_length = int(r.headers.get('content-length'))
         for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
             if chunk:
                 f.write(chunk)
                 f.flush()
+    os.rename(tempFile, filename)
 
 def downloadProjects(downloadDir, skipTypes, clear=False):
     if clear and os.path.exists(downloadDir):
@@ -60,20 +46,13 @@ def downloadProjects(downloadDir, skipTypes, clear=False):
         print "Processing project", projectId, "(" + str(count) + "/" + str(len(projects)) + ")"
         availableDataTypes = project.get("availableDataTypes", [])
         for dataType in basicData + availableDataTypes:
-            print "  Downloading", dataType
+            if dataType in skipTypes:
+                print "Skipping data type", dataType
+                continue
             dataType = dataTypes.get(dataType, dataType)
-            download(projectId, dataType, downloadDir, clear=clear)
+            downloadURL = downloadTemplate.replace("PROJECT_CODE", projectId).replace("DATA_TYPE", dataTypes.get(dataType, dataType))
+            downloadFile(downloadURL, downloadDir, clear=clear)
         count += 1
-    
-    #print r.text[0:1000]
-    #filename = wget.download(url2, "/tmp/download/projects.json")
-    #f = open(filename, "rt")
-    #text = f.read()
-    #f.close()
-    
-    #url = urlopen(url2)
-    #print url
-    #result = json.loads(url)
     
 if __name__ == "__main__":
     import argparse
