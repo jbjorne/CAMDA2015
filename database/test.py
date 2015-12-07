@@ -7,7 +7,9 @@ import tempfile
 
 dataTypes = {"ssm":"simple_somatic_mutation.open",
              "cnsm":"copy_number_somatic_mutation",
-             "pexp":"protein_expression"}
+             "stsm":"structural_somatic_mutation",
+             "pexp":"protein_expression",
+             "jcn":"splice_variant"}
 
 downloadTemplate = "https://dcc.icgc.org/api/v1/download?fn=/release_20/Projects/PROJECT_CODE/DATA_TYPE.PROJECT_CODE.tsv.gz"
 projectsURL = "https://dcc.icgc.org/api/v1/projects?size=100"
