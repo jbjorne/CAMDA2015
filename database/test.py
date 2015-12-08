@@ -27,6 +27,9 @@ def downloadFile(url, outDir, clear=False):
             return
     print "Downloading", filename
     r = requests.get(url, stream=True)
+    if r.status_code == 404:
+        print "Warning, ", filename, "not available for download"
+        return
     tempFile = tempfile.NamedTemporaryFile(delete=False)
     total_length = int(r.headers.get('content-length'))
     for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
@@ -35,6 +38,16 @@ def downloadFile(url, outDir, clear=False):
             tempFile.flush()
     os.rename(tempFile.name, filename)
 
+def getProjectFiles(project):
+    basicData = ["donor", "sample", "specimen"]
+    availableDataTypes = project.get("availableDataTypes", [])
+    files = []
+    for dataType in basicData + availableDataTypes:
+        dataType = dataTypes.get(dataType, dataType)
+        downloadURL = downloadTemplate.replace("PROJECT_CODE", project["id"]).replace("DATA_TYPE", dataTypes.get(dataType, dataType))
+        files.append((dataType, downloadURL))
+    return files
+        
 def downloadProjects(downloadDir, skipTypes, clear=False):
     if clear and os.path.exists(downloadDir):
         shutil.rmtree(downloadDir)
@@ -46,19 +59,15 @@ def downloadProjects(downloadDir, skipTypes, clear=False):
         json.dump(projects.json(), outfile, indent=4, sort_keys=True)
     print "Project info saved to", projectsFilePath
     projects = projects.json()["hits"]
-    basicData = ["donor", "sample", "specimen"]
     count = 0
     for project in projects:
         count += 1
-        projectId = project["id"]
-        print "Processing project", projectId, "(" + str(count) + "/" + str(len(projects)) + ")"
-        availableDataTypes = project.get("availableDataTypes", [])
-        for dataType in basicData + availableDataTypes:
+        print "Processing project",  project["id"], "(" + str(count) + "/" + str(len(projects)) + ")"
+        projectFiles = getProjectFiles(project)
+        for dataType, downloadURL in projectFiles:
             if dataType in skipTypes:
                 print "Skipping data type", dataType
                 continue
-            dataType = dataTypes.get(dataType, dataType)
-            downloadURL = downloadTemplate.replace("PROJECT_CODE", projectId).replace("DATA_TYPE", dataTypes.get(dataType, dataType))
             downloadFile(downloadURL, downloadDir, clear=clear)
     
 if __name__ == "__main__":
