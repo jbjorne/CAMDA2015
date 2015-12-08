@@ -5,6 +5,15 @@ import csv
 from test import getProjectFiles
 import dataset
 
+TABLE_FORMAT = {
+"exp_array":{
+    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_expression_value", "fold_change"],
+    "types":{"normalized_expression_value":float, "fold_change":float}},
+"exp_seq":{
+    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_read_count", "fold_change"],
+    "types":{"normalized_read_count":float, "fold_change":float}},
+}
+
 def openDB(dbPath, clear=False):
     if clear and os.path.exists(dbPath):
         os.remove(dbPath)
@@ -35,21 +44,29 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
         csvFile = open(csvFileName, 'rb')
     reader = csv.DictReader(csvFile, delimiter=delimiter)
     fieldNames = reader.fieldnames
-    #fieldTypes = {}
-    #for key in fieldNames:
-    #    fieldTypes[key] = int
+    fieldTypes = None
+    if dataType in TABLE_FORMAT:
+        for fieldName in TABLE_FORMAT[dataType]["columns"]:
+            assert fieldName in fieldNames
+        fieldNames = TABLE_FORMAT[dataType]["columns"]
+        fieldTypes = TABLE_FORMAT[dataType]["types"]
     rows = []
     for row in reader:
         #print(row)
         for key in fieldNames:
             stringValue = row[key]
-            try:
-                row[key] = float(stringValue)
+            if fieldTypes:
+                if key in fieldTypes:
+                    row[key] = fieldTypes[key](stringValue)
+            else: # no predefined types
                 if stringValue.isdigit():
                     row[key] = int(stringValue)
-            except ValueError:
-                if stringValue.strip() == "":
-                    row[key] = None
+                else:
+                    try:
+                        row[key] = float(stringValue)
+                    except ValueError:
+                        if stringValue.strip() == "":
+                            row[key] = None
         rows.append(row)
         insertRows(db, dataType, fieldNames, rows, 100000)
     insertRows(db, dataType, fieldNames, rows)
@@ -67,9 +84,12 @@ def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
         print "Processing project",  project["id"], "(" + str(count) + "/" + str(len(projects)) + ")"
         projectFiles = getProjectFiles(project)
         for dataType, downloadURL in projectFiles:
-            dataFile = os.path.join(downloadDir, os.path.basename(downloadURL))
-            print "Importing '" + dataType + "' from", dataFile
-            loadCSV(dataType, dataFile, db)
+            dataFilePath = os.path.join(downloadDir, os.path.basename(downloadURL))
+            if os.path.exists(dataFilePath):
+                print "Importing '" + dataType + "' from", dataFilePath
+                loadCSV(dataType, dataFilePath, db)
+            else:
+                print "Data type '" + dataType + "' does not have file", dataFilePath
     
 if __name__ == "__main__":
     import argparse
