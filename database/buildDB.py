@@ -21,13 +21,14 @@ def insertRows(table, chunkSize=0):
         tableObj.insert_many(rows, chunk_size=chunkSize)
         rows[:] = []
 
-def initTable(db, tableName, fieldNames):
+def getCustomKey(tableName, fieldNames):
     icgcKey = "icgc_" + tableName + "_id"
     if icgcKey in fieldNames:
         return icgcKey
-    
+    else:
+        return None  
 
-def loadCSV(csvFileName, table, delimiter='\t'):
+def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
     else:
@@ -50,7 +51,12 @@ def loadCSV(csvFileName, table, delimiter='\t'):
                 if stringValue.strip() == "":
                     row[key] = None
         rows.append(row)
-    print "Inserting", len(rows), "rows to table", table
+    print "Inserting", len(rows), "rows to table", dataType
+    customKey = getCustomKey(dataType, fieldNames)
+    if customKey:
+        table = db.get_table(dataType, customKey, "String")
+    else:
+        table = db.get_table(dataType)
     table.insert_many(rows)
     csvFile.close()
 
@@ -68,8 +74,7 @@ def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
         for dataType, downloadURL in projectFiles:
             dataFile = os.path.join(downloadDir, os.path.basename(downloadURL))
             print "Importing '" + dataType + "' from", dataFile
-            table = db[dataType]
-            loadCSV(dataFile, table)
+            loadCSV(dataType, dataFile, db)
             sys.exit()
     
 if __name__ == "__main__":
