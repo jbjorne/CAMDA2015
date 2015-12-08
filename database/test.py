@@ -11,6 +11,8 @@ dataTypes = {"ssm":"simple_somatic_mutation.open",
              "pexp":"protein_expression",
              "jcn":"splice_variant"}
 
+basicDataTypes = ["donor", "sample", "specimen"]
+
 downloadTemplate = "https://dcc.icgc.org/api/v1/download?fn=/release_20/Projects/PROJECT_CODE/DATA_TYPE.PROJECT_CODE.tsv.gz"
 projectsURL = "https://dcc.icgc.org/api/v1/projects?size=100"
 
@@ -39,11 +41,9 @@ def downloadFile(url, outDir, clear=False):
     os.rename(tempFile.name, filename)
 
 def getProjectFiles(project):
-    basicData = ["donor", "sample", "specimen"]
     availableDataTypes = project.get("availableDataTypes", [])
     files = []
-    for dataType in basicData + availableDataTypes:
-        dataType = dataTypes.get(dataType, dataType)
+    for dataType in basicDataTypes + availableDataTypes:
         downloadURL = downloadTemplate.replace("PROJECT_CODE", project["id"]).replace("DATA_TYPE", dataTypes.get(dataType, dataType))
         files.append((dataType, downloadURL))
     return files

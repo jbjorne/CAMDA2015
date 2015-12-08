@@ -2,8 +2,12 @@ import sys, os
 import json
 import gzip
 import csv
-from test import getProjectFiles
+from test import getProjectFiles, basicDataTypes
 import dataset
+
+# import subprocess
+# import cStringIO
+# io_method = cStringIO.StringIO
 
 TABLE_FORMAT = {
 "exp_array":{
@@ -31,7 +35,7 @@ def getTable(db, dataType, fieldNames):
 def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
     if len(rows) >= chunkSize and len(rows) >= 0:
         table = getTable(db, dataType, fieldNames)
-        print "Inserting", len(rows), "rows to", str(table) + "... ",
+        print "Inserting", len(rows), "rows to", str(table) + "...",
         if chunkSize < 1000:
             chunkSize = 1000
         table.insert_many(rows, chunk_size=chunkSize)
@@ -41,6 +45,8 @@ def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
 def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
+        #p = subprocess.Popen(["zcat", csvFileName], stdout = subprocess.PIPE)
+        #csvFile = io_method(p.communicate()[0])
     else:
         csvFile = open(csvFileName, 'rb')
     reader = csv.DictReader(csvFile, delimiter=delimiter)
@@ -71,11 +77,11 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
                     try: row[key] = float(stringValue)
                     except ValueError: pass
         rows.append(row)
-        insertRows(db, dataType, fieldNames, rows, 500000)
+        insertRows(db, dataType, fieldNames, rows, 200000)
     insertRows(db, dataType, fieldNames, rows)
     csvFile.close()
 
-def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
+def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, clear=False):
     with open(os.path.join(downloadDir, 'projects.json')) as f:    
         projects = json.load(f)["hits"]
     
@@ -87,6 +93,12 @@ def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
         print "Processing project",  project["id"], "(" + str(count) + "/" + str(len(projects)) + ")"
         projectFiles = getProjectFiles(project)
         for dataType, downloadURL in projectFiles:
+            if limitTypes and dataType not in limitTypes and dataType not in basicDataTypes:
+                print "Skipping data type '" + dataType + "'"
+                continue
+            elif dataType in skipTypes:
+                print "Skipping data type '" + dataType + "'"
+                continue
             dataFilePath = os.path.join(downloadDir, os.path.basename(downloadURL))
             if os.path.exists(dataFilePath):
                 print "Importing '" + dataType + "' from", dataFilePath
@@ -100,7 +112,8 @@ if __name__ == "__main__":
     parser.add_argument('-i','--input', default=None, help="Download directory")
     parser.add_argument('-o','--output', default=None, help="Path to database")
     parser.add_argument('-s','--skipTypes', default="meth_array,meth_exp", help="Do not download these dataTypes")
+    parser.add_argument('-l','--limitTypes', default=None, help="Use only these datatypes")
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     options = parser.parse_args()
     
-    importProjects(options.input, options.output, options.skipTypes.split(","), options.clear)
+    importProjects(options.input, options.output, options.skipTypes.split(","), options.limitTypes.split(","), options.clear)
