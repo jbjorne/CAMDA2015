@@ -37,14 +37,29 @@ def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
         table.insert_many(rows, chunk_size=chunkSize)
         rows[:] = []
         print "done"
+        
+def beginCSV(csvFileName, delimiter='\t'):
+    if csvFileName.endswith(".gz"):
+        csvFile = gzip.open(csvFileName, 'rt')
+    else:
+        csvFile = open(csvFileName, 'rt')
+    header = csvFile.readline().split(delimiter)
+    return csvFile, header 
+
+def getRowsCSV(csvFile, header, delimiter='\t'):
+    columnIndices = range(len(header))
+    for line in csvFile:
+        columns = line.split(delimiter)
+        yield {header[i]: columns[i] for i in columnIndices}
 
 def loadCSV(dataType, csvFileName, db, delimiter='\t'):
-    if csvFileName.endswith(".gz"):
-        csvFile = gzip.open(csvFileName, 'rb')
-    else:
-        csvFile = open(csvFileName, 'rb')
-    reader = csv.DictReader(csvFile, delimiter=delimiter)
-    fieldNames = reader.fieldnames
+#     if csvFileName.endswith(".gz"):
+#         csvFile = gzip.open(csvFileName, 'rb')
+#     else:
+#         csvFile = open(csvFileName, 'rb')
+#     reader = csv.DictReader(csvFile, delimiter=delimiter)
+    csvFile, header = beginCSV(csvFileName)
+    fieldNames = header #reader.fieldnames
     fieldTypes = None
     hasFormat = dataType in TABLE_FORMAT
     if hasFormat:
@@ -53,7 +68,7 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
         fieldNames = TABLE_FORMAT[dataType]["columns"]
         fieldTypes = TABLE_FORMAT[dataType]["types"]
     rows = []
-    for row in reader:
+    for row in getRowsCSV(csvFile, fieldNames):
         if hasFormat:
             row = {key: row[key] for key in fieldNames}
         #print(row)
