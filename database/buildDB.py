@@ -31,11 +31,12 @@ def getTable(db, dataType, fieldNames):
 def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
     if len(rows) >= chunkSize and len(rows) >= 0:
         table = getTable(db, dataType, fieldNames)
-        print "Inserting", len(rows), "rows to", table
+        print "Inserting", len(rows), "rows to", str(table) + "... ",
         if chunkSize < 1000:
             chunkSize = 1000
         table.insert_many(rows, chunk_size=chunkSize)
         rows[:] = []
+        print "done"
 
 def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     if csvFileName.endswith(".gz"):
@@ -45,30 +46,32 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     reader = csv.DictReader(csvFile, delimiter=delimiter)
     fieldNames = reader.fieldnames
     fieldTypes = None
-    if dataType in TABLE_FORMAT:
+    hasFormat = dataType in TABLE_FORMAT
+    if hasFormat:
         for fieldName in TABLE_FORMAT[dataType]["columns"]:
             assert fieldName in fieldNames
         fieldNames = TABLE_FORMAT[dataType]["columns"]
         fieldTypes = TABLE_FORMAT[dataType]["types"]
     rows = []
     for row in reader:
+        if hasFormat:
+            row = {key: row[key] for key in fieldNames}
         #print(row)
         for key in fieldNames:
             stringValue = row[key]
-            if fieldTypes:
+            if stringValue == "":
+                row[key] = None
+            elif fieldTypes:
                 if key in fieldTypes:
                     row[key] = fieldTypes[key](stringValue)
             else: # no predefined types
                 if stringValue.isdigit():
                     row[key] = int(stringValue)
                 else:
-                    try:
-                        row[key] = float(stringValue)
-                    except ValueError:
-                        if stringValue.strip() == "":
-                            row[key] = None
+                    try: row[key] = float(stringValue)
+                    except ValueError: pass
         rows.append(row)
-        insertRows(db, dataType, fieldNames, rows, 100000)
+        insertRows(db, dataType, fieldNames, rows, 500000)
     insertRows(db, dataType, fieldNames, rows)
     csvFile.close()
 
