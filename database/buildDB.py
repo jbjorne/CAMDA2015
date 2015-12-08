@@ -12,21 +12,21 @@ def openDB(dbPath, clear=False):
     print "Opening DB at", dbPath, "(clear:" + str(clear) + ")"
     return dataset.connect(dbPath)
 
-def insertRows(table, chunkSize=0):
-    tableObj, rows = table
+def getTable(db, dataType, fieldNames):
+    icgcKey = "icgc_" + dataType + "_id"
+    if icgcKey in fieldNames:
+        return db.get_table(dataType, icgcKey, "String")
+    else:
+        return db.get_table(dataType)
+
+def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
     if len(rows) >= chunkSize and len(rows) >= 0:
-        print "Inserting to", tableObj
+        table = getTable(db, dataType, fieldNames)
+        print "Inserting", len(rows), "rows to", table
         if chunkSize < 1000:
             chunkSize = 1000
-        tableObj.insert_many(rows, chunk_size=chunkSize)
+        table.insert_many(rows, chunk_size=chunkSize)
         rows[:] = []
-
-def getCustomKey(tableName, fieldNames):
-    icgcKey = "icgc_" + tableName + "_id"
-    if icgcKey in fieldNames:
-        return icgcKey
-    else:
-        return None  
 
 def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     if csvFileName.endswith(".gz"):
@@ -51,13 +51,8 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
                 if stringValue.strip() == "":
                     row[key] = None
         rows.append(row)
-    print "Inserting", len(rows), "rows to table", dataType
-    customKey = getCustomKey(dataType, fieldNames)
-    if customKey:
-        table = db.get_table(dataType, customKey, "String")
-    else:
-        table = db.get_table(dataType)
-    table.insert_many(rows)
+        insertRows(db, dataType, fieldNames, rows, 100000)
+    insertRows(db, dataType, fieldNames, rows)
     csvFile.close()
 
 def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
@@ -75,7 +70,6 @@ def importProjects(downloadDir, databaseDir, skipTypes, clear=False):
             dataFile = os.path.join(downloadDir, os.path.basename(downloadURL))
             print "Importing '" + dataType + "' from", dataFile
             loadCSV(dataType, dataFile, db)
-            sys.exit()
     
 if __name__ == "__main__":
     import argparse
