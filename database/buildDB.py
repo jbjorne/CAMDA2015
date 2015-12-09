@@ -51,21 +51,20 @@ def getTable(db, dataType, fieldNames):
     else:
         return db.get_table(dataType)
 
-def insertRows(db, dataType, fieldNames, rows, chunkSize=0, ensureLimit=100000):
+def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
     if len(rows) >= chunkSize and len(rows) >= 0:
         tableExists = dataType in db
-        if not tableExists and len(rows) > ensureLimit and chunkSize > ensureLimit:
-            ensureRows = rows[:ensureLimit]
-            rows[:ensureLimit] = []
-            insertRows(db, dataType, fieldNames, ensureRows, ensureLimit, ensureLimit)
-            tableExists = dataType in db
         table = getTable(db, dataType, fieldNames)
+        if not tableExists:
+            print "Initializing table", table
+            table.insert(rows[0], ensure=True)
+            rows[:1] = [] # remove first row
         startTime = time.time()
-        print "Inserting", len(rows), "rows to" + (" new" if not tableExists else ""), str(table) + "...",
+        print "Inserting", len(rows), "rows to", str(table) + "...",
         if chunkSize < 1000:
             chunkSize = 1000
-        table.insert_many(rows, chunk_size=chunkSize, ensure=not tableExists)
-        rows[:] = []
+        table.insert_many(rows, chunk_size=chunkSize, ensure=False)
+        rows[:] = [] # clear the cache
         print "done in %.2f" % (time.time() - startTime)
 
 def loadCSV(dataType, csvFileName, db, batchSize=200000, delimiter='\t'):
