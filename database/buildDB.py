@@ -4,6 +4,8 @@ import gzip
 import csv
 from test import getProjectFiles, basicDataTypes
 import dataset
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import utils.Stream as Stream
 
 # import subprocess
 # import cStringIO
@@ -11,11 +13,27 @@ import dataset
 
 TABLE_FORMAT = {
 "exp_array":{
-    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_expression_value", "fold_change"],
-    "types":{"normalized_expression_value":float, "fold_change":float}},
+    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", 
+                        "normalized_expression_value", "fold_change"]},
+    #"types":{"normalized_expression_value":float, "fold_change":float}},
 "exp_seq":{
-    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", "normalized_read_count", "fold_change"],
-    "types":{"normalized_read_count":float, "fold_change":float}},
+    "columns":["icgc_donor_id", "project_code", "icgc_specimen_id", "gene_id", 
+                      "normalized_read_count", "fold_change"]},
+    #"types":{"normalized_read_count":float, "fold_change":float}},
+"mirna_seq":{
+    "columns":['icgc_donor_id', 'project_code', 'icgc_specimen_id', 'icgc_sample_id', 
+               'analysis_id', 'mirna_id', 'normalized_read_count', 'raw_read_count', 
+               'fold_change', 'is_isomir', 'chromosome', 'chromosome_start', 'chromosome_end', 
+               'chromosome_strand', 'assembly_version', 'total_read_count']},
+"ssm":{
+    "columns":['icgc_mutation_id', 'icgc_donor_id', 'project_code', 'icgc_specimen_id', 'icgc_sample_id', 
+                  'matched_icgc_sample_id', 'chromosome', 'chromosome_start', 'chromosome_end', 
+                  'chromosome_strand', 'assembly_version', 'mutation_type', 'reference_genome_allele', 
+                  'mutated_from_allele', 'mutated_to_allele', 'quality_score', 'probability', 
+                  'total_read_count', 'mutant_allele_read_count', 'consequence_type', 'aa_mutation', 
+                  'cds_mutation', 'gene_affected', 'transcript_affected', 'gene_build_version']},
+"cnsm":{
+    "skip":["experimental_protocol", "base_calling_algorithm", "alignment_algorithm", "variation_calling_algorithm", "other_analysis_algorithm"]},
 }
 
 def openDB(dbPath, clear=False):
@@ -50,26 +68,31 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
     else:
         csvFile = open(csvFileName, 'rb')
     reader = csv.DictReader(csvFile, delimiter=delimiter)
-    fieldNames = reader.fieldnames
-    fieldTypes = None
-    hasFormat = dataType in TABLE_FORMAT
-    if hasFormat:
-        for fieldName in TABLE_FORMAT[dataType]["columns"]:
+    fieldNames = reader.fieldnames[:]
+    #fieldTypes = None
+    tableFormat = TABLE_FORMAT.get(dataType)
+    if tableFormat:
+        for fieldName in tableFormat["columns"]:
             assert fieldName in fieldNames
-        fieldNames = TABLE_FORMAT[dataType]["columns"]
-        fieldTypes = TABLE_FORMAT[dataType]["types"]
+        if "columns" in tableFormat:
+            fieldNames = tableFormat["columns"][:]
+        if "skip" in tableFormat:
+            for key in tableFormat["skip"]:
+                if key in fieldNames:
+                    fieldNames.remove(key)
+        #fieldTypes = tableFormat["types"][:]
     rows = []
     for row in reader:
-        if hasFormat:
+        if tableFormat:
             row = {key: row[key] for key in fieldNames}
         #print(row)
         for key in fieldNames:
             stringValue = row[key]
             if stringValue == "":
                 row[key] = None
-            elif fieldTypes:
-                if key in fieldTypes:
-                    row[key] = fieldTypes[key](stringValue)
+            #elif fieldTypes:
+            #    if key in fieldTypes:
+            #        row[key] = fieldTypes[key](stringValue)
             else: # no predefined types
                 if stringValue.isdigit():
                     row[key] = int(stringValue)
@@ -96,7 +119,7 @@ def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, clear=False)
             if limitTypes and dataType not in limitTypes and dataType not in basicDataTypes:
                 print "Skipping data type '" + dataType + "'"
                 continue
-            elif dataType in skipTypes:
+            elif skipTypes and dataType in skipTypes:
                 print "Skipping data type '" + dataType + "'"
                 continue
             dataFilePath = os.path.join(downloadDir, os.path.basename(downloadURL))
@@ -116,4 +139,9 @@ if __name__ == "__main__":
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     options = parser.parse_args()
     
-    importProjects(options.input, options.output, options.skipTypes.split(","), options.limitTypes.split(","), options.clear)
+    Stream.openLog(options.output + ".log.txt", clear = True)
+    importProjects(options.input, 
+                   options.output, 
+                   options.skipTypes.split(",") if options.skipTypes else None, 
+                   options.limitTypes.split(",") if options.limitTypes else None, 
+                   options.clear)
