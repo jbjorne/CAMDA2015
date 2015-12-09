@@ -51,9 +51,14 @@ def getTable(db, dataType, fieldNames):
     else:
         return db.get_table(dataType)
 
-def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
+def insertRows(db, dataType, fieldNames, rows, chunkSize=0, ensureLimit=100000):
     if len(rows) >= chunkSize and len(rows) >= 0:
         tableExists = dataType in db
+        if not tableExists and len(rows) > ensureLimit and chunkSize > ensureLimit:
+            ensureRows = rows[:ensureLimit]
+            rows[:ensureLimit] = []
+            insertRows(db, dataType, fieldNames, ensureRows, ensureLimit, ensureLimit)
+            tableExists = dataType in db
         table = getTable(db, dataType, fieldNames)
         startTime = time.time()
         print "Inserting", len(rows), "rows to" + (" new" if not tableExists else ""), str(table) + "...",
