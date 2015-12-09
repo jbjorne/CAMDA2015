@@ -34,7 +34,7 @@ TABLE_FORMAT = {
                   'total_read_count', 'mutant_allele_read_count', 'consequence_type', 'aa_mutation', 
                   'cds_mutation', 'gene_affected', 'transcript_affected', 'gene_build_version']},
 "cnsm":{
-    "skip":["experimental_protocol", "base_calling_algorithm", "alignment_algorithm", "variation_calling_algorithm", "other_analysis_algorithm"]},
+    "columns":['icgc_donor_id', 'project_code', 'icgc_specimen_id', 'icgc_sample_id', 'matched_icgc_sample_id', 'mutation_type', 'copy_number', 'segment_mean', 'segment_median', 'chromosome', 'chromosome_start', 'chromosome_end', 'assembly_version', 'chromosome_start_range', 'chromosome_end_range', 'start_probe_id', 'end_probe_id', 'sequencing_strategy', 'quality_score', 'probability', 'is_annotated', 'gene_affected', 'transcript_affected', 'gene_build_version', 'seq_coverage']},
 "pexp":{
     "columns":['icgc_donor_id', 'project_code', 'icgc_specimen_id', 'icgc_sample_id', 'analysis_id', 'antibody_id', 'gene_name', 'gene_stable_id', 'gene_build_version', 'normalized_expression_level']},
 }
@@ -83,12 +83,7 @@ def loadCSV(dataType, csvFileName, db, batchSize=200000, delimiter='\t'):
     if tableFormat:
         for fieldName in tableFormat["columns"]:
             assert fieldName in fieldNames
-        if "columns" in tableFormat:
-            fieldNames = tableFormat["columns"][:]
-        if "skip" in tableFormat:
-            for key in tableFormat["skip"]:
-                if key in fieldNames:
-                    fieldNames.remove(key)
+        fieldNames = tableFormat["columns"][:]
         #fieldTypes = tableFormat["types"][:]
     rows = []
     for row in reader:
