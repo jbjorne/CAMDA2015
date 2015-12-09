@@ -6,6 +6,7 @@ from test import getProjectFiles, basicDataTypes
 import dataset
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import utils.Stream as Stream
+import time
 
 # import subprocess
 # import cStringIO
@@ -52,15 +53,17 @@ def getTable(db, dataType, fieldNames):
 
 def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
     if len(rows) >= chunkSize and len(rows) >= 0:
+        tableExists = dataType in db
         table = getTable(db, dataType, fieldNames)
-        print "Inserting", len(rows), "rows to", str(table) + "...",
+        startTime = time.time()
+        print "Inserting", len(rows), "rows to" + (" new" if not tableExists else ""), str(table) + "...",
         if chunkSize < 1000:
             chunkSize = 1000
-        table.insert_many(rows, chunk_size=chunkSize)
+        table.insert_many(rows, chunk_size=chunkSize, ensure=not tableExists)
         rows[:] = []
-        print "done"
+        print "done in %.2f" % (time.time() - startTime)
 
-def loadCSV(dataType, csvFileName, db, delimiter='\t'):
+def loadCSV(dataType, csvFileName, db, batchSize=200000, delimiter='\t'):
     if csvFileName.endswith(".gz"):
         csvFile = gzip.open(csvFileName, 'rb')
         #p = subprocess.Popen(["zcat", csvFileName], stdout = subprocess.PIPE)
@@ -100,11 +103,11 @@ def loadCSV(dataType, csvFileName, db, delimiter='\t'):
                     try: row[key] = float(stringValue)
                     except ValueError: pass
         rows.append(row)
-        insertRows(db, dataType, fieldNames, rows, 200000)
+        insertRows(db, dataType, fieldNames, rows, batchSize)
     insertRows(db, dataType, fieldNames, rows)
     csvFile.close()
 
-def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, clear=False):
+def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, batchSize=200000, clear=False):
     with open(os.path.join(downloadDir, 'projects.json')) as f:    
         projects = json.load(f)["hits"]
     
@@ -125,7 +128,7 @@ def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, clear=False)
             dataFilePath = os.path.join(downloadDir, os.path.basename(downloadURL))
             if os.path.exists(dataFilePath):
                 print "Importing '" + dataType + "' from", dataFilePath
-                loadCSV(dataType, dataFilePath, db)
+                loadCSV(dataType, dataFilePath, db, batchSize=batchSize)
             else:
                 print "Data type '" + dataType + "' does not have file", dataFilePath
     
@@ -137,11 +140,13 @@ if __name__ == "__main__":
     parser.add_argument('-s','--skipTypes', default="meth_array,meth_exp", help="Do not download these dataTypes")
     parser.add_argument('-l','--limitTypes', default=None, help="Use only these datatypes")
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
+    parser.add_argument('-b','--batchSize', type=int, default=200000, help="SQL insert rows")
     options = parser.parse_args()
     
     Stream.openLog(options.output + ".log.txt", clear = True)
     importProjects(options.input, 
                    options.output, 
                    options.skipTypes.split(",") if options.skipTypes else None, 
-                   options.limitTypes.split(",") if options.limitTypes else None, 
+                   options.limitTypes.split(",") if options.limitTypes else None,
+                   options.batchSize,
                    options.clear)
