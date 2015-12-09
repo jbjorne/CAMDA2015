@@ -35,6 +35,8 @@ TABLE_FORMAT = {
                   'cds_mutation', 'gene_affected', 'transcript_affected', 'gene_build_version']},
 "cnsm":{
     "skip":["experimental_protocol", "base_calling_algorithm", "alignment_algorithm", "variation_calling_algorithm", "other_analysis_algorithm"]},
+"pexp":{
+    "columns":['icgc_donor_id', 'project_code', 'icgc_specimen_id', 'icgc_sample_id', 'analysis_id', 'antibody_id', 'gene_name', 'gene_stable_id', 'gene_build_version', 'normalized_expression_level']},
 }
 
 def openDB(dbPath, clear=False):
@@ -52,6 +54,8 @@ def getTable(db, dataType, fieldNames):
         return db.get_table(dataType)
 
 def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
+    if chunkSize == 0: # insert all
+        chunkSize = len(rows)
     if len(rows) >= chunkSize and len(rows) >= 0:
         tableExists = dataType in db
         table = getTable(db, dataType, fieldNames)
@@ -61,8 +65,6 @@ def insertRows(db, dataType, fieldNames, rows, chunkSize=0):
             rows[:1] = [] # remove first row
         startTime = time.time()
         print "Inserting", len(rows), "rows to", str(table) + "...",
-        if chunkSize < 1000:
-            chunkSize = 1000
         table.insert_many(rows, chunk_size=chunkSize, ensure=False)
         rows[:] = [] # clear the cache
         print "done in %.2f" % (time.time() - startTime)
