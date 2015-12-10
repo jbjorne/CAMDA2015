@@ -1,5 +1,3 @@
-import itertools
-
 class FeatureGroup(object):
     def __init__(self, name, query=None, keys=None):
         self.name = name # "SSM"
@@ -10,20 +8,18 @@ class FeatureGroup(object):
     
     def processExample(self, connection, example, exampleFeatures, featureIds):
         queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
-        for feature in self.buildRows([x for x in queryResult]):
-            if len(feature) > 1 and not isinstance(feature[-1], basestring):
-                featureName, featureValue = feature[:-1], feature[-1]
-            else:
-                featureName = feature
-                featureValue = 1 # Use default weight for feature
-            featureName = self._getFeatureNameAsString(featureName)
-            exampleFeatures[self._getFeatureId(featureName, featureIds)] = featureValue
-
-    def buildRows(self, rows):
-        return itertools.chain(*[self.buildFeatures(row) for row in rows])
+        for row in [x for x in queryResult]:
+            features, values = self.buildFeatures(row)
+            if values == None:
+                values = [1] * len(features) # Use default weight for all features
+            assert len(features) == len(values)
+            for feature, value in zip(features, values):
+                if not isinstance(feature, basestring):
+                    feature = self._getFeatureNameAsString(feature)
+                exampleFeatures[self._getFeatureId(feature, featureIds)] = value
     
     def buildFeatures(self, row):
-        return [[row[key] for key in self.keys]]
+        return [[row[key] for key in self.keys]], [1]
         #return self.name + ":" + queryResult['gene_affected'] + ":" + queryResult['consequence_type']
     
     def _getFeatureNameAsString(self, featureNameParts):

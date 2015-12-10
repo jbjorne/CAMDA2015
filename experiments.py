@@ -17,7 +17,7 @@ class SSMClusterSimple(SSMClusterBase):
     def __init__(self):
         super(SSMClusterSimple, self).__init__()   
     def buildFeatures(self, row):
-        return [(row["chromosome"], row["chromosome_start"] / 10000, row["consequence_type"])]
+        return [(row["chromosome"], row["chromosome_start"] / 10000, row["consequence_type"])], None
 
 class SSMCluster(SSMClusterBase):
     def __init__(self):
@@ -28,7 +28,7 @@ class SSMCluster(SSMClusterBase):
         features = []
         for step in self.steps:
             features.append((row["chromosome"], row["chromosome_start"] / step, row["consequence_type"]))
-        return features
+        return features, None
     
     #     ---------------------- Best scores on development set --------------------------
     #     [ 0.51881322  0.47312086  0.39220871  0.25795435  0.47840649  0.75779902
@@ -56,6 +56,7 @@ SSM_GENE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutatio
 SSM_PROJECT = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["project_code"])
 SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
+SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
 
@@ -63,6 +64,8 @@ CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number
 CNSM_CHROMOSOME = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type"])
 CNSM_CHROMOSOME_COUNT = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
 CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
+
+CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
 
 ###############################################################################
 # Experiments
@@ -82,9 +85,32 @@ class RemissionBase(Experiment):
             specimen_type NOT LIKE '%Normal%'
             """
         #self.filter = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id=? LIMIT 1"
+        #self.unique = "icgc_donor_id"
     
     def getLabel(self, example):
         return 'remission' in example['disease_status_last_followup']
+        
+class RemissionV20(Experiment):
+    def __init__(self):
+        super(RemissionV20, self).__init__()
+        self.query = """
+            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
+            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup
+            FROM donor INNER JOIN specimen
+            ON specimen.icgc_donor_id = donor.icgc_donor_id 
+            WHERE
+            length(specimen_type) > 0 AND 
+            length(disease_status_last_followup) > 0 AND
+            ((disease_status_last_followup LIKE '%remission%') OR
+            (donor_vital_status IS 'deceased')) AND
+            specimen_type NOT LIKE '%Normal%'
+            """
+            #specimen_interval is NULL AND
+            #specimen_type LIKE 'Primary%' AND
+    
+    def getLabel(self, example):
+        return 'remission' in example['disease_status_last_followup']
+
 
 class RemissionMutTest(RemissionBase):
     def __init__(self):

@@ -11,12 +11,15 @@ from ExampleIO import SVMLightExampleIO
 
 class Experiment(object):
     def _queryExamples(self):
-        query = "SELECT " + self.exampleFields + "\n"
-        query += "FROM " + self.exampleTable + "\n"
-        query += "WHERE "
-        if self.projects != None:
-            query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
-        query += self.exampleWhere
+        if self.query:
+            query = self.query
+        else:
+            query = "SELECT " + self.exampleFields + "\n"
+            query += "FROM " + self.exampleTable + "\n"
+            query += "WHERE "
+            if self.projects != None:
+                query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
+            query += self.exampleWhere
         self.meta["query"] = query
         print "=========================== Example generation query ==========================="
         print query
@@ -48,6 +51,7 @@ class Experiment(object):
         # General
         self.projects = None
         
+        self.query = None
         self.exampleTable = "clinical"
         self.exampleFields = "icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup"
         self.exampleWhere = None
@@ -59,6 +63,7 @@ class Experiment(object):
         # Generated data
         self.examples = None
         self.meta = None
+        self.unique = None
     
     def generateOrNot(self, example, verbose=True):
         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
@@ -128,6 +133,7 @@ class Experiment(object):
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
+        uniqueValues = set()
         print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
         count = 0
         for example in self.examples:
@@ -142,6 +148,9 @@ class Experiment(object):
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
             #    continue
+            if self.unique:
+                assert example[self.unique] not in uniqueValues
+                uniqueValues.add(example[self.unique])
             
             features = self._buildFeatures(example)
             if self.filter(example, features):
