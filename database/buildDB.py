@@ -114,6 +114,7 @@ def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, batchSize=20
     
     db = openDB(databaseDir, True)
     
+    print "*** Importing ICGC projects to the database ***"
     count = 0
     for project in projects:
         count += 1
@@ -133,6 +134,23 @@ def importProjects(downloadDir, databaseDir, skipTypes, limitTypes, batchSize=20
             else:
                 print "Data type '" + dataType + "' does not have file", dataFilePath
     
+    #print "*** Indexing the database ***"
+    #indexDB(db)
+    
+def indexDB(databaseDir):
+    db = openDB(databaseDir, False)
+    indexKey = "icgc_specimen_id"
+    for tableName in db.tables:
+        print "Processing table", tableName
+        if tableName not in basicDataTypes:
+            columns = db[tableName].columns
+            if "icgc_specimen_id" in columns:
+                indexName = "index_" + tableName + "_" + indexKey
+                print "Adding index", indexName, "for table", tableName + "...",
+                startTime = time.time()
+                db[tableName].create_index([indexKey], indexName)
+                print "done in %.2f" % (time.time() - startTime)
+    
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
@@ -143,6 +161,9 @@ if __name__ == "__main__":
     parser.add_argument('-c','--clear', help='Delete existing database', action='store_true', default=False)
     parser.add_argument('-b','--batchSize', type=int, default=200000, help="SQL insert rows")
     options = parser.parse_args()
+    
+    indexDB(options.input)
+    sys.exit()
     
     Stream.openLog(options.output + ".log.txt", clear = True)
     importProjects(options.input, 
