@@ -22,8 +22,8 @@ if __name__ == "__main__":
     parser.add_argument('-a', "--action", default=None, dest="action")
     groupE = parser.add_argument_group('build', 'Example Generation')
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
-    groupE.add_argument('-e', '--experiment', help='', default="RemissionMutTest")
-    groupE.add_argument('-g', '--featureGroups', help='', default=None)
+    groupE.add_argument('-e', '--experiment', help='Experiment class', default="RemissionMutTest")
+    groupE.add_argument('-f', '--features', help='Feature groups (comma-separated list)', default=None)
     groupE.add_argument('--projects', help='Projects used in example generation', default=None)
     groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     groupC = parser.add_argument_group('classify', 'Example Classification')
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     groupC.add_argument('-r','--classifierArguments', help='', default=None)
     groupC.add_argument('-m','--metric', help='', default="roc_auc")
     groupC.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
-    groupC.add_argument('-f','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
+    groupC.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=10)
     groupC.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
     groupC.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
     groupC.add_argument("--hidden", default=False, action="store_true", dest="hidden")
@@ -53,9 +53,9 @@ if __name__ == "__main__":
         e = ExperimentClass()
         if options.projects != None:
             e.projects = options.projects.split(",")
-        if options.featureGroups != None:
-            print "Using feature groups:", options.featureGroups
-            e.featureGroups = [eval(x) for x in options.featureGroups.split(",")]
+        if options.features != None:
+            print "Using feature groups:", options.features
+            e.featureGroups = [eval(x) for x in options.features.split(",")]
             for i in range(len(e.featureGroups)): # Initialize classes
                 if inspect.isclass(e.featureGroups[i]):
                     e.featureGroups[i] = e.featureGroups[i]()

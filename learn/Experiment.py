@@ -7,6 +7,7 @@ import json
 import inspect
 from collections import OrderedDict
 import data.hidden as hidden
+from Meta import Meta
 from ExampleIO import SVMLightExampleIO
 
 class Experiment(object):
@@ -20,7 +21,7 @@ class Experiment(object):
             if self.projects != None:
                 query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
             query += self.exampleWhere
-        self.meta["query"] = query
+        self.query = query
         print "=========================== Example generation query ==========================="
         print query
         print "================================================================================"
@@ -86,16 +87,17 @@ class Experiment(object):
         else:
             return value
     
-    def getFeatureId(self, featureName):
-        if featureName not in self.featureIds:
-            self.featureIds[featureName] = len(self.featureIds)
-        return self.featureIds[featureName]
+#     def getFeatureId(self, featureName):
+#         if featureName not in self.featureIds:
+#             self.featureIds[featureName] = len(self.featureIds)
+#             self.meta.insert("feature", {"name":featureName, "id":self.featureIds[featureName]})
+#         return self.featureIds[featureName]
         
     def _buildFeatures(self, example):
         features = {}
         connection = self.getConnection()
         for featureGroup in self.featureGroups:
-            featureGroup.processExample(connection, example, features, self.featureIds)
+            featureGroup.processExample(connection, example, features, self.featureIds, self.meta)
 #         for groupIndex in range(len(self.featureGroups)):
 #             featureGroup = self.featureGroups[groupIndex]
 #             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
@@ -109,8 +111,8 @@ class Experiment(object):
         #    print "WARNING: example has no features"
         return features
     
-    def _queryFeatures(self, featureGroup, example):
-        return self.getConnection().execute(featureGroup, (example['icgc_specimen_id'], ) )
+#     def _queryFeatures(self, featureGroup, example):
+#         return self.getConnection().execute(featureGroup, (example['icgc_specimen_id'], ) )
     
 #     def _filterExample(self, example):
 #         if self.filter != None:
@@ -128,14 +130,18 @@ class Experiment(object):
     
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
         print "Experiment:", self.__class__.__name__
-        self.meta = {"name":self.__class__.__name__, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))}
-        self.exampleMeta = []
+        self.meta = Meta(metaDataFileName, clear=True)
+        self.meta.insert("experiment", {"name":self.__class__.__name__, "query":self.query, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
+        for classId in self.classIds:
+            self.meta.insert("class", {"label":classId, "value":self.classIds[classId]})
+        self.meta.flush()
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
         uniqueValues = set()
         print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
         count = 0
+        built = 0
         for example in self.examples:
             count += 1
             if not self.generateOrNot(example):
@@ -155,11 +161,14 @@ class Experiment(object):
             features = self._buildFeatures(example)
             if self.filter(example, features):
                 continue
-            self.exampleMeta.append(self.getExampleMeta(example, classId, features))
+            built += 1
+            #self.exampleMeta.append(self.getExampleMeta(example, classId, features))
+            self.meta.insert("example", self.getExampleMeta(example, classId, features))
             exampleWriter.writeExample(classId, features)
         
-        print "Built", len(self.exampleMeta), "examples with", len(self.featureIds), "unique features"
-        self.saveMetaData(metaDataFileName)
+        self.meta.flush()
+        print "Built", built, "examples with", len(self.featureIds), "unique features"
+        #self.saveMetaData(metaDataFileName)
     
 #     def _writeExamples(self, classIds, featureVectors, exampleWriter):
 #         if exampleWriter != None:
@@ -169,19 +178,19 @@ class Experiment(object):
 #     def getFingerprint(self):
 #         return inspect.getsource(self.__class__)
     
-    def saveMetaData(self, metaDataFileName):
-        if metaDataFileName != None:
-            print "Writing metadata to", metaDataFileName
-            if not os.path.exists(os.path.dirname(metaDataFileName)):
-                os.makedirs(os.path.dirname(metaDataFileName))
-            f = open(metaDataFileName, "wt")
-            output = OrderedDict((("experiment", self.meta), ("source", inspect.getsource(self.__class__)), ("classes", self.classIds), ("features", self.featureIds)))
-            if len(self.exampleMeta) > 0:
-                output["examples"] = self.exampleMeta
-            json.dump(output, f, indent=4)#, separators=(',\n', ':'))
-            f.close()
-        else:
-            print "Experiment metadata not saved"
+#     def saveMetaData(self, metaDataFileName):
+#         if metaDataFileName != None:
+#             print "Writing metadata to", metaDataFileName
+#             if not os.path.exists(os.path.dirname(metaDataFileName)):
+#                 os.makedirs(os.path.dirname(metaDataFileName))
+#             f = open(metaDataFileName, "wt")
+#             output = OrderedDict((("experiment", self.meta), ("source", inspect.getsource(self.__class__)), ("classes", self.classIds), ("features", self.featureIds)))
+#             if len(self.exampleMeta) > 0:
+#                 output["examples"] = self.exampleMeta
+#             json.dump(output, f, indent=4)#, separators=(',\n', ':'))
+#             f.close()
+#         else:
+#             print "Experiment metadata not saved"
     
     def writeExamples(self, outDir, fileStem=None, exampleIO=None):
         if fileStem == None:
@@ -190,5 +199,5 @@ class Experiment(object):
             exampleIO = SVMLightExampleIO(os.path.join(outDir, fileStem))
         
         exampleIO.newFiles()
-        self.buildExamples(os.path.join(outDir, fileStem + ".meta.json"), exampleIO)
+        self.buildExamples(os.path.join(outDir, fileStem + ".meta.sqlite"), exampleIO)
         exampleIO.closeFiles()  

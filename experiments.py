@@ -71,6 +71,40 @@ CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm
 # Experiments
 ###############################################################################
 
+class Survival(Experiment):
+    def __init__(self, days=365):
+        super(Survival, self).__init__()
+        self.days = days
+        self.query = """
+            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,donor_survival_time,donor_interval_of_last_followup,
+            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup
+            FROM donor INNER JOIN specimen
+            ON specimen.icgc_donor_id = donor.icgc_donor_id 
+            WHERE
+            (donor_vital_status == 'deceased'  AND 
+            (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
+            OR
+            (donor_survival_time > %d OR donor_interval_of_last_followup > %d)
+            """ % (self.days, self.days)
+    
+    def getDays(self, example):
+        return max(example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
+    
+    def getLabel(self, example):
+        days = self.getDays(example)
+        if example["donor_vital_status"] == "alive":
+            assert days >= self.days
+            return True
+        else:
+            return days >= self.days
+
+#         if example["donor_survival_time"]  != None:
+#             assert example["donor_vital_status"] == "deceased"
+#             return example["donor_survival_time"] >= self.days
+#         else:
+#             assert example["donor_vital_status"] == "alive"
+#             return True
+
 class RemissionBase(Experiment):
     def __init__(self):
         super(RemissionBase, self).__init__()

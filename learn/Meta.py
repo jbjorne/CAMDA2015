@@ -1,6 +1,8 @@
 from collections import OrderedDict
 import json
+import time
 import os
+import dataset
 
 ###############################################################################
 # Output directory processing
@@ -84,142 +86,177 @@ def compareFeatures(a, b):
         return a["id"] - b["id"]
 
 class Meta():
-    def __init__(self, filePath=None, readImmediately=True):
+    def __init__(self, filePath=None, clear=False):
         self.filePath = filePath
-        self.meta = None
         self.verbose = True
-        if (filePath != None) and readImmediately:
-            self.read()
+        self.db = self._openDB(filePath, clear=clear)
+        self.cacheSize = 1000
+        self.cache = {}
+    
+    def _openDB(self, dbPath, clear=False):
+        if clear and os.path.exists(dbPath):
+            print "Removing existing metadata database at", dbPath
+            os.remove(dbPath)
+        dbPath = "sqlite:///" + os.path.abspath(dbPath)
+        print "Opening metadata DB at", dbPath
+        return dataset.connect(dbPath)
+    
+    def insert(self, table, row):
+        if table not in self.cache:
+            self.cache[table] = []
+        self.cache[table].append(row)
+        self._insertCached(table, self.cacheSize)
+    
+    def flush(self):
+        for table in sorted(self.cache.keys()):
+            self._insertCached(table)
+    
+    def _insertCached(self, tableName, chunkSize=0):
+        if chunkSize == 0: # insert all available rows
+            chunkSize = len(self.cache[tableName])
+        # Insert rows if enough are available
+        rows = self.cache[tableName]
+        if len(rows) >= chunkSize and len(rows) >= 0:
+            if not tableName in self.db:
+                print "Inserting initial row for metadata table", self.db[tableName]
+                self.db[tableName].insert(rows[0], ensure=True)
+                rows[:1] = [] # remove first row
+            if len(rows) > 0:
+                startTime = time.time()
+                print "Inserting", len(rows), "rows to", str(self.db[tableName]) + "...",
+                self.db[tableName].insert_many(rows, chunk_size=chunkSize, ensure=False)
+                rows[:] = [] # clear the cache
+                print "done in %.2f" % (time.time() - startTime)
         
-    ###############################################################################
-    # JSON metadata read/write
-    ###############################################################################
-    
-    def read(self):
-        if self.filePath == None:
-            raise Exception("Metadata file path not defined")
-        print "Reading metadata from", self.filePath
-        f = open(self.filePath, "rt")
-        self.meta = json.load(f, object_pairs_hook=OrderedDict)
-        f.close()
-    
-    def write(self, filePath=None):
-        if filePath == None:
-            filePath = self.filePath
-        if filePath == None:
-            raise Exception("Metadata file path not defined")
-        self.meta["features"] = self.getFeaturesSorted()
-        self.sortKeys()
-        print "Saving metadata to", filePath
-        f = open(filePath, "wt")
-        json.dump(self.meta, f, indent=4)
-        f.close()    
-    
-    ###############################################################################
-    # Categories
-    ###############################################################################
-    
-    def __delitem__(self, key):
-        del self.meta[key]
-    
-    def __getitem__(self, key):
-        return self.meta[key]
-    
-    def __setitem__(self, key, value):
-        self.meta[key] = value
-    
-    def remove(self, key):
-        if key in self.meta:
-            del self.meta[key]
-    
-    def hasKey(self, key):
-        return key in self.meta
-
-    ###############################################################################
-    # Individual examples and features
-    ###############################################################################
-
-    def countExamples(self):
-        counts = {"1":0, "-1":0}
-        for example in self.meta["examples"]:
-            counts[example["label"]] += 1
-        return counts
-    
-    def getExampleFromSet(self, index, setName):
-        i = -1
-        for example in self.meta["examples"]:
-            if example["set"] == setName:
-                i += 1
-            if i == index:
-                return example
-    
-    def getExample(self, index):
-        return self.meta["examples"][index]
-    
-    def getExamples(self, indices):
-        return {i:self.meta["examples"][i] for i in indices}
-    
-    def getFeaturesByIndex(self):
-        featuresByIndex = {}
-        for name, index in self.meta["features"].iteritems():
-            if isinstance(index, int):
-                featuresByIndex[index] = name
-            else:
-                featuresByIndex[index["id"]] = name
-        return featuresByIndex
-    
-    def getFeature(self, index, featuresByIndex=None):
-        if featuresByIndex == None:
-            featuresByIndex = self._getFeaturesByIndex()
-        name = featuresByIndex[index]
-        if isinstance(self.meta["features"][name], int):
-            self.meta["features"][name] = {"id":self.meta["features"][name]}
-        return self.meta["features"][name]
-    
-    def getFeatures(self, indices, featuresByIndex=None):
-        if featuresByIndex == None:
-            featuresByIndex = self._getFeaturesByIndex()
-        rv = {}
-        features = self.meta["features"]
-        for index in indices:
-            name = featuresByIndex[index]
-            if isinstance(features[name], int):
-                rv[index] = {"id":features[name]}
-            else:
-                rv[index] = features[name]
-        return rv
-    
-    def getFeaturesSorted(self, featuresByIndex=None, addRank=True):
-        if featuresByIndex == None:
-            featuresByIndex = self.getFeaturesByIndex()
-        # Sort features
-        featureValues = self.meta["features"].values()
-        featureValues.sort(cmp=compareFeatures)
-        features = OrderedDict()
-        for index, feature in enumerate(featureValues):
-            if isinstance(feature, int):
-                features[featuresByIndex[feature]] = feature
-            else:
-                features[featuresByIndex[feature["id"]]] = feature
-                if addRank:
-                    feature["rank"] = index + 1
-        return features
-
-    ###############################################################################
-    # Utilities
-    ###############################################################################
-    
-    def sortKeys(self):
-        keys = self.meta.keys()
-        sortedKeys = []
-        for named in ["experiment", "template", "classes", "results", "analysis", "features", "examples"]:
-            if named in keys:
-                sortedKeys.append(named)
-                keys.remove(named)
-        sortedKeys += sorted(keys)
-        sortedMeta = OrderedDict()
-        for key in sortedKeys:
-            sortedMeta[key] = self.meta[key]
-        self.meta = sortedMeta
+#     ###############################################################################
+#     # JSON metadata read/write
+#     ###############################################################################
+#     
+#     def read(self):
+#         if self.filePath == None:
+#             raise Exception("Metadata file path not defined")
+#         print "Reading metadata from", self.filePath
+#         f = open(self.filePath, "rt")
+#         self.meta = json.load(f, object_pairs_hook=OrderedDict)
+#         f.close()
+#     
+#     def write(self, filePath=None):
+#         if filePath == None:
+#             filePath = self.filePath
+#         if filePath == None:
+#             raise Exception("Metadata file path not defined")
+#         self.meta["features"] = self.getFeaturesSorted()
+#         self.sortKeys()
+#         print "Saving metadata to", filePath
+#         f = open(filePath, "wt")
+#         json.dump(self.meta, f, indent=4)
+#         f.close()    
+#     
+#     ###############################################################################
+#     # Categories
+#     ###############################################################################
+#     
+#     def __delitem__(self, key):
+#         del self.meta[key]
+#     
+#     def __getitem__(self, key):
+#         return self.meta[key]
+#     
+#     def __setitem__(self, key, value):
+#         self.meta[key] = value
+#     
+#     def remove(self, key):
+#         if key in self.meta:
+#             del self.meta[key]
+#     
+#     def hasKey(self, key):
+#         return key in self.meta
+# 
+#     ###############################################################################
+#     # Individual examples and features
+#     ###############################################################################
+# 
+#     def countExamples(self):
+#         counts = {"1":0, "-1":0}
+#         for example in self.meta["examples"]:
+#             counts[example["label"]] += 1
+#         return counts
+#     
+#     def getExampleFromSet(self, index, setName):
+#         i = -1
+#         for example in self.meta["examples"]:
+#             if example["set"] == setName:
+#                 i += 1
+#             if i == index:
+#                 return example
+#     
+#     def getExample(self, index):
+#         return self.meta["examples"][index]
+#     
+#     def getExamples(self, indices):
+#         return {i:self.meta["examples"][i] for i in indices}
+#     
+#     def getFeaturesByIndex(self):
+#         featuresByIndex = {}
+#         for name, index in self.meta["features"].iteritems():
+#             if isinstance(index, int):
+#                 featuresByIndex[index] = name
+#             else:
+#                 featuresByIndex[index["id"]] = name
+#         return featuresByIndex
+#     
+#     def getFeature(self, index, featuresByIndex=None):
+#         if featuresByIndex == None:
+#             featuresByIndex = self._getFeaturesByIndex()
+#         name = featuresByIndex[index]
+#         if isinstance(self.meta["features"][name], int):
+#             self.meta["features"][name] = {"id":self.meta["features"][name]}
+#         return self.meta["features"][name]
+#     
+#     def getFeatures(self, indices, featuresByIndex=None):
+#         if featuresByIndex == None:
+#             featuresByIndex = self._getFeaturesByIndex()
+#         rv = {}
+#         features = self.meta["features"]
+#         for index in indices:
+#             name = featuresByIndex[index]
+#             if isinstance(features[name], int):
+#                 rv[index] = {"id":features[name]}
+#             else:
+#                 rv[index] = features[name]
+#         return rv
+#     
+#     def getFeaturesSorted(self, featuresByIndex=None, addRank=True):
+#         if featuresByIndex == None:
+#             featuresByIndex = self.getFeaturesByIndex()
+#         # Sort features
+#         featureValues = self.meta["features"].values()
+#         featureValues.sort(cmp=compareFeatures)
+#         features = OrderedDict()
+#         for index, feature in enumerate(featureValues):
+#             if isinstance(feature, int):
+#                 features[featuresByIndex[feature]] = feature
+#             else:
+#                 features[featuresByIndex[feature["id"]]] = feature
+#                 if addRank:
+#                     feature["rank"] = index + 1
+#         return features
+# 
+#     ###############################################################################
+#     # Utilities
+#     ###############################################################################
+#     
+#     def sortKeys(self):
+#         keys = self.meta.keys()
+#         sortedKeys = []
+#         for named in ["experiment", "template", "classes", "results", "analysis", "features", "examples"]:
+#             if named in keys:
+#                 sortedKeys.append(named)
+#                 keys.remove(named)
+#         sortedKeys += sorted(keys)
+#         sortedMeta = OrderedDict()
+#         for key in sortedKeys:
+#             sortedMeta[key] = self.meta[key]
+#         self.meta = sortedMeta
     
     

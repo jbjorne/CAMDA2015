@@ -6,7 +6,7 @@ class FeatureGroup(object):
         if self.query != None and self.keys != None:
             self.query = self.query.replace("KEYS", ",".join(self.keys))
     
-    def processExample(self, connection, example, exampleFeatures, featureIds):
+    def processExample(self, connection, example, exampleFeatures, featureIds, meta):
         queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
         for row in [x for x in queryResult]:
             features, values = self.buildFeatures(row)
@@ -16,7 +16,7 @@ class FeatureGroup(object):
             for feature, value in zip(features, values):
                 if not isinstance(feature, basestring):
                     feature = self._getFeatureNameAsString(feature)
-                exampleFeatures[self._getFeatureId(feature, featureIds)] = value
+                exampleFeatures[self._getFeatureId(feature, featureIds, meta)] = value
     
     def buildFeatures(self, row):
         return [[row[key] for key in self.keys]], [1]
@@ -25,7 +25,8 @@ class FeatureGroup(object):
     def _getFeatureNameAsString(self, featureNameParts):
         return self.name + ":" + ":".join([str(x) for x in featureNameParts])        
     
-    def _getFeatureId(self, featureName, featureIds):
+    def _getFeatureId(self, featureName, featureIds, meta):
         if featureName not in featureIds:
             featureIds[featureName] = len(featureIds)
+            meta.insert("feature", {"name":featureName, "id":featureIds[featureName]})
         return featureIds[featureName]
