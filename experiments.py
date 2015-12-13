@@ -81,14 +81,16 @@ class Survival(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            (donor_vital_status == 'deceased'  AND 
+            donor_vital_status IS NOT NULL AND
+            ((donor_vital_status == 'deceased'  AND 
             (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
             OR
-            (donor_survival_time > %d OR donor_interval_of_last_followup > %d)
+            (donor_survival_time > %d OR donor_interval_of_last_followup > %d))
             """ % (self.days, self.days)
     
     def getDays(self, example):
-        return max(example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
+        return max([example[key] for key in ["donor_survival_time", "donor_interval_of_last_followup"] if example[key] != None])
+        #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
     
     def getLabel(self, example):
         days = self.getDays(example)
@@ -96,6 +98,7 @@ class Survival(Experiment):
             assert days >= self.days
             return True
         else:
+            assert example["donor_vital_status"] == "deceased"
             return days >= self.days
 
 #         if example["donor_survival_time"]  != None:

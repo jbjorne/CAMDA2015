@@ -150,7 +150,6 @@ class Experiment(object):
 
             print "Processing example", example,
             classId = self.getClassId(self.getLabel(example))
-            print classId, str(count) + "/" + str(numExamples)
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
             #    continue
@@ -159,6 +158,7 @@ class Experiment(object):
                 uniqueValues.add(example[self.unique])
             
             features = self._buildFeatures(example)
+            print classId, str(len(features)), str(count) + "/" + str(numExamples)
             if self.filter(example, features):
                 continue
             built += 1

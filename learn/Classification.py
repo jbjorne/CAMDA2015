@@ -65,7 +65,7 @@ class Classification():
             exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
-        self.meta = Meta(os.path.join(inDir, fileStem + ".meta.json"))
+        self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"), clear=False)
     
     def _getClassifier(self):
         if self.classifierName == "RLScore":
@@ -185,8 +185,8 @@ class Classification():
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
             self.results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
-                       "metric":self.metric,"scores":list(scores), 
-                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":params})
+                       "metric":self.metric, "score":None, "scores":",".join(list(scores)), 
+                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":params, "set":"train"})
             if index == 0 or float(mean_score) > self.results[self.bestIndex]["mean"]:
                 self.bestIndex = index
                 if hasattr(search, "extras_"):
@@ -202,7 +202,7 @@ class Classification():
         return search
         
     def _predictHidden(self, y_hidden, X_hidden, search):
-        self.hiddenResults = None
+        self.hiddenResult = None
         self.hiddenDetails = None
         if X_hidden.shape[0] > 0:
             print "----------------------------- Classifying Hidden Set -----------------------------------"
@@ -213,12 +213,13 @@ class Classification():
             y_hidden_score = search.predict_proba(X_hidden)
             y_hidden_score = [x[1] for x in y_hidden_score]
             print "AUC", sklearn.metrics.roc_auc_score(y_hidden, y_hidden_score)
-            self.hiddenResults = {"classifier":search.best_estimator_.__class__.__name__, 
+            self.hiddenResult = {"classifier":search.best_estimator_.__class__.__name__, 
                              #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
                              "score":search.score(X_hidden, y_hidden),
                              "metric":self.metric,
-                             "params":search.best_params_}
-            print "Score =", self.hiddenResults["score"], "(" + self.metric + ")"
+                             "params":search.best_params_,
+                             "set":"hidden"}
+            print "Score =", self.hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred
             #print search.predict_proba(X_hidden)
@@ -243,9 +244,13 @@ class Classification():
         if not os.path.exists(os.path.dirname(resultPath)):
             os.makedirs(os.path.dirname(resultPath))
         # Add general results
-        self.meta["results"] = {"best":self.results[self.bestIndex], "all":self.results}
-        if self.hiddenResults != None:
-            self.meta["results"]["hidden"] = self.hiddenResults
+        #self.meta["results"] = {"best":self.results[self.bestIndex], "all":self.results}
+        #if self.hiddenResults != None:
+        #    self.meta["results"]["hidden"] = self.hiddenResults
+        for result in self.results:
+            self.meta.insert("result", result)
+        if self.hiddenResult != None:
+            self.meta.insert("result", self.hiddenResult)
         # Insert detailed results
         if details:
             featureByIndex = self.meta.getFeaturesByIndex()
@@ -255,9 +260,9 @@ class Classification():
             for extra in self.extras:
                 self._saveDetails(extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
                 fold += 1
-        else:
-            self.meta.remove("examples")
-            self.meta.remove("features")
+#         else:
+#             self.meta.remove("examples")
+#             self.meta.remove("features")
                 
         # Save results
         if resultPath != None:
