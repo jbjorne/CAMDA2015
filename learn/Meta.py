@@ -86,7 +86,7 @@ def compareFeatures(a, b):
     else: # a and b are dict, neither has a sort attribute
         return a["id"] - b["id"]
 
-class DatabaseConnection():
+class Meta():
     def __init__(self, filePath=None, copyFrom=None, clear=False):
         self.filePath = filePath
         self.verbose = True

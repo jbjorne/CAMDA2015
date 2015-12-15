@@ -17,8 +17,7 @@ import numpy
 #import data.writer
 from ExampleIO import SVMLightExampleIO
 #import settings
-from Meta import DatabaseConnection
-from sklearn.feature_extraction import DictVectorizer
+from Meta import Meta
 
 def getStratifiedKFoldCV(y, meta, numFolds=10):
     return StratifiedKFold(y, n_folds=numFolds)
@@ -58,54 +57,15 @@ class Classification():
     def buildExamples(self, experiment, outDir):
         experiment.writeExamples(outDir)
     
-    def _loadFeatures(self):
-        vector = {}
-        #vectors = [vector]
-        currentExample = 0
-        print "vectorization"
-        for feature in self.db.db.query("SELECT example,feature_value,feature_id FROM feature_vectors"):
-            if feature["example"] != currentExample:
-                yield vector
-                #print feature["example"], currentExample
-                assert feature["example"] == currentExample + 1
-                vector = {}
-                currentExample += 1
-                #vectors.append(vector)
-            vector[feature["feature_id"]] = feature["feature_value"]
-        yield vector
-        
-    def readExamples(self, inDir, fileStem=None): #, exampleIO=None):
+    def readExamples(self, inDir, fileStem=None, exampleIO=None):
         if fileStem == None:
             fileStem = "examples"
         # Read examples
-        #if exampleIO == None:
-        #    exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
-        #self.X, self.y = exampleIO.readFiles()
+        if exampleIO == None:
+            exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
+        self.X, self.y = exampleIO.readFiles()
         # Read metadata
-        self.db = DatabaseConnection(os.path.join(inDir, fileStem + ".sqlite"), clear=False)
-        # Read labels
-        print "Reading labels"
-        self.y = DictVectorizer(sparse=True).fit_transform([x for x in self.db.db.query("SELECT id,label FROM example")])
-        # Read vectors
-        print "Reading features"
-        self.X = DictVectorizer(sparse=True).fit_transform(self._loadFeatures())
-#         print "query"
-#         features = [x for x in self.db.db.query("SELECT example,value,feature FROM feature_vectors")]
-#         vector = {}
-#         vectors = [vector]
-#         currentExample = 0
-#         print "vectorization"
-#         for feature in features:
-#             if feature["example"] != currentExample:
-#                 assert feature["example"] == currentExample + 1
-#                 vector = {}
-#                 vectors.append(vector)
-#             vector[feature["feature"]] = feature["value"]
-#         print "scikit"
-#         self.X = DictVectorizer(sparse=True).fit_transform(vectors)
-        print "Done"
-        sys.exit()
-            
+        self.meta = Meta(os.path.join(inDir, fileStem + ".classification.sqlite"), copyFrom=os.path.join(inDir, fileStem + ".meta.sqlite"), clear=True)
     
     def _getClassifier(self):
         if self.classifierName == "RLScore":
