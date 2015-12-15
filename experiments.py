@@ -85,7 +85,7 @@ class Survival(Experiment):
             ((donor_vital_status == 'deceased'  AND 
             (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
             OR
-            (donor_survival_time > %d OR donor_interval_of_last_followup > %d))
+            (CAST(donor_survival_time AS INT) > %d OR CAST(donor_interval_of_last_followup AS INT) > %d))
             """ % (self.days, self.days)
     
     def getDays(self, example):
