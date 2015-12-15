@@ -34,6 +34,7 @@ class Classification():
         self.X = None
         self.y = None
         self.meta = None
+        self.exampleMeta = None
         # Settings
         self.randomize = False
         self.numFolds = numFolds
@@ -66,6 +67,7 @@ class Classification():
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".classification.sqlite"), copyFrom=os.path.join(inDir, fileStem + ".meta.sqlite"), clear=True)
+        self.exampleMeta = self.meta.db["example"].all()
     
     def _getClassifier(self):
         if self.classifierName == "RLScore":
@@ -147,13 +149,13 @@ class Classification():
             print "Randomized class distribution = ", self._getClassDistribution(self.y)
                 
     def classify(self, resultPath):
-        if "classes" in self.meta.db:
+        if "class" in self.meta.db.tables:
             print "Class distribution = ", self._getClassDistribution(self.y)
             if self.randomize:
                 self._randomizeLabels()
-        X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.meta.meta)
+        X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.exampleMeta)
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
-        if self.meta.hasKey("classes"):
+        if "class" in self.meta.db.tables:
             print "Classes y_train = ", self._getClassDistribution(y_train)
             print "Classes y_hidden = ", self._getClassDistribution(y_hidden)
         
@@ -165,7 +167,7 @@ class Classification():
     def _crossValidate(self, y_train, X_train, refit=False):
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
-        cv = self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         scorer = self._getScorer()
         classifier, classifierArgs = self._getClassifier()
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, scoring=scorer, verbose=self.verbose, n_jobs=self.parallel, pre_dispatch=self._getPreDispatch())
@@ -195,6 +197,7 @@ class Classification():
                 else:
                     print "NO_EXTRAS"
             index += 1
+        self.meta.insert_many("result", self.results)
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[self.bestIndex]
         print scores
@@ -219,6 +222,7 @@ class Classification():
                              "metric":self.metric,
                              "params":search.best_params_,
                              "set":"hidden"}
+            self.meta.insert("result", self.hiddenResult)
             print "Score =", self.hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred

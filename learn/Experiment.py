@@ -135,6 +135,7 @@ class Experiment(object):
         for classId in self.classIds:
             self.meta.insert("class", {"label":classId, "value":self.classIds[classId]})
         self.meta.flush()
+        self.meta.initCache("feature", 100000)
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)

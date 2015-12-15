@@ -78,16 +78,16 @@ def split(*arrays, **options):
     hidden = options.pop('hidden', None)
     if hidden == None:
         meta = options.pop('meta', None)
-        meta = result.getMeta(meta)
+        #meta = result.getMeta(meta)
         hidden = set()
-        for index, example in enumerate(meta["examples"]):
+        for example in meta:
             addToHidden = False
             if example.get("set", None) == 'hidden':
                 addToHidden = True
             if hiddenFilter != None and example.get(hiddenFilter[0], None) != hiddenFilter[1]:
                 addToHidden = False
             if addToHidden:
-                hidden.add(index)
+                hidden.add(example["id"])
     
     numColumns = arrays[0].shape[0] #len(arrays[0])
     #print numColumns
