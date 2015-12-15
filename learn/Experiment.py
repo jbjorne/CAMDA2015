@@ -3,12 +3,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
 import time
-import json
-import inspect
-from collections import OrderedDict
+#import json
+#import inspect
+#from collections import OrderedDict
 import data.hidden as hidden
-from Meta import Meta
-from ExampleIO import SVMLightExampleIO
+from Meta import DatabaseConnection
+#from ExampleIO import SVMLightExampleIO
 
 class Experiment(object):
     def _queryExamples(self):
@@ -63,7 +63,7 @@ class Experiment(object):
         self.includeTrainingSet = True
         # Generated data
         self.examples = None
-        self.meta = None
+        self.db = None
         self.unique = None
     
     def generateOrNot(self, example, verbose=True):
@@ -97,7 +97,7 @@ class Experiment(object):
         features = {}
         connection = self.getConnection()
         for featureGroup in self.featureGroups:
-            featureGroup.processExample(connection, example, features, self.featureIds, self.meta)
+            featureGroup.processExample(connection, example, features, self.featureIds, self.db)
 #         for groupIndex in range(len(self.featureGroups)):
 #             featureGroup = self.featureGroups[groupIndex]
 #             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
@@ -125,16 +125,19 @@ class Experiment(object):
             return True
         return False
     
-    def getExampleMeta(self, example, classId, features):
-        return dict(example, label=str(classId), features=len(features))
+#     def getExampleMeta(self, example, classId, features):
+#         return dict(example, label=str(classId), features=len(features))
     
-    def buildExamples(self, metaDataFileName=None, exampleWriter=None):
+    def buildExamples(self, metaDataFileName=None): #, exampleWriter=None):
         print "Experiment:", self.__class__.__name__
-        self.meta = Meta(metaDataFileName, clear=True)
-        self.meta.insert("experiment", {"name":self.__class__.__name__, "query":self.query, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
+        self.db = DatabaseConnection(metaDataFileName, clear=True)
+        self.db.insert("experiment", {"name":self.__class__.__name__, "query":self.query, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
         for classId in self.classIds:
-            self.meta.insert("class", {"label":classId, "value":self.classIds[classId]})
-        self.meta.flush()
+            self.db.insert("class", {"label":classId, "value":self.classIds[classId]})
+        self.db.initCache("feature_vectors", 100000)
+        self.db.db.query("CREATE TABLE feature_vectors (example INTEGER NOT NULL, feature_id INTEGER NOT NULL, feature_value REAL NOT NULL, PRIMARY KEY (example, feature_id));")
+        self.db.initCache("feature", 10000)
+        self.db.flush()
         self.examples = self._queryExamples()
         numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
@@ -149,7 +152,7 @@ class Experiment(object):
             example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
 
             print "Processing example", example,
-            classId = self.getClassId(self.getLabel(example))
+            example["label"] = self.getClassId(self.getLabel(example))
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
             #    continue
@@ -158,17 +161,26 @@ class Experiment(object):
                 uniqueValues.add(example[self.unique])
             
             features = self._buildFeatures(example)
-            print classId, str(len(features)), str(count) + "/" + str(numExamples)
+            print example["label"], str(len(features)), str(count) + "/" + str(numExamples)
             if self.filter(example, features):
                 continue
-            built += 1
+            example["id"] = built
             #self.exampleMeta.append(self.getExampleMeta(example, classId, features))
-            self.meta.insert("example", self.getExampleMeta(example, classId, features))
-            exampleWriter.writeExample(classId, features)
+            example["features"] = len(features)
+            self.db.insert("example", example)
+            self._saveFeatures(features, example["id"])
+            #exampleWriter.writeExample(classId, features)
+            built += 1
         
-        self.meta.flush()
+        self.db.flush()
         print "Built", built, "examples with", len(self.featureIds), "unique features"
         #self.saveMetaData(metaDataFileName)
+    
+    def _saveFeatures(self, features, exampleId):
+        rows = []
+        for key in features:
+            rows.append({"example":exampleId, "feature_id":key, "feature_value":features[key]})
+        self.db.insert_many("feature_vectors", rows)
     
 #     def _writeExamples(self, classIds, featureVectors, exampleWriter):
 #         if exampleWriter != None:
@@ -195,9 +207,9 @@ class Experiment(object):
     def writeExamples(self, outDir, fileStem=None, exampleIO=None):
         if fileStem == None:
             fileStem = "examples"
-        if exampleIO == None:
-            exampleIO = SVMLightExampleIO(os.path.join(outDir, fileStem))
+        #if exampleIO == None:
+        #    exampleIO = SVMLightExampleIO(os.path.join(outDir, fileStem))
         
-        exampleIO.newFiles()
-        self.buildExamples(os.path.join(outDir, fileStem + ".meta.sqlite"), exampleIO)
-        exampleIO.closeFiles()  
+        #exampleIO.newFiles()
+        self.buildExamples(os.path.join(outDir, fileStem + ".sqlite")) #, exampleIO)
+        #exampleIO.closeFiles()  

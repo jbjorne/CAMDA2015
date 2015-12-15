@@ -86,12 +86,13 @@ def compareFeatures(a, b):
     else: # a and b are dict, neither has a sort attribute
         return a["id"] - b["id"]
 
-class Meta():
+class DatabaseConnection():
     def __init__(self, filePath=None, copyFrom=None, clear=False):
         self.filePath = filePath
         self.verbose = True
         self.db = self._openDB(filePath, copyFrom=copyFrom, clear=clear)
-        self.cacheSize = 1000
+        self.defaultCacheSize = 1000
+        self.cacheSize = {}
         self.cache = {}
     
     def _openDB(self, dbPath, copyFrom=None, clear=False):
@@ -105,11 +106,21 @@ class Meta():
         print "Opening database at", dbPath
         return dataset.connect(dbPath)
     
+    def initCache(self, table, cacheSize=None):
+        self.cache[table] = []
+        self.cacheSize[table] = self.defaultCacheSize if (cacheSize == None) else cacheSize
+    
     def insert(self, table, row):
         if table not in self.cache:
-            self.cache[table] = []
+            self.initCache(table)
         self.cache[table].append(row)
-        self._insertCached(table, self.cacheSize)
+        self._insertCached(table, self.cacheSize[table])
+    
+    def insert_many(self, table, rows):
+        if table not in self.cache:
+            self.initCache(table)
+        self.cache[table].extend(rows)
+        self._insertCached(table, self.cacheSize[table])
     
     def flush(self):
         for table in sorted(self.cache.keys()):
@@ -120,7 +131,7 @@ class Meta():
             chunkSize = len(self.cache[tableName])
         # Insert rows if enough are available
         rows = self.cache[tableName]
-        if len(rows) >= chunkSize and len(rows) >= 0:
+        if len(rows) >= chunkSize and len(rows) > 0:
             if not tableName in self.db:
                 print "Inserting initial row for metadata table", self.db[tableName]
                 self.db[tableName].insert(rows[0], ensure=True)
