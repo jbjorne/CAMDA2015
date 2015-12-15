@@ -65,7 +65,7 @@ class Classification():
             exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
-        self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"), clear=False)
+        self.meta = Meta(os.path.join(inDir, fileStem + ".classification.sqlite"), copyFrom=os.path.join(inDir, fileStem + ".meta.sqlite"), clear=True)
     
     def _getClassifier(self):
         if self.classifierName == "RLScore":
@@ -147,7 +147,7 @@ class Classification():
             print "Randomized class distribution = ", self._getClassDistribution(self.y)
                 
     def classify(self, resultPath):
-        if self.meta.hasKey("classes"):
+        if "classes" in self.meta.db:
             print "Class distribution = ", self._getClassDistribution(self.y)
             if self.randomize:
                 self._randomizeLabels()

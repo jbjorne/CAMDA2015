@@ -2,6 +2,7 @@ from collections import OrderedDict
 import json
 import time
 import os
+import shutil
 import dataset
 
 ###############################################################################
@@ -86,19 +87,22 @@ def compareFeatures(a, b):
         return a["id"] - b["id"]
 
 class Meta():
-    def __init__(self, filePath=None, clear=False):
+    def __init__(self, filePath=None, copyFrom=None, clear=False):
         self.filePath = filePath
         self.verbose = True
-        self.db = self._openDB(filePath, clear=clear)
+        self.db = self._openDB(filePath, copyFrom=copyFrom, clear=clear)
         self.cacheSize = 1000
         self.cache = {}
     
-    def _openDB(self, dbPath, clear=False):
-        if clear and os.path.exists(dbPath):
-            print "Removing existing metadata database at", dbPath
+    def _openDB(self, dbPath, copyFrom=None, clear=False):
+        if (clear or (copyFrom != None)) and os.path.exists(dbPath):
+            print "Removing existing database at", dbPath
             os.remove(dbPath)
+        if copyFrom:
+            print "Copying database from", dbPath
+            shutil.copy2(copyFrom, dbPath)
         dbPath = "sqlite:///" + os.path.abspath(dbPath)
-        print "Opening metadata DB at", dbPath
+        print "Opening database at", dbPath
         return dataset.connect(dbPath)
     
     def insert(self, table, row):
