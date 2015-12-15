@@ -187,8 +187,8 @@ class Classification():
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
             self.results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
-                       "metric":self.metric, "score":None, "scores":",".join(list(scores)), 
-                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":params, "set":"train"})
+                       "metric":self.metric, "score":None, "scores":",".join([str(x) for x in list(scores)]), 
+                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":str(params), "set":"train"})
             if index == 0 or float(mean_score) > self.results[self.bestIndex]["mean"]:
                 self.bestIndex = index
                 if hasattr(search, "extras_"):
@@ -197,7 +197,7 @@ class Classification():
                 else:
                     print "NO_EXTRAS"
             index += 1
-        self.meta.insert_many("result", self.results)
+        self.meta.insert_many("result", self.results, immediate=True)
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[self.bestIndex]
         print scores
@@ -222,7 +222,7 @@ class Classification():
                              "metric":self.metric,
                              "params":search.best_params_,
                              "set":"hidden"}
-            self.meta.insert("result", self.hiddenResult)
+            self.meta.insert("result", self.hiddenResult, immediate=True)
             print "Score =", self.hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred

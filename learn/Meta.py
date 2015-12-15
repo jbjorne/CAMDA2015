@@ -110,17 +110,17 @@ class Meta():
         self.cache[table] = []
         self.cacheSize[table] = self.defaultCacheSize if (cacheSize == None) else cacheSize
     
-    def insert(self, table, row):
+    def insert(self, table, row, immediate=False):
         if table not in self.cache:
             self.initCache(table)
         self.cache[table].append(row)
-        self._insertCached(table, self.cacheSize[table])
+        self._insertCached(table, 0 if immediate else self.cacheSize[table])
     
-    def insert_many(self, table, rows):
+    def insert_many(self, table, rows, immediate=False):
         if table not in self.cache:
             self.initCache(table)
         self.cache[table].extend(rows)
-        self._insertCached(table, self.cacheSize[table])
+        self._insertCached(table, 0 if immediate else self.cacheSize[table])
     
     def flush(self):
         for table in sorted(self.cache.keys()):
