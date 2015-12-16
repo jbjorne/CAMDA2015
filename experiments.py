@@ -163,17 +163,24 @@ class RemissionV20(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            length(specimen_type) > 0 AND 
-            length(disease_status_last_followup) > 0 AND
-            ((disease_status_last_followup LIKE '%remission%') OR
-            (donor_vital_status IS 'deceased')) AND
+            specimen_type IS NOT NULL AND
+            ((donor_vital_status IS 'alive' AND 
+            disease_status_last_followup IS 'complete remission') OR
+            (donor_vital_status IS 'deceased' AND 
+            (disease_status_last_followup IS NULL OR disease_status_last_followup NOT LIKE '%remission%'))) AND
             specimen_type NOT LIKE '%Normal%'
             """
             #specimen_interval is NULL AND
             #specimen_type LIKE 'Primary%' AND
     
     def getLabel(self, example):
-        return 'remission' in example['disease_status_last_followup']
+        #if example['disease_status_last_followup']:
+        if example['disease_status_last_followup'] and ('remission' in example['disease_status_last_followup']):
+            assert example['donor_vital_status'] == 'alive'
+            return True
+        else:
+            assert example['donor_vital_status'] == 'deceased'
+            return False
 
 
 class RemissionMutTest(RemissionBase):
