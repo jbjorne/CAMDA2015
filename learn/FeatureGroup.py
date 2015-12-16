@@ -7,7 +7,10 @@ class FeatureGroup(object):
             self.query = self.query.replace("KEYS", ",".join(self.keys))
     
     def processExample(self, connection, example, exampleFeatures, featureIds, meta):
-        queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
+        if self.query:
+            queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
+        else:
+            queryResult = [example]
         for row in [x for x in queryResult]:
             features, values = self.buildFeatures(row)
             if values == None:

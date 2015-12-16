@@ -9,6 +9,15 @@ from itertools import combinations
 #SSM_GENE_CONSEQUENCE = "SELECT ('SSM:'||gene_affected||':'||consequence_type),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 #SSM_GENE_POS = "SELECT ('SSM:'||gene_affected||':'||consequence_type||':'||chromosome||':'||chromosome_start||':'||chromosome_end),1 FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?"
 
+class Age(FeatureGroup):
+    def __init__(self):
+        super(Age, self).__init__("AGE", None)
+    def buildFeatures(self, row):
+        if row["donor_age_at_diagnosis"] != None:
+            return ["AGE"], [int(row["donor_age_at_diagnosis"])]
+        else:
+            return [], []
+
 class SSMClusterBase(FeatureGroup):
     def __init__(self):
         super(SSMClusterBase, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
@@ -66,6 +75,8 @@ CNSM_CHROMOSOME_COUNT = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_num
 CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
 
 CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
+PROJECT = FeatureGroup("PROJECT", None, ["project_code"])
+AGE = Age()
 
 ###############################################################################
 # Experiments
@@ -74,10 +85,10 @@ CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm
 class Survival(Experiment):
     def __init__(self, days=365):
         super(Survival, self).__init__()
-        self.days = days
+        self.days = days * 2
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,donor_survival_time,donor_interval_of_last_followup,
-            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup
+            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
@@ -133,7 +144,7 @@ class RemissionV20(Experiment):
         super(RemissionV20, self).__init__()
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
-            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup
+            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE

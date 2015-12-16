@@ -125,8 +125,8 @@ class Experiment(object):
             return True
         return False
     
-    def getExampleMeta(self, example, classId, features):
-        return dict(example, label=str(classId), features=len(features))
+#     def getExampleMeta(self, example, classId, features):
+#         return dict(example, label=str(classId), features=len(features))
     
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
         print "Experiment:", self.__class__.__name__
@@ -162,10 +162,11 @@ class Experiment(object):
             print classId, str(len(features)), str(count) + "/" + str(numExamples)
             if self.filter(example, features):
                 continue
-            built += 1
             #self.exampleMeta.append(self.getExampleMeta(example, classId, features))
-            self.meta.insert("example", self.getExampleMeta(example, classId, features))
+            #self.meta.insert("example", self.getExampleMeta(example, classId, features))
+            self.meta.insert("example", dict(example, id=built, label=str(classId), features=len(features)))
             exampleWriter.writeExample(classId, features)
+            built += 1
         
         self.meta.flush()
         print "Built", built, "examples with", len(self.featureIds), "unique features"
