@@ -18,6 +18,19 @@ class Age(FeatureGroup):
         else:
             return [], []
 
+class ExpressionSeq(FeatureGroup):
+    def __init__(self): #, cutoff=0.0005):
+        super(ExpressionSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?")
+        #super(ExpressionSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE abs(normalized_read_count) > %f AND icgc_specimen_id=?" % cutoff)
+    def buildFeatures(self, row):
+        return[(row["gene_id"],)], [row["count"]]
+
+class ExpressionArray(FeatureGroup):
+    def __init__(self):
+        super(ExpressionArray, self).__init__("EXP_ARR", "SELECT gene_id,normalized_expression_value FROM exp_array WHERE icgc_specimen_id=?")
+    def buildFeatures(self, row):
+        return[(row["gene_id"],)], [row["normalized_expression_value"]]
+
 class SSMClusterBase(FeatureGroup):
     def __init__(self):
         super(SSMClusterBase, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
@@ -66,15 +79,17 @@ SSM_PROJECT = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_muta
 SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
+#SSM_GENE_CONSEQUENCE_V20_FILTER = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"], dummy=True)
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
 
 CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["mutation_type"])
 CNSM_CHROMOSOME = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type"])
 CNSM_CHROMOSOME_COUNT = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
-CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
+CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
 
 CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
+#CNSM_CHROMOSOME_COUNT_V20_FILTER = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"], dummy=True)
 PROJECT = FeatureGroup("PROJECT", None, ["project_code"])
 AGE = Age()
 
@@ -85,7 +100,7 @@ AGE = Age()
 class Survival(Experiment):
     def __init__(self, days=365):
         super(Survival, self).__init__()
-        self.days = days * 2
+        self.days = days * 5
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,donor_survival_time,donor_interval_of_last_followup,
             specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis

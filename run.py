@@ -14,16 +14,29 @@ def splitOptions(optionString, allowedValues=None, delimiter=","):
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
+def getFilters(featureGroups, filters):
+    if featureGroups == None:
+        return None
+    featureGroups = featureGroups.split(",")
+    if filters == None:
+        return [False] * len(featureGroups)
+    filters = filters.split(",")
+    groupIndices = []
+    for featureGroup in featureGroups:
+        groupIndices.append(featureGroup in filters)
+    return groupIndices
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
-    parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
+    #parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
     parser.add_argument('-a', "--action", default=None, dest="action")
     groupE = parser.add_argument_group('build', 'Example Generation')
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
     groupE.add_argument('-e', '--experiment', help='Experiment class', default="RemissionMutTest")
     groupE.add_argument('-f', '--features', help='Feature groups (comma-separated list)', default=None)
+    groupE.add_argument('-d', '--dummy', help='Feature groups used only for filtering (comma-separated list)', default=None)
     groupE.add_argument('--projects', help='Projects used in example generation', default=None)
     groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     groupC = parser.add_argument_group('classify', 'Example Classification')
@@ -54,13 +67,15 @@ if __name__ == "__main__":
         if options.projects != None:
             e.projects = options.projects.split(",")
         if options.features != None:
-            print "Using feature groups:", options.features
+            filters = getFilters(options.features, options.dummy)
+            print "Using feature groups:", options.features, filters
             e.featureGroups = [eval(x) for x in options.features.split(",")]
             for i in range(len(e.featureGroups)): # Initialize classes
                 if inspect.isclass(e.featureGroups[i]):
                     e.featureGroups[i] = e.featureGroups[i]()
+                if filters[i]:
+                    e.featureGroups[i].dummy = True
         e.databasePath = options.icgcDB
-        e.debug = options.debug
         e.writeExamples(options.output)
     
     resultPath = os.path.join(options.output, "classification.json")

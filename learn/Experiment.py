@@ -42,7 +42,7 @@ class Experiment(object):
     
     def __init__(self):
         # Processing
-        self.debug = False
+        #self.debug = False
         # Database
         self.databasePath = None
         self._connection = None
@@ -97,7 +97,9 @@ class Experiment(object):
         features = {}
         connection = self.getConnection()
         for featureGroup in self.featureGroups:
-            featureGroup.processExample(connection, example, features, self.featureIds, self.meta)
+            if not featureGroup.processExample(connection, example, features, self.featureIds, self.meta):
+                print "Example has no features for required group", featureGroup.name
+                return {}
 #         for groupIndex in range(len(self.featureGroups)):
 #             featureGroup = self.featureGroups[groupIndex]
 #             for row in self._queryFeatures(featureGroup, example): #featureGroup(con=self.getConnection(), example=example):
@@ -149,7 +151,7 @@ class Experiment(object):
                 continue
             example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
 
-            print "Processing example", example,
+            print "Processing example", example
             classId = self.getClassId(self.getLabel(example))
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
