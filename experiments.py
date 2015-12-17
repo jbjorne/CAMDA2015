@@ -107,6 +107,7 @@ class Survival(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
+            /*P specimen.project_code IN PROJECTS AND P*/
             donor_vital_status IS NOT NULL AND
             ((donor_vital_status == 'deceased'  AND 
             (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
@@ -163,6 +164,7 @@ class RemissionV20(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
+            /*P specimen.project_code IN PROJECTS AND P*/
             specimen_type IS NOT NULL AND
             ((donor_vital_status IS 'alive' AND 
             disease_status_last_followup IS 'complete remission') OR

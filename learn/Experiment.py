@@ -21,6 +21,8 @@ class Experiment(object):
             if self.projects != None:
                 query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
             query += self.exampleWhere
+        if self.projects != None:
+            query = query.replace("PROJECTS", "('" + "','".join(self.projects) + "')").replace("/*P", "").replace("P*/", "")
         self.query = query
         print "=========================== Example generation query ==========================="
         print query
