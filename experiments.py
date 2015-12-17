@@ -104,25 +104,22 @@ class Survival(Experiment):
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,specimen.project_code,
             specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis,
-            donor_survival_time,donor_interval_of_last_followup,
-            CAST(IFNULL(donor_survival_time, 0) as int) as survival_time,
-            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as followup_time,
-            CAST(IFNULL(specimen_interval, 0) as int) as delay
+            CAST(IFNULL(donor_survival_time, 0) as int) - CAST(IFNULL(specimen_interval, 0) as int) as st,
+            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) - CAST(IFNULL(specimen_interval, 0) as int) as dilf
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
             /*P specimen.project_code PROJECTS AND P*/
             donor_vital_status IS NOT NULL AND
-            ((donor_vital_status == 'deceased'  AND 
-            (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
+            ((donor_vital_status == 'deceased' AND (st > 0 OR dilf > 0))
             OR
-            (survival_time - delay > %d OR followup_time - delay > %d))
+            (st > %d OR dilf > %d))
             """ % (self.days, self.days)
     
     def getDays(self, example):
-        days = max([int(example[key]) for key in ["donor_survival_time", "donor_interval_of_last_followup"] if example[key] != None])
-        if example['delay']:
-            days -= int(example['delay'])
+        days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
+        #if example['delay']:
+        #    days -= int(example['delay'])
         return days
         #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
     
