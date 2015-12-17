@@ -18,22 +18,22 @@ class Age(FeatureGroup):
         else:
             return [], []
 
-class ExpressionSeq(FeatureGroup):
+class ExpSeq(FeatureGroup):
     def __init__(self): #, cutoff=0.0005):
-        super(ExpressionSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?")
+        super(ExpSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?")
         #super(ExpressionSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE abs(normalized_read_count) > %f AND icgc_specimen_id=?" % cutoff)
     def buildFeatures(self, row):
         return[(row["gene_id"],)], [row["count"]]
 
-class ExpressionArray(FeatureGroup):
+class ExpArray(FeatureGroup):
     def __init__(self):
-        super(ExpressionArray, self).__init__("EXP_ARR", "SELECT gene_id,normalized_expression_value FROM exp_array WHERE icgc_specimen_id=?")
+        super(ExpArray, self).__init__("EXP_ARR", "SELECT gene_id,normalized_expression_value FROM exp_array WHERE icgc_specimen_id=?")
     def buildFeatures(self, row):
         return[(row["gene_id"],)], [row["normalized_expression_value"]]
 
 class SSMClusterBase(FeatureGroup):
     def __init__(self):
-        super(SSMClusterBase, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
+        super(SSMClusterBase, self).__init__("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["consequence_type", "chromosome", "chromosome_start"])   
 
 class SSMClusterSimple(SSMClusterBase):
     def __init__(self):
@@ -102,21 +102,28 @@ class Survival(Experiment):
         super(Survival, self).__init__()
         self.days = days * 5
         self.query = """
-            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,donor_survival_time,donor_interval_of_last_followup,
-            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis
+            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,specimen.project_code,
+            specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis,
+            donor_survival_time,donor_interval_of_last_followup,
+            CAST(IFNULL(donor_survival_time, 0) as int) as survival_time,
+            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as followup_time,
+            CAST(IFNULL(specimen_interval, 0) as int) as delay
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            /*P specimen.project_code IN PROJECTS AND P*/
+            /*P specimen.project_code PROJECTS AND P*/
             donor_vital_status IS NOT NULL AND
             ((donor_vital_status == 'deceased'  AND 
             (donor_survival_time IS NOT NULL OR donor_interval_of_last_followup IS NOT NULL))
             OR
-            (CAST(donor_survival_time AS INT) > %d OR CAST(donor_interval_of_last_followup AS INT) > %d))
+            (survival_time - delay > %d OR followup_time - delay > %d))
             """ % (self.days, self.days)
     
     def getDays(self, example):
-        return max([int(example[key]) for key in ["donor_survival_time", "donor_interval_of_last_followup"] if example[key] != None])
+        days = max([int(example[key]) for key in ["donor_survival_time", "donor_interval_of_last_followup"] if example[key] != None])
+        if example['delay']:
+            days -= int(example['delay'])
+        return days
         #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
     
     def getLabel(self, example):
@@ -164,7 +171,7 @@ class RemissionV20(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            /*P specimen.project_code IN PROJECTS AND P*/
+            /*P specimen.project_code PROJECTS AND P*/
             specimen_type IS NOT NULL AND
             ((donor_vital_status IS 'alive' AND 
             disease_status_last_followup IS 'complete remission') OR
