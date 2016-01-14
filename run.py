@@ -3,13 +3,7 @@ import inspect
 from experiments import *
 from learn.Classification import Classification
 import utils.Stream as Stream
-
-def splitOptions(optionString, allowedValues=None, delimiter=","):
-    actions = [x.strip() for x in optionString.split(delimiter)]
-    if allowedValues:
-        for action in actions:
-            assert action in allowedValues
-    return actions
+from utils.common import splitOptions
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
@@ -90,7 +84,7 @@ if __name__ == "__main__":
         classification.classifierArgs = options.classifierArguments
         classification.metric = options.metric
         classification.readExamples(options.output)
-        classification.classify(resultPath)
+        classification.classify()
     
     if "analyse" in actions:
         print "======================================================"

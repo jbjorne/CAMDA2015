@@ -22,9 +22,9 @@ def splitData(examples, labels, meta):
     return e.get("train", []), e.get("hidden", []), l.get("train", []), l.get("hidden", [])   
 
 class HiddenSet():
-    def __init__(self):
+    def __init__(self, seed=1):
         self.__random = MTwister()
-        self.__random.set_seed(1)
+        self.__random.set_seed(seed)
         self.__thresholds = []
     
     def getThreshold(self, index):

@@ -42,7 +42,7 @@ def getOptions(execString):
             execReturn[execKey] = execLocals[execKey]
     return execReturn
 
-class Classification():
+class Classification(object):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
         # Data
         self.X = None
@@ -65,7 +65,7 @@ class Classification():
         self.hiddenResults = None
         self.hiddenDetails = None
     
-    def readExamples(self, inDir, fileStem=None, exampleIO=None):
+    def readExamples(self, inDir, fileStem=None, exampleIO=None, preserveTables=None):
         if fileStem == None:
             fileStem = "examples"
         # Read examples
@@ -74,11 +74,13 @@ class Classification():
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
-        self._clearResults()
+        self._clearResults(preserveTables)
     
-    def _clearResults(self):
+    def _clearResults(self, preserveTables):
+        preserveTables = set(preserveTables if preserveTables else [])
+        preserveTables.union(set(["class", "example", "experiment", "feature"]))
         for tableName in self.meta.db.tables:
-            if tableName not in ("class", "example", "experiment", "feature"):
+            if tableName not in preserveTables:
                 self.meta.drop(tableName)
     
     def _getClassifier(self):
@@ -86,21 +88,31 @@ class Classification():
         classifierArgs = getOptions(self.classifierArgs)
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
-                
-    def classify(self, resultPath):
+    
+    def _splitData(self):
         if "class" in self.meta.db.tables:
             print "Class distribution = ", countUnique(self.y)
-            if self.randomize:
-                self._randomizeLabels()
         X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if "class" in self.meta.db.tables:
             print "Classes y_train = ", countUnique(y_train)
             print "Classes y_hidden = ", countUnique(y_hidden)
-        
+        return X_train, X_hidden, y_train, y_hidden
+                
+    def classify(self):
+        X_train, X_hidden, y_train, y_hidden = self._splitData()
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
             self._predictHidden(y_hidden, X_hidden, search)
+    
+    def _getResult(self, setName, classifier, cv, params, score=None, mean_score=None, scores=None, numFolds=None):
+        result = {"classifier":classifier.__name__, "cv":cv.__class__.__name__ if cv else None,
+                  "params":str(params), "numFolds":numFolds, "score":score}
+        if mean_score is not None:
+            result["mean"] = float(mean_score)
+            result["scores"] = ",".join([str(x) for x in list(scores)])
+            result["std"] = float(scores.std() / 2)
+        return result
         
     def _crossValidate(self, y_train, X_train, refit=False):
         # Run the grid search
@@ -124,9 +136,7 @@ class Classification():
         for params, mean_score, scores in search.grid_scores_:
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-            results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
-                       "metric":self.metric, "score":None, "scores":",".join([str(x) for x in list(scores)]), 
-                       "mean":float(mean_score), "std":float(scores.std() / 2), "params":str(params), "set":"train"})
+            results.append(self._getResult("train", classifier, cv, params, None, mean_score, scores, self.numFolds))
             if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
                 bestIndex = index
                 if hasattr(search, "extras_"):
@@ -171,11 +181,7 @@ class Classification():
             print search.scorer_(search.best_estimator_, X_hidden, y_hidden)
             y_hidden_score = search.predict_proba(X_hidden)
             y_hidden_score = [x[1] for x in y_hidden_score]
-            hiddenResult = {"classifier":search.best_estimator_.__class__.__name__,
-                             "score":search.score(X_hidden, y_hidden),
-                             "metric":self.metric,
-                             "params":str(search.best_params_),
-                             "set":"hidden"}
+            hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, search.score(X_hidden, y_hidden)) 
             print "Score =", hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
