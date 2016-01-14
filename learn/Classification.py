@@ -28,7 +28,7 @@ from Meta import Meta
 # def getNoneCV(y, meta, numFolds=10):
 #     return None
 
-def importNamed(self, name):
+def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
     imported = False
     attempts = ["from sklearn." + name.rsplit(".", 1)[0] + " import " + asName,
@@ -46,6 +46,12 @@ def importNamed(self, name):
     if not imported:
         raise Exception("Could not import '" + name + "'")
     return eval(asName)
+
+def countUnique(values):
+    counts = defaultdict(int)
+    for value in values:
+        counts[value] += 1
+    return dict(counts)
     
 def getOptions(execString):
     exec(execString)
@@ -97,7 +103,7 @@ class Classification():
         #self.exampleMeta = self.meta.db["example"].all()
     
     def _getClassifier(self):
-        classifier = self._importNamed(self.classifierName)
+        classifier = importNamed(self.classifierName)
         classifierArgs = getOptions(self.classifierArgs) #self._getClassifierArgs()
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
@@ -113,28 +119,28 @@ class Classification():
             print "Couldn't import named metric:", e
             return metric
     
-    def _getClassDistribution(self, labels):
-        counts = defaultdict(int)
-        for value in labels:
-            counts[value] += 1
-        return dict(counts)
+#     def _getClassDistribution(self, labels):
+#         counts = defaultdict(int)
+#         for value in labels:
+#             counts[value] += 1
+#         return dict(counts)
     
-    def _randomizeLabels(self):
-        if self.randomize:
-            classes = self.meta["classes"].values()
-            self.y = numpy.asarray([random.choice(classes) for x in range(len(self.y))])
-            print "Randomized class distribution = ", self._getClassDistribution(self.y)
+#     def _randomizeLabels(self):
+#         if self.randomize:
+#             classes = self.meta["classes"].values()
+#             self.y = numpy.asarray([random.choice(classes) for x in range(len(self.y))])
+#             print "Randomized class distribution = ", self._getClassDistribution(self.y)
                 
     def classify(self, resultPath):
         if "class" in self.meta.db.tables:
-            print "Class distribution = ", self._getClassDistribution(self.y)
+            print "Class distribution = ", countUnique(self.y)
             if self.randomize:
                 self._randomizeLabels()
         X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if "class" in self.meta.db.tables:
-            print "Classes y_train = ", self._getClassDistribution(y_train)
-            print "Classes y_hidden = ", self._getClassDistribution(y_hidden)
+            print "Classes y_train = ", countUnique(y_train)
+            print "Classes y_hidden = ", countUnique(y_hidden)
         
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
@@ -147,13 +153,8 @@ class Classification():
         cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         scorer = self._getScorer()
         classifier, classifierArgs = self._getClassifier()
-        search = ExtendedGridSearchCV(classifier(), 
-                                      classifierArgs, 
-                                      refit=refit, 
-                                      cv=cv, 
-                                      scoring=scorer, 
-                                      verbose=self.verbose, 
-                                      n_jobs=self.parallel, 
+        search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
+                                      scoring=scorer, verbose=self.verbose, n_jobs=self.parallel, 
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
         if hasattr(search, "best_estimator_"):
@@ -276,9 +277,9 @@ class Classification():
                         self._setValue(feature, "hidden-importance", importances[i])
                         self._setValue(feature, "sort", importances[i])
     
-    def _setValue(self, target, key, value, parent=None):
-        if parent != None:
-            if not parent in target:
-                target[parent] = {}
-            target = target[parent]
-        target[key] = value
+#     def _setValue(self, target, key, value, parent=None):
+#         if parent != None:
+#             if not parent in target:
+#                 target[parent] = {}
+#             target = target[parent]
+#         target[key] = value
