@@ -44,7 +44,7 @@ class LearningCurve(Classification):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
+    parser = argparse.ArgumentParser(description='')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
     groupC = parser.add_argument_group('classify', 'Example Classification')
     groupC.add_argument('-c','--classifier', help='', default=None)

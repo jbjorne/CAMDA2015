@@ -78,7 +78,7 @@ class Classification(object):
     
     def _clearResults(self, preserveTables):
         preserveTables = set(preserveTables if preserveTables else [])
-        preserveTables.union(set(["class", "example", "experiment", "feature"]))
+        preserveTables = preserveTables.union(set(["class", "example", "experiment", "feature"]))
         for tableName in self.meta.db.tables:
             if tableName not in preserveTables:
                 self.meta.drop(tableName)
@@ -183,8 +183,8 @@ class Classification(object):
             y_hidden_score = [x[1] for x in y_hidden_score]
             hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, search.score(X_hidden, y_hidden)) 
             print "Score =", hiddenResult["score"], "(" + self.metric + ")"
-            y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
-            hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+            y_hidden_pred = search.predict_proba(X_hidden) #[list(x) for x in search.predict_proba(X_hidden)]
+            hiddenExtra = {"predictions":{i:x for i,x in enumerate([list(x) for x in y_hidden_pred])}}
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             
