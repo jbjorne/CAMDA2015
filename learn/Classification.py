@@ -101,6 +101,7 @@ class Classification():
         self._saveResults(resultPath)
         
     def _crossValidate(self, y_train, X_train, refit=False):
+        # Run the grid search
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
         cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
@@ -115,6 +116,7 @@ class Classification():
 #             if hasattr(search.best_estimator_, "doRFE"):
 #                 print "*** RFE ***"
 #                 search.best_estimator_.doRFE(X_train, y_train)
+        # Show the grid search results
         print "---------------------- Grid scores on development set --------------------------"
         results = []
         #self.extras = None
@@ -131,22 +133,26 @@ class Classification():
                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":str(params), "set":"train"})
             if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
                 bestIndex = index
-            if hasattr(search, "extras_"):
-                for fold in range(len(search.extras_[index])):
-                    extras = search.extras_[index]
-                    print "EXTRAS", extras.keys()
-                    if "predictions" in extras:
-                        p = extras["predictions"]
-                        self.meta.insert_many("prediction", [{"example":key, "fold":fold, "value":str(p[key])} for key in p], immediate=True)
-                    if "importances" in extras:
-                        importances = extras["importances"]
-                        self.meta.insert_many("importance", [{"feature":i, "fold":fold, "value":importances[i]} for i in range(len(importances))], immediate=True)
+                if hasattr(search, "extras_"):
+                    bestExtras = search.extras_[index]
             index += 1
-        self.meta.insert_many("result", results, immediate=True)
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[bestIndex]
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+        # Save the grid search results
+        self.meta.insert_many("result", results)
+        if bestExtras:
+            for fold in range(len(bestExtras)):
+                extras = bestExtras[fold]
+                print "EXTRAS", extras.keys()
+                if "predictions" in extras:
+                    p = extras["predictions"]
+                    self.meta.insert_many("prediction", [{"example":key, "fold":fold, "value":str(p[key]), "set":"train"} for key in p])
+                if "importances" in extras:
+                    importances = extras["importances"]
+                    self.meta.insert_many("importance", [{"feature":i, "fold":fold, "value":importances[i], "set":"train"} for i in range(len(importances)) if importances[i] != 0])
+        self.meta.flush() 
         return search
         
     def _predictHidden(self, y_hidden, X_hidden, search):
