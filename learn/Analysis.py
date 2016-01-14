@@ -4,52 +4,68 @@ import matplotlib.pyplot as plt
 from Meta import Meta
 
 class COSMICAnalysis():
-    def __init__(self, meta=None, dataPath=None):
+    def __init__(self, dataPath=None):
         self.censusPath = None
         self.mappingPath = None
         self.dataPath = dataPath
         self.cosmic = None
         self.mapping = None
-        self.loadMeta(meta)
-    
-    def loadMeta(self, source):
-        if source == None:
-            self.meta = None
-        elif isinstance(source, basestring):
-            self.meta = Meta(source)
-        elif isinstance(source, Meta):
-            self.meta = source
-        else:
-            raise Exception("Unknown format for metadata source")
         
-    def analyse(self, outPath, fileStem="COSMIC"):
+    def getFeatureWeights(self, importances):
+        hidden = {}
+        train = {}
+        for importance in importances:
+            index = importance["feature"]
+            if importance["set"] == "train":
+                if index not in train:
+                    train[index] = []
+                train[index].append(importance["value"])
+            elif importance["set"] == "hidden":
+                assert index not in hidden
+                hidden[index] = importance["value"]
+            else:
+                raise Exception("Unknown set for importance")
+        for key in train:
+            train[key] = sum(train[key]) / float(len(train[key]))
+        return train, hidden
+        
+    def analyse(self, inDir, fileStem=None, hidden=False):
+        if fileStem == None:
+            fileStem = "examples"
         self._loadCOSMIC()
         self._loadMapping()
-        features = self.meta.getFeaturesSorted()
-        processed = []
+        meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
+        print "Loading features"
+        features = meta.db["feature"].all()
+        importances = meta.db["importance"].all()
+        print "Calculating weights:",
+        trainWeights, hiddenWeights = self.getFeatureWeights(importances)
+        print len(trainWeights), len(hiddenWeights)
+        weights = hiddenWeights if hidden else trainWeights
+        exampleSet = "hidden" if hidden else "train"
+        meta.drop("cosmic", 100000)
         featureCount = 0
         hitCount = 0
+        rows = []
         hits = []
-        outFile = open(os.path.join(outPath, fileStem + "-table.tex"), "wt")
-        for featureName in features.keys():
+        print "Detecting hits"
+        for feature in features:
             featureCount += 1
-            featureType, geneId, mutationType = featureName.split(":")
+            featureId = feature["id"]
+            if feature["id"] not in weights:
+                continue
+            featureType, geneId, mutationType = feature["name"].split(":")
             geneName = self.mapping.get(geneId, "")
-            processed = [str(featureCount)] + [featureType, geneName, mutationType.replace("_", " ")] 
             hit = self.cosmic.get(geneName)
-            if hit != None:
-                processed += ["\\bullet"]
+            if hit:
                 hitCount += 1
-                hits.append(featureCount) #hits.append(1)
-            else:
-                processed += [""]
-                #hits.append(0)
-            #processed.append(str(float(hitCount) / featureCount))
-            outFile.write(" & ".join(processed) + " \\\\" + "\n")
-        outFile.close()
+                hits.append(featureCount)
+            rows.append({"id":featureId, "weight":weights[featureId], "hit":hit, "set":exampleSet})
+        rows = sorted(rows, key=lambda k: k['weight'])
+        meta.insert_many("cosmic", rows)
         print "Detected", hitCount, "hits among", featureCount, "features"
-        self._visualize(hits, os.path.join(outPath, fileStem + "-hist.png"))
-        self._visualize(hits, os.path.join(outPath, fileStem + "-hist.pdf"))
+        self._visualize(hits, os.path.join(inDir, fileStem + "-cosmic-hist.png"))
+        self._visualize(hits, os.path.join(inDir, fileStem + "-cosmic-hist.pdf"))
 
     def _visualize(self, hits, outPath):
         num_bins = 100

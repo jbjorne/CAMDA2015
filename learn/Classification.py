@@ -148,15 +148,16 @@ class Classification():
         self.meta.flush() 
         return search
     
-    def _saveExtras(self, folds, setName):
+    def _saveExtras(self, folds, setName, noFold=False):
         if folds == None:
             return
         for fold in range(len(folds)):
             extras = folds[fold]
+            foldIndex = None if noFold else fold
             if "predictions" in extras:
                 rows = []
                 for key in extras["predictions"]:
-                    row = OrderedDict([("example",key), ("fold",fold), ("set",setName)])
+                    row = OrderedDict([("example",key), ("fold",foldIndex), ("set",setName)])
                     values = extras["predictions"][key]
                     for i in range(len(values)):
                         row["class_" + str(i+1)] = values[i]
@@ -164,7 +165,7 @@ class Classification():
                 self.meta.insert_many("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
-                self.meta.insert_many("importance", [OrderedDict([("feature",i), ("fold",fold), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
+                self.meta.insert_many("importance", [OrderedDict([("feature",i), ("fold",foldIndex), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
         
     def _predictHidden(self, y_hidden, X_hidden, search):
         if X_hidden.shape[0] > 0:
@@ -192,7 +193,7 @@ class Classification():
             
             print "Saving results"
             self.meta.insert("result", hiddenResult)
-            self._saveExtras([hiddenExtra], "hidden")
+            self._saveExtras([hiddenExtra], "hidden", True)
             self.meta.flush()
             try:
                 print classification_report(y_hidden, y_hidden_pred)

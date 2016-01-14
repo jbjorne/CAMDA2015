@@ -99,5 +99,5 @@ if __name__ == "__main__":
         meta = resultPath
         if classification != None:
             meta = classification.meta
-        analysis = COSMICAnalysis(meta, dataPath=DATA_PATH)
-        analysis.analyse(options.output, "cosmic")
+        analysis = COSMICAnalysis(dataPath=DATA_PATH)
+        analysis.analyse(options.output, hidden=options.hidden)
