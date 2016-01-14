@@ -1,32 +1,13 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#from data.template import parseOptionString
-from sklearn.cross_validation import StratifiedKFold, KFold
-#from sklearn.grid_search import GridSearchCV
+from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
-#from skext.crossValidation import GroupedKFold
-from sklearn.metrics import classification_report
-from sklearn.metrics import average_precision_score, make_scorer
+from sklearn.metrics import classification_report, make_scorer
 from collections import defaultdict
 import data.hidden as hidden
-import random
 import sklearn.metrics
-#from rlscore_interface import RLScore
-#from RFEWrapper import RFEWrapper
-import numpy
-#import data.writer
 from ExampleIO import SVMLightExampleIO
-#import settings
 from Meta import Meta
-
-# def getStratifiedKFoldCV(y, meta, numFolds=10):
-#     return StratifiedKFold(y, n_folds=numFolds)
-# 
-# def getKFoldCV(y, meta, numFolds=10):
-#     return KFold(y, n_folds=numFolds)
-# 
-# def getNoneCV(y, meta, numFolds=10):
-#     return None
 
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
@@ -70,15 +51,11 @@ class Classification():
         self.X = None
         self.y = None
         self.meta = None
-        #self.exampleMeta = None
         # Settings
         self.randomize = False
         self.numFolds = numFolds
         self.classifierName = None
         self.classifierArgs = None
-        #if getCV == None:
-        #    getCV = getStratifiedKFoldCV
-        #self.getCV = getCV
         self.preDispatch = preDispatch
         self.metric = metric
         self.verbose = 3
@@ -100,36 +77,12 @@ class Classification():
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
-        #self.exampleMeta = self.meta.db["example"].all()
     
     def _getClassifier(self):
         classifier = importNamed(self.classifierName)
         classifierArgs = getOptions(self.classifierArgs) #self._getClassifierArgs()
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
-    
-    def _getScorer(self):
-        print "Using metric", self.metric
-        if self.metric == "roc_auc":
-            return self.metric
-        try:
-            metric = importNamed(self.metric)
-            return make_scorer(metric)
-        except Exception as e:
-            print "Couldn't import named metric:", e
-            return metric
-    
-#     def _getClassDistribution(self, labels):
-#         counts = defaultdict(int)
-#         for value in labels:
-#             counts[value] += 1
-#         return dict(counts)
-    
-#     def _randomizeLabels(self):
-#         if self.randomize:
-#             classes = self.meta["classes"].values()
-#             self.y = numpy.asarray([random.choice(classes) for x in range(len(self.y))])
-#             print "Randomized class distribution = ", self._getClassDistribution(self.y)
                 
     def classify(self, resultPath):
         if "class" in self.meta.db.tables:
@@ -151,40 +104,47 @@ class Classification():
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
         cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
-        scorer = self._getScorer()
         classifier, classifierArgs = self._getClassifier()
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
-                                      scoring=scorer, verbose=self.verbose, n_jobs=self.parallel, 
+                                      scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
-        if hasattr(search, "best_estimator_"):
-            print "----------------------------- Best Estimator -----------------------------------"
-            print search.best_estimator_
-            if hasattr(search.best_estimator_, "doRFE"):
-                print "*** RFE ***"
-                search.best_estimator_.doRFE(X_train, y_train)
+#         if hasattr(search, "best_estimator_"):
+#             print "----------------------------- Best Estimator -----------------------------------"
+#             print search.best_estimator_
+#             if hasattr(search.best_estimator_, "doRFE"):
+#                 print "*** RFE ***"
+#                 search.best_estimator_.doRFE(X_train, y_train)
         print "---------------------- Grid scores on development set --------------------------"
-        self.results = []
-        self.extras = None
+        results = []
+        #self.extras = None
         index = 0
-        self.bestIndex = 0
+        bestIndex = 0
+        bestExtras = None
+        self.meta.drop("prediction")
+        self.meta.drop("importance")
         for params, mean_score, scores in search.grid_scores_:
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
-            self.results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
+            results.append({"classifier":classifier.__name__, "cv":cv.__class__.__name__, "folds":self.numFolds,
                        "metric":self.metric, "score":None, "scores":",".join([str(x) for x in list(scores)]), 
                        "mean":float(mean_score), "std":float(scores.std() / 2), "params":str(params), "set":"train"})
-            if index == 0 or float(mean_score) > self.results[self.bestIndex]["mean"]:
-                self.bestIndex = index
-                if hasattr(search, "extras_"):
-                    print "EXTRAS"
-                    self.extras = search.extras_[index]
-                else:
-                    print "NO_EXTRAS"
+            if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
+                bestIndex = index
+            if hasattr(search, "extras_"):
+                for fold in range(len(search.extras_[index])):
+                    extras = search.extras_[index]
+                    print "EXTRAS", extras.keys()
+                    if "predictions" in extras:
+                        p = extras["predictions"]
+                        self.meta.insert_many("prediction", [{"example":key, "fold":fold, "value":str(p[key])} for key in p], immediate=True)
+                    if "importances" in extras:
+                        importances = extras["importances"]
+                        self.meta.insert_many("importance", [{"feature":i, "fold":fold, "value":importances[i]} for i in range(len(importances))], immediate=True)
             index += 1
-        self.meta.insert_many("result", self.results, immediate=True)
+        self.meta.insert_many("result", results, immediate=True)
         print "---------------------- Best scores on development set --------------------------"
-        params, mean_score, scores = search.grid_scores_[self.bestIndex]
+        params, mean_score, scores = search.grid_scores_[bestIndex]
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         return search

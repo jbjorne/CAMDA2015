@@ -106,6 +106,11 @@ class Meta():
         print "Opening database at", dbPath
         return dataset.connect(dbPath)
     
+    def drop(self, name):
+        if name in self.db:
+            print "Dropping table", name
+            self.db[name].drop()
+    
     def initCache(self, table, cacheSize=None):
         self.cache[table] = []
         self.cacheSize[table] = self.defaultCacheSize if (cacheSize == None) else cacheSize
