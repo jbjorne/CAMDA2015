@@ -4,7 +4,8 @@ from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
 from sklearn.metrics import classification_report, make_scorer
 from collections import defaultdict, OrderedDict
-import data.hidden as hidden
+#import data.hidden as hidden
+from HiddenSet import splitData
 import sklearn.metrics
 from ExampleIO import SVMLightExampleIO
 from Meta import Meta
@@ -95,7 +96,7 @@ class Classification():
             print "Class distribution = ", countUnique(self.y)
             if self.randomize:
                 self._randomizeLabels()
-        X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
+        X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if "class" in self.meta.db.tables:
             print "Classes y_train = ", countUnique(y_train)
