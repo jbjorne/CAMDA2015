@@ -3,7 +3,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
 from sklearn.metrics import classification_report, make_scorer
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import data.hidden as hidden
 import sklearn.metrics
 from ExampleIO import SVMLightExampleIO
@@ -141,17 +141,23 @@ class Classification():
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         # Save the grid search results
+        print "Saving results"
         self.meta.insert_many("result", results)
         if bestExtras:
             for fold in range(len(bestExtras)):
                 extras = bestExtras[fold]
-                print "EXTRAS", extras.keys()
                 if "predictions" in extras:
-                    p = extras["predictions"]
-                    self.meta.insert_many("prediction", [{"example":key, "fold":fold, "value":str(p[key]), "set":"train"} for key in p])
+                    rows = []
+                    for key in extras["predictions"]:
+                        row = OrderedDict(("example",key), ("fold",fold), ("set","train"))
+                        values = extras["predictions"][key]
+                        for i in range(len(values)):
+                            row["class_" + str(i+1)] = values[i]
+                        rows.append(row)
+                    self.meta.insert_many("prediction", rows)
                 if "importances" in extras:
                     importances = extras["importances"]
-                    self.meta.insert_many("importance", [{"feature":i, "fold":fold, "value":importances[i], "set":"train"} for i in range(len(importances)) if importances[i] != 0])
+                    self.meta.insert_many("importance", [OrderedDict(("feature",i), ("fold",fold), ("value",importances[i]), ("set","train")) for i in range(len(importances)) if importances[i] != 0])
         self.meta.flush() 
         return search
         
