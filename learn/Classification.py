@@ -123,8 +123,9 @@ class Classification():
         index = 0
         bestIndex = 0
         bestExtras = None
-        self.meta.drop("prediction")
-        self.meta.drop("importance")
+        self.meta.drop("result", 100000)
+        self.meta.drop("prediction", 100000)
+        self.meta.drop("importance", 100000)
         for params, mean_score, scores in search.grid_scores_:
             print scores
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
@@ -179,9 +180,9 @@ class Classification():
                              #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
                              "score":search.score(X_hidden, y_hidden),
                              "metric":self.metric,
-                             "params":search.best_params_,
+                             "params":str(search.best_params_),
                              "set":"hidden"}
-            print "Score =", self.hiddenResult["score"], "(" + self.metric + ")"
+            print "Score =", hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred
             #print search.predict_proba(X_hidden)
