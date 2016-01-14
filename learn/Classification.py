@@ -2,11 +2,9 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
-from sklearn.metrics import classification_report, make_scorer
+from sklearn.metrics import classification_report
 from collections import defaultdict, OrderedDict
-#import data.hidden as hidden
 from HiddenSet import splitData
-import sklearn.metrics
 from ExampleIO import SVMLightExampleIO
 from Meta import Meta
 
@@ -43,8 +41,6 @@ def getOptions(execString):
         if not execKey.startswith("exec"):
             execReturn[execKey] = execLocals[execKey]
     return execReturn
-        
-    #return {key:locals()[key] for key in locals() if key != "execString"}
 
 class Classification():
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
@@ -87,7 +83,7 @@ class Classification():
     
     def _getClassifier(self):
         classifier = importNamed(self.classifierName)
-        classifierArgs = getOptions(self.classifierArgs) #self._getClassifierArgs()
+        classifierArgs = getOptions(self.classifierArgs)
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
                 
@@ -105,7 +101,6 @@ class Classification():
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
             self._predictHidden(y_hidden, X_hidden, search)
-        #self._saveResults(resultPath)
         
     def _crossValidate(self, y_train, X_train, refit=False):
         # Run the grid search
@@ -117,16 +112,9 @@ class Classification():
                                       scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
-#         if hasattr(search, "best_estimator_"):
-#             print "----------------------------- Best Estimator -----------------------------------"
-#             print search.best_estimator_
-#             if hasattr(search.best_estimator_, "doRFE"):
-#                 print "*** RFE ***"
-#                 search.best_estimator_.doRFE(X_train, y_train)
         # Show the grid search results
         print "---------------------- Grid scores on development set --------------------------"
         results = []
-        #self.extras = None
         index = 0
         bestIndex = 0
         bestExtras = None
@@ -183,17 +171,13 @@ class Classification():
             print search.scorer_(search.best_estimator_, X_hidden, y_hidden)
             y_hidden_score = search.predict_proba(X_hidden)
             y_hidden_score = [x[1] for x in y_hidden_score]
-            print "AUC", sklearn.metrics.roc_auc_score(y_hidden, y_hidden_score)
-            hiddenResult = {"classifier":search.best_estimator_.__class__.__name__, 
-                             #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
+            hiddenResult = {"classifier":search.best_estimator_.__class__.__name__,
                              "score":search.score(X_hidden, y_hidden),
                              "metric":self.metric,
                              "params":str(search.best_params_),
                              "set":"hidden"}
             print "Score =", hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
-            #print y_hidden_pred
-            #print search.predict_proba(X_hidden)
             hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
@@ -207,64 +191,3 @@ class Classification():
             except ValueError, e:
                 print "ValueError in classification_report:", e
         print "--------------------------------------------------------------------------------"
-    
-#     def _saveResults(self, resultPath, details=True):
-# #         if resultPath == None:
-# #             print "Results not saved"
-# #             return
-# #         if self.extras == None:
-# #             print "No detailed information for cross-validation"
-# #             return
-# #         if not os.path.exists(os.path.dirname(resultPath)):
-# #             os.makedirs(os.path.dirname(resultPath))
-#         # Add general results
-#         for result in self.results:
-#             self.meta.insert("result", result)
-#         if self.hiddenResult != None:
-#             self.meta.insert("result", self.hiddenResult)
-#         # Insert detailed results
-#         if details:
-#             featureByIndex = self.meta.getFeaturesByIndex()
-#             if self.hiddenDetails != None:
-#                 self._saveDetails(self.hiddenDetails.get("predictions", None), self.hiddenDetails.get("importances", None), "hidden", featureByIndex)
-#             fold = 0
-#             for extra in self.extras:
-#                 self._saveDetails(extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
-#                 fold += 1
-# #         else:
-# #             self.meta.remove("examples")
-# #             self.meta.remove("features")
-#                 
-#         # Save results
-#         if resultPath != None:
-#             self.meta.write(resultPath)
-# 
-#     def _saveDetails(self, predictions, importances, fold, featureByIndex=None):
-#         if featureByIndex == None:
-#             featureByIndex = self.meta.getFeaturesByIndex()
-#         if predictions != None:
-#             for index in predictions:
-#                 if fold == "hidden":
-#                     example = self.meta.getExampleFromSet(index, "hidden")
-#                 else:
-#                     example = self.meta.getExampleFromSet(index, "train")
-#                 if "classification" in example:
-#                     raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
-#                 self._setValue(example, "prediction", predictions[index], "classification")
-#                 self._setValue(example, "fold", fold, "classification")
-#         if importances != None:
-#             for i in range(len(importances)):
-#                 if importances[i] != 0:
-#                     feature = self.meta.getFeature(i, featureByIndex)
-#                     if fold != "hidden":
-#                         self._setValue(feature, fold, importances[i], "importances")
-#                     else:
-#                         self._setValue(feature, "hidden-importance", importances[i])
-#                         self._setValue(feature, "sort", importances[i])
-    
-#     def _setValue(self, target, key, value, parent=None):
-#         if parent != None:
-#             if not parent in target:
-#                 target[parent] = {}
-#             target = target[parent]
-#         target[key] = value
