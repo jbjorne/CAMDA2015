@@ -110,6 +110,7 @@ class Meta():
         if name in self.db:
             print "Dropping table", name
             self.db[name].drop()
+        assert name not in self.db._tables
         if reInitCacheSize > -1:
             self.initCache(name, reInitCacheSize)
     
@@ -139,7 +140,7 @@ class Meta():
         # Insert rows if enough are available
         rows = self.cache[tableName]
         if len(rows) >= chunkSize and len(rows) > 0:
-            if not tableName in self.db:
+            if not tableName in self.db._tables:
                 print "Inserting initial row for metadata table", self.db[tableName]
                 self.db[tableName].insert(rows[0], ensure=True)
                 rows[:1] = [] # remove first row

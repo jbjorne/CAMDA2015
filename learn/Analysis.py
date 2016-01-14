@@ -44,28 +44,31 @@ class COSMICAnalysis():
         weights = hiddenWeights if hidden else trainWeights
         exampleSet = "hidden" if hidden else "train"
         meta.drop("cosmic", 100000)
-        featureCount = 0
         hitCount = 0
         rows = []
-        hits = []
+        hitRanks = []
         print "Detecting hits"
         for feature in features:
-            featureCount += 1
             featureId = feature["id"]
             if feature["id"] not in weights:
                 continue
             featureType, geneId, mutationType = feature["name"].split(":")
             geneName = self.mapping.get(geneId, "")
             hit = self.cosmic.get(geneName)
+            row = {"id":featureId, "weight":weights[featureId], "set":exampleSet, "hit":None, "name":None, "entrez":None}
             if hit:
                 hitCount += 1
-                hits.append(featureCount)
-            rows.append({"id":featureId, "weight":weights[featureId], "hit":hit, "set":exampleSet})
-        rows = sorted(rows, key=lambda k: k['weight'])
-        meta.insert_many("cosmic", rows)
-        print "Detected", hitCount, "hits among", featureCount, "features"
-        self._visualize(hits, os.path.join(inDir, fileStem + "-cosmic-hist.png"))
-        self._visualize(hits, os.path.join(inDir, fileStem + "-cosmic-hist.pdf"))
+                row.update({"hit":hit["Gene Symbol"], "name":hit["Name"], "entrez":hit["Entrez GeneId"]})
+            rows.append(row)
+        print "Ranking features"
+        rows = sorted(rows, key=lambda k: k['weight'], reverse=True)
+        for i in range(len(rows)):
+            if rows[i]["hit"] is not None:
+                hitRanks.append(i)
+        meta.insert_many("cosmic", rows, True)
+        print "Detected", hitCount, "hits among", len(rows), "features"
+        self._visualize(hitRanks, os.path.join(inDir, fileStem + "-cosmic-hist.png"))
+        self._visualize(hitRanks, os.path.join(inDir, fileStem + "-cosmic-hist.pdf"))
 
     def _visualize(self, hits, outPath):
         num_bins = 100
@@ -100,9 +103,8 @@ class COSMICAnalysis():
             filePath = os.path.join(self.dataPath, "cancer_gene_census.csv")
         print "Reading COSMIC cancer gene census from", filePath
         with open(filePath, "rU") as csvfile:
-            reader = csv.reader(csvfile, delimiter=',', quotechar='"')
-            reader.next() # skip headers
+            reader = csv.DictReader(csvfile, delimiter=',', quotechar='"')
             for row in reader:
-                assert row[0] not in self.cosmic
-                self.cosmic[row[0]] = row
+                assert row["Gene Symbol"] not in self.cosmic
+                self.cosmic[row["Gene Symbol"]] = row
         return self.cosmic
