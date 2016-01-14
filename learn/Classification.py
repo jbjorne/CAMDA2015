@@ -19,14 +19,25 @@ from ExampleIO import SVMLightExampleIO
 #import settings
 from Meta import Meta
 
-def getStratifiedKFoldCV(y, meta, numFolds=10):
-    return StratifiedKFold(y, n_folds=numFolds)
+# def getStratifiedKFoldCV(y, meta, numFolds=10):
+#     return StratifiedKFold(y, n_folds=numFolds)
+# 
+# def getKFoldCV(y, meta, numFolds=10):
+#     return KFold(y, n_folds=numFolds)
+# 
+# def getNoneCV(y, meta, numFolds=10):
+#     return None
 
-def getKFoldCV(y, meta, numFolds=10):
-    return KFold(y, n_folds=numFolds)
-
-def getNoneCV(y, meta, numFolds=10):
-    return None
+def getOptions(execString):
+    exec(execString)
+    execLocals = locals()
+    execReturn = {}
+    for execKey in execLocals:
+        if not execKey.startswith("exec"):
+            execReturn[execKey] = execLocals[execKey]
+    return execReturn
+        
+    #return {key:locals()[key] for key in locals() if key != "execString"}
 
 class Classification():
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
@@ -34,15 +45,15 @@ class Classification():
         self.X = None
         self.y = None
         self.meta = None
-        self.exampleMeta = None
+        #self.exampleMeta = None
         # Settings
         self.randomize = False
         self.numFolds = numFolds
         self.classifierName = None
         self.classifierArgs = None
-        if getCV == None:
-            getCV = getStratifiedKFoldCV
-        self.getCV = getCV
+        #if getCV == None:
+        #    getCV = getStratifiedKFoldCV
+        #self.getCV = getCV
         self.preDispatch = preDispatch
         self.metric = metric
         self.verbose = 3
@@ -66,40 +77,44 @@ class Classification():
             exampleIO = SVMLightExampleIO(os.path.join(inDir, fileStem))
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
-        self.meta = Meta(os.path.join(inDir, fileStem + ".classification.sqlite"), copyFrom=os.path.join(inDir, fileStem + ".meta.sqlite"), clear=True)
-        self.exampleMeta = self.meta.db["example"].all()
+        self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
+        #self.exampleMeta = self.meta.db["example"].all()
     
     def _getClassifier(self):
-        if self.classifierName == "RLScore":
-            raise NotImplementedError()
-        #elif self.classifierName == "RFEWrapper":
-        #    classifier = RFEWrapper
-        else:
-            classifier = self._importNamed(self.classifierName)
-        classifierArgs = self._getClassifierArgs()
+#         if self.classifierName == "RLScore":
+#             raise NotImplementedError()
+#         #elif self.classifierName == "RFEWrapper":
+#         #    classifier = RFEWrapper
+#         else:
+#             classifier = self._importNamed(self.classifierName)
+        classifier = self._importNamed(self.classifierName)
+        classifierArgs = getOptions(self.classifierArgs) #self._getClassifierArgs()
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
     
-    def _getClassifierArgs(self):
-        if not isinstance(self.classifierArgs, basestring): # already in parsed form
-            return self.classifierArgs
-        if self.classifierArgs == None:
-            return {}
-        # Separate key and values into a list, allowing commas within values
-        splits = []
-        equalSignSplits = self.classifierArgs.split("=")
-        for i in range(len(equalSignSplits)):
-            if i < len(equalSignSplits) - 1: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
-                splits.extend(equalSignSplits[i].rsplit(",", 1))
-            else:
-                splits.append(equalSignSplits[i])
-        options = {}
-        for key, value in zip(*[iter(splits)] * 2):
-            try:
-                options[key] = eval(value, globals()) #, {x:getattr(settings, x) for x in dir(settings)})
-            except:
-                options[key] = value
-        return options
+#     def _getClassifierArgs(self, execString):
+#         exec(execString)
+#         for key in locals:
+#             if key not in 
+#         if not isinstance(self.classifierArgs, basestring): # already in parsed form
+#             return self.classifierArgs
+#         if self.classifierArgs == None:
+#             return {}
+#         # Separate key and values into a list, allowing commas within values
+#         splits = []
+#         equalSignSplits = self.classifierArgs.split("=")
+#         for i in range(len(equalSignSplits)):
+#             if i < len(equalSignSplits) - 1: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
+#                 splits.extend(equalSignSplits[i].rsplit(",", 1))
+#             else:
+#                 splits.append(equalSignSplits[i])
+#         options = {}
+#         for key, value in zip(*[iter(splits)] * 2):
+#             try:
+#                 options[key] = eval(value, globals()) #, {x:getattr(settings, x) for x in dir(settings)})
+#             except:
+#                 options[key] = value
+#        return options
     
     def _getScorer(self):
         print "Using metric", self.metric
@@ -153,7 +168,7 @@ class Classification():
             print "Class distribution = ", self._getClassDistribution(self.y)
             if self.randomize:
                 self._randomizeLabels()
-        X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.exampleMeta)
+        X_train, X_hidden, y_train, y_hidden = hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if "class" in self.meta.db.tables:
             print "Classes y_train = ", self._getClassDistribution(y_train)
@@ -239,18 +254,15 @@ class Classification():
         print "--------------------------------------------------------------------------------"
     
     def _saveResults(self, resultPath, details=True):
-        if resultPath == None:
-            print "Results not saved"
-            return
-        if self.extras == None:
-            print "No detailed information for cross-validation"
-            return
-        if not os.path.exists(os.path.dirname(resultPath)):
-            os.makedirs(os.path.dirname(resultPath))
+#         if resultPath == None:
+#             print "Results not saved"
+#             return
+#         if self.extras == None:
+#             print "No detailed information for cross-validation"
+#             return
+#         if not os.path.exists(os.path.dirname(resultPath)):
+#             os.makedirs(os.path.dirname(resultPath))
         # Add general results
-        #self.meta["results"] = {"best":self.results[self.bestIndex], "all":self.results}
-        #if self.hiddenResults != None:
-        #    self.meta["results"]["hidden"] = self.hiddenResults
         for result in self.results:
             self.meta.insert("result", result)
         if self.hiddenResult != None:
