@@ -28,6 +28,25 @@ from Meta import Meta
 # def getNoneCV(y, meta, numFolds=10):
 #     return None
 
+def importNamed(self, name):
+    asName = name.rsplit(".", 1)[-1]
+    imported = False
+    attempts = ["from sklearn." + name.rsplit(".", 1)[0] + " import " + asName,
+                "from " + name.rsplit(".", 1)[0] + " import " + asName,
+                "import " + name + " as " + asName]
+    for attempt in attempts:
+        try:
+            print "Importing '" + attempt + "', ",
+            exec attempt
+            imported = True
+            print "OK"
+            break;
+        except ImportError:
+            print "failed"
+    if not imported:
+        raise Exception("Could not import '" + name + "'")
+    return eval(asName)
+    
 def getOptions(execString):
     exec(execString)
     execLocals = locals()
@@ -66,9 +85,6 @@ class Classification():
         self.hiddenResults = None
         self.hiddenDetails = None
     
-    def buildExamples(self, experiment, outDir):
-        experiment.writeExamples(outDir)
-    
     def readExamples(self, inDir, fileStem=None, exampleIO=None):
         if fileStem == None:
             fileStem = "examples"
@@ -81,81 +97,27 @@ class Classification():
         #self.exampleMeta = self.meta.db["example"].all()
     
     def _getClassifier(self):
-#         if self.classifierName == "RLScore":
-#             raise NotImplementedError()
-#         #elif self.classifierName == "RFEWrapper":
-#         #    classifier = RFEWrapper
-#         else:
-#             classifier = self._importNamed(self.classifierName)
         classifier = self._importNamed(self.classifierName)
         classifierArgs = getOptions(self.classifierArgs) #self._getClassifierArgs()
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
-    
-#     def _getClassifierArgs(self, execString):
-#         exec(execString)
-#         for key in locals:
-#             if key not in 
-#         if not isinstance(self.classifierArgs, basestring): # already in parsed form
-#             return self.classifierArgs
-#         if self.classifierArgs == None:
-#             return {}
-#         # Separate key and values into a list, allowing commas within values
-#         splits = []
-#         equalSignSplits = self.classifierArgs.split("=")
-#         for i in range(len(equalSignSplits)):
-#             if i < len(equalSignSplits) - 1: # potentially a "value,key2" structure from the middle of a string like "key1=value,key2=value2"
-#                 splits.extend(equalSignSplits[i].rsplit(",", 1))
-#             else:
-#                 splits.append(equalSignSplits[i])
-#         options = {}
-#         for key, value in zip(*[iter(splits)] * 2):
-#             try:
-#                 options[key] = eval(value, globals()) #, {x:getattr(settings, x) for x in dir(settings)})
-#             except:
-#                 options[key] = value
-#        return options
     
     def _getScorer(self):
         print "Using metric", self.metric
         if self.metric == "roc_auc":
             return self.metric
         try:
-            metric = self._importNamed(self.metric)
+            metric = importNamed(self.metric)
             return make_scorer(metric)
         except Exception as e:
             print "Couldn't import named metric:", e
             return metric
-    
-    def _importNamed(self, name):
-        asName = name.rsplit(".", 1)[-1]
-        imported = False
-        attempts = ["from sklearn." + name.rsplit(".", 1)[0] + " import " + asName,
-                    "from " + name.rsplit(".", 1)[0] + " import " + asName,
-                    "import " + name + " as " + asName]
-        for attempt in attempts:
-            try:
-                print "Importing '" + attempt + "', ",
-                exec attempt
-                imported = True
-                print "OK"
-                break;
-            except ImportError:
-                print "failed"
-        if not imported:
-            raise Exception("Could not import '" + name + "'")
-        return eval(asName)
     
     def _getClassDistribution(self, labels):
         counts = defaultdict(int)
         for value in labels:
             counts[value] += 1
         return dict(counts)
-    
-    def _getPreDispatch(self):
-        if self.preDispatch.isdigit():
-            return int(self.preDispatch)
-        return self.preDispatch
     
     def _randomizeLabels(self):
         if self.randomize:
@@ -185,7 +147,14 @@ class Classification():
         cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         scorer = self._getScorer()
         classifier, classifierArgs = self._getClassifier()
-        search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, scoring=scorer, verbose=self.verbose, n_jobs=self.parallel, pre_dispatch=self._getPreDispatch())
+        search = ExtendedGridSearchCV(classifier(), 
+                                      classifierArgs, 
+                                      refit=refit, 
+                                      cv=cv, 
+                                      scoring=scorer, 
+                                      verbose=self.verbose, 
+                                      n_jobs=self.parallel, 
+                                      pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
         if hasattr(search, "best_estimator_"):
             print "----------------------------- Best Estimator -----------------------------------"
@@ -313,62 +282,3 @@ class Classification():
                 target[parent] = {}
             target = target[parent]
         target[key] = value
-    
-# if __name__ == "__main__":
-#     import argparse
-#     parser = argparse.ArgumentParser(parents=[exampleOptions], description='Learning with examples')
-#     parser.add_argument('-x','--features', help='Input file for feature vectors (X)', default=None)
-#     parser.add_argument('-y','--labels', help='Input file for class labels (Y)', default=None)
-#     parser.add_argument('-m','--meta', help='Metadata input file name (optional)', default=None)
-#     parser.add_argument('--noCache', help='Do not use cache', default=False, action="store_true")
-#     parser.add_argument('--cacheDir', help='Cache directory, used if x, y or m are undefined (optional)', default=os.path.join(tempfile.gettempdir(), "CAMDA2014"))
-#     parser.add_argument('-c','--classifier', help='', default='ensemble.RandomForestClassifier')
-#     parser.add_argument('-a','--classifierArguments', help='', default=None)
-#     parser.add_argument('--metric', help='', default="roc_auc")
-#     parser.add_argument('-i','--iteratorCV', help='', default='getStratifiedKFoldCV')
-#     parser.add_argument('-n','--numFolds', help='Number of folds in cross-validation', type=int, default=5)
-#     parser.add_argument('-v','--verbose', help='Cross-validation verbosity', type=int, default=3)
-#     parser.add_argument('-p', '--parallel', help='Cross-validation parallel jobs', type=int, default=1)
-#     parser.add_argument('--preDispatch', help='', default='2*n_jobs')
-#     parser.add_argument('-r', '--result', help='Output file for detailed results (optional)', default=None)
-#     parser.add_argument('--randomize', help='', default=False, action="store_true")
-#     parser.add_argument('--analyze', help='Analyze feature selection results', default=False, action="store_true")
-#     parser.add_argument('--databaseCGI', help='Analysis database', default=None)
-#     parser.add_argument('--clearCache', default=False, action="store_true")
-#     parser.add_argument('--buildOnly', default=False, action="store_true")
-#     parser.add_argument('--batch', default=False, action="store_true")
-#     parser.add_argument('--dummy', default=False, action="store_true")
-#     parser.add_argument('--hiddenFilter', default=None)
-#     options = parser.parse_args()
-    
-#     if options.hiddenFilter != None:
-#         options.hiddenFilter = options.hiddenFilter.split(",")
-#         hidden.hiddenFilter = options.hiddenFilter
-#     
-#     if options.batch:
-#         connection = batch.getConnection(options.slurm)
-#         if not os.path.exists(options.jobDir):
-#             os.makedirs(options.jobDir)
-#         connection.debug = True
-#         batch.batch(runDir, jobDir, resultPath, experiments, projects, classifiers, features, limit, sleepTime, dummy, rerun, hideFinished, clearCache, icgcDB, cgiDB, connection, metric)
-#     
-#     if options.result != None:
-#         Stream.openLog(options.result + "-log.txt")
-#     
-#     classifier, classifierArgs = getClassifier(options.classifier, options.classifierArguments)
-#     cvFunction = eval(options.iteratorCV)
-#     featureFilePath, labelFilePath, metaFilePath = getExperiment(experiment=options.experiment, experimentOptions=options.options, 
-#                                                                  database=options.database, writer=options.writer, 
-#                                                                  useCached=not options.noCache, featureFilePath=options.features, 
-#                                                                  labelFilePath=options.labels, metaFilePath=options.meta,
-#                                                                  cacheDir=options.cacheDir)
-#     if options.buildOnly:
-#         sys.exit()
-#     test(featureFilePath, labelFilePath, metaFilePath, classifier=classifier, classifierArgs=classifierArgs, 
-#          getCV=cvFunction, numFolds=options.numFolds, verbose=options.verbose, parallel=options.parallel, 
-#          preDispatch=options.preDispatch, resultPath=options.result, randomize=options.randomize, analyzeResults=options.analyze, databaseCGI=options.databaseCGI, metric=options.metric)
-#     if options.clearCache:
-#         print "Removing cache files"
-#         for filename in [featureFilePath, labelFilePath, metaFilePath]:
-#             if os.path.exists(filename):
-#                 os.remove(filename)
