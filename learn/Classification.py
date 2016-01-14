@@ -98,7 +98,7 @@ class Classification():
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
             self._predictHidden(y_hidden, X_hidden, search)
-        self._saveResults(resultPath)
+        #self._saveResults(resultPath)
         
     def _crossValidate(self, y_train, X_train, refit=False):
         # Run the grid search
@@ -143,27 +143,29 @@ class Classification():
         # Save the grid search results
         print "Saving results"
         self.meta.insert_many("result", results)
-        if bestExtras:
-            for fold in range(len(bestExtras)):
-                extras = bestExtras[fold]
-                if "predictions" in extras:
-                    rows = []
-                    for key in extras["predictions"]:
-                        row = OrderedDict(("example",key), ("fold",fold), ("set","train"))
-                        values = extras["predictions"][key]
-                        for i in range(len(values)):
-                            row["class_" + str(i+1)] = values[i]
-                        rows.append(row)
-                    self.meta.insert_many("prediction", rows)
-                if "importances" in extras:
-                    importances = extras["importances"]
-                    self.meta.insert_many("importance", [OrderedDict(("feature",i), ("fold",fold), ("value",importances[i]), ("set","train")) for i in range(len(importances)) if importances[i] != 0])
+        self._saveExtras(bestExtras, "train")
         self.meta.flush() 
         return search
+    
+    def _saveExtras(self, folds, setName):
+        if folds == None:
+            return
+        for fold in range(len(folds)):
+            extras = folds[fold]
+            if "predictions" in extras:
+                rows = []
+                for key in extras["predictions"]:
+                    row = OrderedDict([("example",key), ("fold",fold), ("set",setName)])
+                    values = extras["predictions"][key]
+                    for i in range(len(values)):
+                        row["class_" + str(i+1)] = values[i]
+                    rows.append(row)
+                self.meta.insert_many("prediction", rows)
+            if "importances" in extras:
+                importances = extras["importances"]
+                self.meta.insert_many("importance", [OrderedDict([("feature",i), ("fold",fold), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
         
     def _predictHidden(self, y_hidden, X_hidden, search):
-        self.hiddenResult = None
-        self.hiddenDetails = None
         if X_hidden.shape[0] > 0:
             print "----------------------------- Classifying Hidden Set -----------------------------------"
             print "search.scoring", search.scoring
@@ -173,81 +175,83 @@ class Classification():
             y_hidden_score = search.predict_proba(X_hidden)
             y_hidden_score = [x[1] for x in y_hidden_score]
             print "AUC", sklearn.metrics.roc_auc_score(y_hidden, y_hidden_score)
-            self.hiddenResult = {"classifier":search.best_estimator_.__class__.__name__, 
+            hiddenResult = {"classifier":search.best_estimator_.__class__.__name__, 
                              #"score":scorer.score(search.best_estimator_, X_hidden, y_hidden),
                              "score":search.score(X_hidden, y_hidden),
                              "metric":self.metric,
                              "params":search.best_params_,
                              "set":"hidden"}
-            self.meta.insert("result", self.hiddenResult, immediate=True)
             print "Score =", self.hiddenResult["score"], "(" + self.metric + ")"
             y_hidden_pred = [list(x) for x in search.predict_proba(X_hidden)]
             #print y_hidden_pred
             #print search.predict_proba(X_hidden)
-            self.hiddenDetails = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+            hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
             if hasattr(search.best_estimator_, "feature_importances_"):
-                self.hiddenDetails["importances"] = search.best_estimator_.feature_importances_
+                hiddenExtra["importances"] = search.best_estimator_.feature_importances_
+            
+            print "Saving results"
+            self.meta.insert("result", hiddenResult)
+            self._saveExtras([hiddenExtra], "hidden")
+            self.meta.flush()
             try:
-                #print y_hidden
-                #print y_hidden_pred
                 print classification_report(y_hidden, y_hidden_pred)
             except ValueError, e:
                 print "ValueError in classification_report:", e
         print "--------------------------------------------------------------------------------"
     
-    def _saveResults(self, resultPath, details=True):
-#         if resultPath == None:
-#             print "Results not saved"
-#             return
-#         if self.extras == None:
-#             print "No detailed information for cross-validation"
-#             return
-#         if not os.path.exists(os.path.dirname(resultPath)):
-#             os.makedirs(os.path.dirname(resultPath))
-        # Add general results
-        for result in self.results:
-            self.meta.insert("result", result)
-        if self.hiddenResult != None:
-            self.meta.insert("result", self.hiddenResult)
-        # Insert detailed results
-        if details:
-            featureByIndex = self.meta.getFeaturesByIndex()
-            if self.hiddenDetails != None:
-                self._saveDetails(self.hiddenDetails.get("predictions", None), self.hiddenDetails.get("importances", None), "hidden", featureByIndex)
-            fold = 0
-            for extra in self.extras:
-                self._saveDetails(extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
-                fold += 1
-#         else:
-#             self.meta.remove("examples")
-#             self.meta.remove("features")
-                
-        # Save results
-        if resultPath != None:
-            self.meta.write(resultPath)
-
-    def _saveDetails(self, predictions, importances, fold, featureByIndex=None):
-        if featureByIndex == None:
-            featureByIndex = self.meta.getFeaturesByIndex()
-        if predictions != None:
-            for index in predictions:
-                if fold == "hidden":
-                    example = self.meta.getExampleFromSet(index, "hidden")
-                else:
-                    example = self.meta.getExampleFromSet(index, "train")
-                if "classification" in example:
-                    raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
-                self._setValue(example, "prediction", predictions[index], "classification")
-                self._setValue(example, "fold", fold, "classification")
-        if importances != None:
-            for i in range(len(importances)):
-                if importances[i] != 0:
-                    feature = self.meta.getFeature(i, featureByIndex)
-                    if fold != "hidden":
-                        self._setValue(feature, fold, importances[i], "importances")
-                    else:
-                        self._setValue(feature, "hidden-importance", importances[i])
-                        self._setValue(feature, "sort", importances[i])
+#     def _saveResults(self, resultPath, details=True):
+# #         if resultPath == None:
+# #             print "Results not saved"
+# #             return
+# #         if self.extras == None:
+# #             print "No detailed information for cross-validation"
+# #             return
+# #         if not os.path.exists(os.path.dirname(resultPath)):
+# #             os.makedirs(os.path.dirname(resultPath))
+#         # Add general results
+#         for result in self.results:
+#             self.meta.insert("result", result)
+#         if self.hiddenResult != None:
+#             self.meta.insert("result", self.hiddenResult)
+#         # Insert detailed results
+#         if details:
+#             featureByIndex = self.meta.getFeaturesByIndex()
+#             if self.hiddenDetails != None:
+#                 self._saveDetails(self.hiddenDetails.get("predictions", None), self.hiddenDetails.get("importances", None), "hidden", featureByIndex)
+#             fold = 0
+#             for extra in self.extras:
+#                 self._saveDetails(extra.get("predictions", None), extra.get("importances", None), fold, featureByIndex)
+#                 fold += 1
+# #         else:
+# #             self.meta.remove("examples")
+# #             self.meta.remove("features")
+#                 
+#         # Save results
+#         if resultPath != None:
+#             self.meta.write(resultPath)
+# 
+#     def _saveDetails(self, predictions, importances, fold, featureByIndex=None):
+#         if featureByIndex == None:
+#             featureByIndex = self.meta.getFeaturesByIndex()
+#         if predictions != None:
+#             for index in predictions:
+#                 if fold == "hidden":
+#                     example = self.meta.getExampleFromSet(index, "hidden")
+#                 else:
+#                     example = self.meta.getExampleFromSet(index, "train")
+#                 if "classification" in example:
+#                     raise Exception("Example " + str(index) + " has already been classified " + str([fold, str(example)]))
+#                 self._setValue(example, "prediction", predictions[index], "classification")
+#                 self._setValue(example, "fold", fold, "classification")
+#         if importances != None:
+#             for i in range(len(importances)):
+#                 if importances[i] != 0:
+#                     feature = self.meta.getFeature(i, featureByIndex)
+#                     if fold != "hidden":
+#                         self._setValue(feature, fold, importances[i], "importances")
+#                     else:
+#                         self._setValue(feature, "hidden-importance", importances[i])
+#                         self._setValue(feature, "sort", importances[i])
     
 #     def _setValue(self, target, key, value, parent=None):
 #         if parent != None:
