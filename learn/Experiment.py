@@ -1,12 +1,10 @@
 import sys, os
+from learn.HiddenSet import HiddenSet
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
 import time
-import json
-import inspect
-from collections import OrderedDict
-import data.hidden as hidden
+#import data.hidden as hidden
 from Meta import Meta
 from ExampleIO import SVMLightExampleIO
 
@@ -62,24 +60,23 @@ class Experiment(object):
         self.featureGroups = None
         #self.filter = None
         self.hiddenCutoff = 0.3
-        self.includeHiddenSet = True
-        self.includeTrainingSet = True
+        self.includeSets = ("train", "hidden")
         # Generated data
         self.examples = None
         self.meta = None
-        self.unique = None
+        #self.unique = None
     
-    def generateOrNot(self, example, verbose=True):
-        if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
-            if verbose:
-                print "Skipping example from hidden donor", example["icgc_donor_id"]
-            return False
-        elif not self.includeTrainingSet and example["hidden"] >= self.hiddenCutoff:
-            if verbose:
-                print "Skipping example " + str(example) + " from non-hidden donor", example["icgc_donor_id"]
-            return False
-        else:
-            return True
+#     def generateOrNot(self, example, verbose=True):
+#         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
+#             if verbose:
+#                 print "Skipping example from hidden donor", example["icgc_donor_id"]
+#             return False
+#         elif not self.includeTrainingSet and example["hidden"] >= self.hiddenCutoff:
+#             if verbose:
+#                 print "Skipping example " + str(example) + " from non-hidden donor", example["icgc_donor_id"]
+#             return False
+#         else:
+#             return True
     
     def getClassId(self, value):
         if self.classIds != None:
@@ -142,26 +139,32 @@ class Experiment(object):
         self.meta.flush()
         self.meta.initCache("feature", 100000)
         self.examples = self._queryExamples()
-        numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
+        #numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         numExamples = len(self.examples)
-        uniqueValues = set()
-        print "Examples " +  str(numExamples) + ", hidden " + str(numHidden)
+        numHidden = 0
+        hiddenSet = HiddenSet()
+        #uniqueValues = set()
+        print "Examples " +  str(numExamples)
         count = 0
         built = 0
         for example in self.examples:
             count += 1
-            if not self.generateOrNot(example):
-                continue
+            example["hidden"] = hiddenSet.getDonorThreshold(example["icgc_donor_id"])
             example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
+            if example["set"] not in self.includeSets:
+                print "Skipping", example["icgc_donor_id"], "from set", example["set"]
+                continue
+            if example["set"] == "hidden":
+                numHidden += 1
 
             print "Processing example", example
             classId = self.getClassId(self.getLabel(example))
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
             #    continue
-            if self.unique:
-                assert example[self.unique] not in uniqueValues
-                uniqueValues.add(example[self.unique])
+#             if self.unique:
+#                 assert example[self.unique] not in uniqueValues
+#                 uniqueValues.add(example[self.unique])
             
             features = self._buildFeatures(example)
             print classId, str(len(features)), str(count) + "/" + str(numExamples)
@@ -174,7 +177,7 @@ class Experiment(object):
             built += 1
         
         self.meta.flush()
-        print "Built", built, "examples with", len(self.featureIds), "unique features"
+        print "Built", built, "examples (" + str(numHidden) + " hidden) with", len(self.featureIds), "unique features"
         #self.saveMetaData(metaDataFileName)
     
 #     def _writeExamples(self, classIds, featureVectors, exampleWriter):

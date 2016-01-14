@@ -77,6 +77,12 @@ class Classification():
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
+        self._clearResults()
+    
+    def _clearResults(self):
+        for tableName in self.meta.db.tables:
+            if tableName not in ("class", "example", "experiment", "feature"):
+                self.meta.drop(tableName)
     
     def _getClassifier(self):
         classifier = importNamed(self.classifierName)

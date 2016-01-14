@@ -98,33 +98,34 @@ AGE = Age()
 ###############################################################################
 
 class Survival(Experiment):
-    def __init__(self, days=365):
+    def __init__(self, days=5 * 365):
         super(Survival, self).__init__()
-        self.days = days * 5
+        self.days = days
         self.query = """
-            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,specimen.project_code,
-            specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis,
-            CAST(IFNULL(donor_survival_time, 0) as int) - CAST(IFNULL(specimen_interval, 0) as int) as st,
-            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) - CAST(IFNULL(specimen_interval, 0) as int) as dilf
+            SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
+            specimen.project_code,specimen_type,donor_vital_status,
+            disease_status_last_followup,donor_age_at_diagnosis,
+            CAST(IFNULL(donor_survival_time, 0) as int) as donor_survival_time,
+            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as donor_interval_of_last_followup
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
             /*P specimen.project_code PROJECTS AND P*/
-            donor_vital_status IS NOT NULL AND
-            ((donor_vital_status == 'deceased' AND (st > 0 OR dilf > 0))
+            donor_vital_status IS NOT NULL AND specimen_type NOT LIKE '%Normal%' AND
+            ((donor_vital_status == 'deceased' AND (donor_survival_time > 0 OR donor_interval_of_last_followup > 0))
             OR
-            (st > %d OR dilf > %d))
+            (donor_survival_time > %d OR donor_interval_of_last_followup > %d))
             """ % (self.days, self.days)
     
-    def getDays(self, example):
-        days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
-        #if example['delay']:
-        #    days -= int(example['delay'])
-        return days
-        #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
+#     def getDays(self, example):
+#         days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
+#         #if example['delay']:
+#         #    days -= int(example['delay'])
+#         return days
+#         #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
     
     def getLabel(self, example):
-        days = self.getDays(example)
+        days = max(example["donor_survival_time", "donor_interval_of_last_followup"]) # self.getDays(example)
         #print "DAYS", days
         if example["donor_vital_status"] == "alive":
             assert days >= self.days

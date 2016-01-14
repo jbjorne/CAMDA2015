@@ -64,6 +64,7 @@ if __name__ == "__main__":
         print "======================================================"
         ExperimentClass = eval(options.experiment)
         e = ExperimentClass()
+        e.includeSets = ("train", "hidden") if options.hidden else ("train",)
         if options.projects != None:
             e.projects = options.projects.split(",")
         if options.features != None:
