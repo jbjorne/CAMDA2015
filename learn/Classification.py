@@ -150,18 +150,7 @@ class Classification(object):
                 if hasattr(search, "extras_"):
                     bestExtras = search.extras_[index]
             if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
-                validationScores = []
-                for fold in range(len(search.extras_[index])):
-                    predictions = search.extras_[index][fold].get("predictions")
-                    if predictions:
-                        foldLabels = []
-                        foldProbabilities = []
-                        for exampleIndex in predictions:
-                            foldLabels.append(y_train[exampleIndex])
-                            foldProbabilities.append(predictions[exampleIndex])
-                        #print fold, foldProbabilities
-                        validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
-                print validationScores, "(eval:auc)"
+                print self._validateExtras(search.extras_[index], y_train), "(eval:auc)"
             print scores, "(" + self.metric + ")"
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
@@ -176,6 +165,21 @@ class Classification(object):
         self.meta.flush() 
         return search
     
+    def _validateExtras(self, folds, y_train):
+        validationScores = []
+        for fold in range(len(folds)):
+            predictions = folds[fold].get("predictions")
+            if predictions:
+                foldLabels = []
+                foldProbabilities = []
+                for exampleIndex in predictions:
+                    foldLabels.append(y_train[exampleIndex])
+                    foldProbabilities.append(predictions[exampleIndex])
+                #print fold, foldProbabilities
+                validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
+        return validationScores
+        
+    
     def _saveExtras(self, folds, setName, noFold=False):
         if folds == None:
             return
@@ -184,12 +188,6 @@ class Classification(object):
             foldIndex = None if noFold else fold
             if "predictions" in extras:
                 rows = [OrderedDict([("example",key), ("fold",foldIndex), ("set",setName), ("predicted", str(extras["predictions"][key]))]) for key in extras["predictions"]]
-#                for key in extras["predictions"]:
-#                    row = OrderedDict([("example",key), ("fold",foldIndex), ("set",setName), ("predicted", extras["predictions"][key])]) 
-#                     values = extras["predictions"][key]
-#                     for i in range(len(values)):
-#                         row["class_" + str(i+1)] = values[i]
-#                     rows.append(row)
                 self.meta.insert_many("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
