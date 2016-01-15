@@ -1,8 +1,4 @@
 import sys, os
-from sklearn.grid_search import GridSearchCV
-from sklearn.metrics.ranking import roc_auc_score
-from sklearn.metrics.classification import accuracy_score
-from sklearn.metrics.scorer import make_scorer
 from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
@@ -57,8 +53,8 @@ class Classification(object):
         # Settings
         self.randomize = False
         self.numFolds = numFolds
-        self.classifierName = None
-        self.classifierArgs = None
+        self.classifierName = classifierName
+        self.classifierArgs = classifierArgs
         self.preDispatch = preDispatch
         self.metric = metric
         self.verbose = 3
@@ -109,10 +105,11 @@ class Classification(object):
         return X_train, X_hidden, y_train, y_hidden
                 
     def classify(self):
+        self.meta.dropTables(["result", "prediction", "importance"], 100000)
         X_train, X_hidden, y_train, y_hidden = self._splitData()
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
-            self._predictHidden(y_hidden, X_hidden, search)
+            self._predictHidden(y_hidden, X_hidden, search, len(y_train))
     
     def _getResult(self, setName, classifier, cv, params, score=None, mean_score=None, scores=None, numFolds=None):
         result = {"classifier":classifier.__name__, "cv":cv.__class__.__name__ if cv else None,
@@ -122,6 +119,9 @@ class Classification(object):
             result["scores"] = ",".join([str(x) for x in list(scores)])
             result["std"] = float(scores.std() / 2)
         return result
+    
+    def _insert(self, tableName, rows):
+        self.meta.insert_many("result", rows)
         
     def _crossValidate(self, y_train, X_train, refit=False):
         # Run the grid search
@@ -133,10 +133,6 @@ class Classification(object):
                                       scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
-        # Show the grid search results
-        self.meta.drop("result", 100000)
-        self.meta.drop("prediction", 100000)
-        self.meta.drop("importance", 100000)
         print "---------------------- Grid scores on development set --------------------------"
         results = []
         index = 0
@@ -144,23 +140,27 @@ class Classification(object):
         bestExtras = None
         for params, mean_score, scores in search.grid_scores_:
             print "Grid:", params
-            results.append(self._getResult("train", classifier, cv, params, None, mean_score, scores, self.numFolds))
+            result = self._getResult("train", classifier, cv, params, None, mean_score, scores, self.numFolds)
             if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
                 bestIndex = index
                 if hasattr(search, "extras_"):
                     bestExtras = search.extras_[index]
             if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
+                for key in search.extras_[index].get("counts", {}).keys():
+                    result[key + "_size"] = search.extras_[index]["counts"][key]
                 print self._validateExtras(search.extras_[index], y_train), "(eval:auc)"
             print scores, "(" + self.metric + ")"
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
+            results.append(result)
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[bestIndex]
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+        print "--------------------------------------------------------------------------------"
         # Save the grid search results
         print "Saving results"
-        self.meta.insert_many("result", results)
+        self._insert("result", results)
         self._saveExtras(bestExtras, "train")
         self.meta.flush() 
         return search
@@ -177,8 +177,7 @@ class Classification(object):
                     foldProbabilities.append(predictions[exampleIndex])
                 #print fold, foldProbabilities
                 validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
-        return validationScores
-        
+        return validationScores   
     
     def _saveExtras(self, folds, setName, noFold=False):
         if folds == None:
@@ -193,7 +192,7 @@ class Classification(object):
                 importances = extras["importances"]
                 self.meta.insert_many("importance", [OrderedDict([("feature",i), ("fold",foldIndex), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
         
-    def _predictHidden(self, y_hidden, X_hidden, search):
+    def _predictHidden(self, y_hidden, X_hidden, search, trainSize=None):
         if X_hidden.shape[0] > 0:
             print "----------------------------- Classifying Hidden Set -----------------------------------"
             print "search.scoring", search.scoring
@@ -202,6 +201,8 @@ class Classification(object):
             score = search.score(X_hidden, y_hidden) #roc_auc_score(y_hidden, search.best_estimator_.predict(X_hidden))
             print "Score =", score, "(" + self.metric + ")"
             hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, score)
+            hiddenResult["train_size"] = trainSize
+            hiddenResult["test_size"] = y_hidden.shape[0]
             y_hidden_proba = search.predict_proba(X_hidden)
             if self.classes and len(self.classes) == 2:
                 y_hidden_pred = getClassPredictions(y_hidden_proba, self.classes)
@@ -212,7 +213,7 @@ class Classification(object):
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
-            self.meta.insert("result", hiddenResult)
+            self._insert("result", hiddenResult)
             self._saveExtras([hiddenExtra], "hidden", True)
             self.meta.flush()
             try:

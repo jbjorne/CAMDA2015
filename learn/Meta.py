@@ -114,6 +114,10 @@ class Meta():
         if reInitCacheSize > -1:
             self.initCache(name, reInitCacheSize)
     
+    def dropTables(self, names, reInitCacheSize=-1):
+        for name in names:
+            self.drop(name, reInitCacheSize)
+    
     def initCache(self, table, cacheSize=None):
         self.cache[table] = []
         self.cacheSize[table] = self.defaultCacheSize if (cacheSize == None) else cacheSize

@@ -80,9 +80,6 @@ if __name__ == "__main__":
         print "Classifying"
         print "======================================================"
         classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
-        classification.classifierName = options.classifier
-        classification.classifierArgs = options.classifierArguments
-        classification.metric = options.metric
         classification.readExamples(options.output)
         classification.classify()
     

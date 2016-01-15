@@ -82,6 +82,7 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
     # Add additional return values
     extraRVs = {}
     if extraOut != None:
+        extraRVs["counts"] = {"train":train.shape[0], "test":test.shape[0]}
         if "estimator" in extraOut:
             extraRVs["estimator"] = estimator
         if extraOut == "auto" or "predictions" in extraOut:

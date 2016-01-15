@@ -3,6 +3,7 @@ from _random import Random
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Classification import Classification, countUnique
 import utils.Stream as Stream
+from utils.common import splitOptions
 
 class LearningCurve(Classification):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False,
@@ -16,21 +17,26 @@ class LearningCurve(Classification):
     def subsample(self, array, thresholds, cutoff):
         indices = []
         assert array.shape[0] == len(thresholds)
-        for i in range(len(self.thresholds)):
-            if self.thresholds[i] > cutoff:
+        for i in range(len(thresholds)):
+            if thresholds[i] > cutoff:
                 indices.append(i)
         return array[indices]
     
     def _getResult(self, setName, classifier, cv, params, score=None, mean_score=None, scores=None, numFolds=None):
-        result = super(LearningCurve, self)._getResult(self, setName, classifier, cv, params, score=score, mean_score=mean_score, scores=scores, numFolds=numFolds)
+        result = super(LearningCurve, self)._getResult(setName=setName, classifier=classifier, cv=cv, params=params, score=score, mean_score=mean_score, scores=scores, numFolds=numFolds)
         result["cutoff"] = self.currentCutoff
         return result
+    
+    def _insert(self, tableName, rows):
+        if tableName == "result":
+            tableName = "learning_curve"
+        super(LearningCurve, self)._insert(tableName, rows)
         
     def classify(self):
         X_train, X_hidden, y_train, y_hidden = self._splitData()
         thresholds = [self.random.random() for x in y_train]
         for i in range(self.steps):
-            print "------------", "Learning curve step", i + 1, "------------"
+            print "----------------------", "Learning curve step", i + 1, "----------------------"
             self.currentCutoff = float(i + 1) / self.steps
             print "Cutoff", self.currentCutoff
             y_sample = self.subsample(y_train, thresholds, self.currentCutoff)
@@ -46,6 +52,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
+    parser.add_argument('-a', "--action", default=None, dest="action")
     groupC = parser.add_argument_group('classify', 'Example Classification')
     groupC.add_argument('-c','--classifier', help='', default=None)
     groupC.add_argument('-r','--classifierArguments', help='', default=None)
@@ -57,15 +64,14 @@ if __name__ == "__main__":
     groupC.add_argument('--preDispatch', help='', default='2*n_jobs')
     options = parser.parse_args()
     
+    actions = splitOptions(options.action, ["classify", "analyse"])
     Stream.openLog(os.path.join(options.output, "log.txt"), False)
     print "Options:", options.__dict__
-
-    print "======================================================"
-    print "Learning Curve"
-    print "======================================================"
-    classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
-    classification.classifierName = options.classifier
-    classification.classifierArgs = options.classifierArguments
-    classification.metric = options.metric
-    classification.readExamples(options.output, preserveTables=["results"])
-    classification.classify()
+    
+    if "classify" in actions:
+        print "======================================================"
+        print "Learning Curve"
+        print "======================================================"
+        classification = LearningCurve(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
+        classification.readExamples(options.output)
+        classification.classify()
