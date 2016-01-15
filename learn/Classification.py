@@ -34,7 +34,6 @@ def listwisePerformance(correct, predicted):
     auc /= pos * neg
     return auc
 
-
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
     imported = False
@@ -211,7 +210,7 @@ class Classification(object):
             #search.scorer_.predict_proba()
             print "scorer", search.scorer_(search.best_estimator_, X_hidden, y_hidden)
             print "accuracy_score", accuracy_score(y_hidden, search.best_estimator_.predict(X_hidden))
-            score = roc_auc_score(y_hidden, search.best_estimator_.predict(X_hidden))
+            score = search.score(X_hidden, y_hidden) #roc_auc_score(y_hidden, search.best_estimator_.predict(X_hidden))
             hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, score) 
             print "Score =", hiddenResult["score"]
             y_hidden_pred = search.predict_proba(X_hidden) #[list(x) for x in search.predict_proba(X_hidden)]
