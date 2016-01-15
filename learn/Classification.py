@@ -109,15 +109,17 @@ class Classification(object):
         X_train, X_hidden, y_train, y_hidden = self._splitData()
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
-            self._predictHidden(y_hidden, X_hidden, search, len(y_train))
+            self._predictHidden(y_hidden, X_hidden, search, y_train.shape[0])
     
-    def _getResult(self, setName, classifier, cv, params, score=None, mean_score=None, scores=None, numFolds=None):
+    def _getResult(self, setName, classifier, cv, params, score=None, fold=None, mean_score=None, scores=None, extra=None):
         result = {"classifier":classifier.__name__, "cv":cv.__class__.__name__ if cv else None,
-                  "params":str(params), "numFolds":numFolds, "score":score}
+                  "params":str(params), "fold":fold, "score":score, "set":setName}
         if mean_score is not None:
             result["mean"] = float(mean_score)
             result["scores"] = ",".join([str(x) for x in list(scores)])
             result["std"] = float(scores.std() / 2)
+        if extra:
+            result.update(extra)
         return result
     
     def _insert(self, tableName, rows):
@@ -140,19 +142,22 @@ class Classification(object):
         bestExtras = None
         for params, mean_score, scores in search.grid_scores_:
             print "Grid:", params
-            result = self._getResult("train", classifier, cv, params, None, mean_score, scores, self.numFolds)
+            results.append(self._getResult("train", classifier, cv, params, None, None, mean_score, scores, extra={"train_size":None, "test_size":None}))
             if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
                 bestIndex = index
                 if hasattr(search, "extras_"):
                     bestExtras = search.extras_[index]
+            for fold in range(len(scores)):
+                result = self._getResult("train", classifier, cv, params, scores[fold], fold)
+                if hasattr(search, "extras_"):
+                    for key in search.extras_[index][fold].get("counts", {}).keys():
+                        result[key + "_size"] = search.extras_[index][fold]["counts"][key]
+                results.append(result)
             if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
-                for key in search.extras_[index].get("counts", {}).keys():
-                    result[key + "_size"] = search.extras_[index]["counts"][key]
                 print self._validateExtras(search.extras_[index], y_train), "(eval:auc)"
             print scores, "(" + self.metric + ")"
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
-            results.append(result)
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[bestIndex]
         print scores
@@ -213,7 +218,7 @@ class Classification(object):
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
-            self._insert("result", hiddenResult)
+            self._insert("result", [hiddenResult])
             self._saveExtras([hiddenExtra], "hidden", True)
             self.meta.flush()
             try:
