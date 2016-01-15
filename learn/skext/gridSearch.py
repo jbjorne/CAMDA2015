@@ -104,9 +104,18 @@ class ExtendedGridSearchCV(GridSearchCV):
                  score_func=None, fit_params=None, n_jobs=1, iid=True,
                  refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs'):
         super(ExtendedGridSearchCV, self).__init__(
-            estimator, param_grid, scoring, loss_func, 
-            score_func, fit_params, n_jobs, iid,
-            refit, cv, verbose, pre_dispatch)
+            estimator=estimator, 
+            param_grid=param_grid, 
+            scoring=scoring, 
+            loss_func=loss_func, 
+            score_func=score_func, 
+            fit_params=fit_params, 
+            n_jobs=n_jobs, 
+            iid=iid,
+            refit=refit, 
+            cv=cv, 
+            verbose=verbose, 
+            pre_dispatch=pre_dispatch)
 
     def fit(self, X, y=None):
         return self._extendedFit(X, y, ParameterGrid(self.param_grid))

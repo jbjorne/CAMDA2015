@@ -1,4 +1,8 @@
 import sys, os
+from sklearn.grid_search import GridSearchCV
+from sklearn.metrics.ranking import roc_auc_score
+from sklearn.metrics.classification import accuracy_score
+from sklearn.metrics.scorer import make_scorer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -7,6 +11,29 @@ from collections import defaultdict, OrderedDict
 from HiddenSet import splitData
 from ExampleIO import SVMLightExampleIO
 from Meta import Meta
+
+def listwisePerformance(correct, predicted):
+    assert len(correct) == len(predicted)
+    pos, neg = 0., 0.
+    posindices = []
+    negindices = []
+    for i in range(len(correct)):
+        if correct[i]>0:
+            pos += 1.
+            posindices.append(i)
+        else:
+            neg += 1
+            negindices.append(i)
+    auc = 0.
+    for i in posindices:
+        for j in negindices:
+            if predicted[i] > predicted[j]:
+                auc += 1.
+            elif predicted[i] == predicted[j]:
+                auc += 0.5
+    auc /= pos * neg
+    return auc
+
 
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
@@ -178,12 +205,26 @@ class Classification(object):
             print "search.scoring", search.scoring
             print "search.scorer_", search.scorer_
             print "search.best_estimator_.score", search.best_estimator_.score
-            print search.scorer_(search.best_estimator_, X_hidden, y_hidden)
-            y_hidden_score = search.predict_proba(X_hidden)
-            y_hidden_score = [x[1] for x in y_hidden_score]
-            hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, search.score(X_hidden, y_hidden)) 
-            print "Score =", hiddenResult["score"], "(" + self.metric + ")"
+            #y_hidden_score = search.predict_proba(X_hidden)
+            #y_hidden_score = [x[1] for x in y_hidden_score]
+            #score = search.best_estimator_.score(X_hidden, y_hidden)
+            #search.scorer_.predict_proba()
+            print "scorer", search.scorer_(search.best_estimator_, X_hidden, y_hidden)
+            print "accuracy_score", accuracy_score(y_hidden, search.best_estimator_.predict(X_hidden))
+            score = roc_auc_score(y_hidden, search.best_estimator_.predict(X_hidden))
+            hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, score) 
+            print "Score =", hiddenResult["score"]
             y_hidden_pred = search.predict_proba(X_hidden) #[list(x) for x in search.predict_proba(X_hidden)]
+            preds = list(search.predict(X_hidden))
+            print y_hidden, preds, listwisePerformance(y_hidden, preds)
+            probas = search.predict_proba(X_hidden)
+            probasList = []
+            for i in range(len(preds)):
+                if preds[i] > 0:
+                    probasList.append(preds[i] * probas[i][1])
+                else:
+                    probasList.append(preds[i] * probas[i][0])
+            print y_hidden, probasList, listwisePerformance(y_hidden, probasList)
             hiddenExtra = {"predictions":{i:x for i,x in enumerate([list(x) for x in y_hidden_pred])}}
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
