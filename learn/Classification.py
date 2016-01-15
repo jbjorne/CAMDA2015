@@ -3,6 +3,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.metrics.ranking import roc_auc_score
 from sklearn.metrics.classification import accuracy_score
 from sklearn.metrics.scorer import make_scorer
+from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -11,28 +12,6 @@ from collections import defaultdict, OrderedDict
 from HiddenSet import splitData
 from ExampleIO import SVMLightExampleIO
 from Meta import Meta
-
-def listwisePerformance(correct, predicted):
-    assert len(correct) == len(predicted)
-    pos, neg = 0., 0.
-    posindices = []
-    negindices = []
-    for i in range(len(correct)):
-        if correct[i]>0:
-            pos += 1.
-            posindices.append(i)
-        else:
-            neg += 1
-            negindices.append(i)
-    auc = 0.
-    for i in posindices:
-        for j in negindices:
-            if predicted[i] > predicted[j]:
-                auc += 1.
-            elif predicted[i] == predicted[j]:
-                auc += 0.5
-    auc /= pos * neg
-    return auc
 
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
@@ -74,6 +53,7 @@ class Classification(object):
         self.X = None
         self.y = None
         self.meta = None
+        self.classes = None
         # Settings
         self.randomize = False
         self.numFolds = numFolds
@@ -100,6 +80,9 @@ class Classification(object):
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
+        self.classes = None
+        if "class" in self.meta.db.tables:
+            self.classes = [x["value"] for x in self.meta.db["class"].all()]
         self._clearResults(preserveTables)
     
     def _clearResults(self, preserveTables):
@@ -116,11 +99,11 @@ class Classification(object):
         return classifier, classifierArgs
     
     def _splitData(self):
-        if "class" in self.meta.db.tables:
+        if self.classes:
             print "Class distribution = ", countUnique(self.y)
         X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
-        if "class" in self.meta.db.tables:
+        if self.classes:
             print "Classes y_train = ", countUnique(y_train)
             print "Classes y_hidden = ", countUnique(y_hidden)
         return X_train, X_hidden, y_train, y_hidden
@@ -167,6 +150,20 @@ class Classification(object):
                 bestIndex = index
                 if hasattr(search, "extras_"):
                     bestExtras = search.extras_[index]
+            if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
+                validationScores = []
+                for fold in range(len(search.extras_[index])):
+                    predictions = search.extras_[index][fold].get("predictions")
+                    if predictions:
+                        foldLabels = []
+                        foldProbabilities = []
+                        for exampleIndex in predictions:
+                            foldLabels.append(y_train[exampleIndex])
+                            foldProbabilities.append(predictions[exampleIndex])
+                        #print fold, foldProbabilities
+                        validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
+                print validationScores, "(eval:auc)"
+                    
             index += 1
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[bestIndex]
@@ -186,13 +183,13 @@ class Classification(object):
             extras = folds[fold]
             foldIndex = None if noFold else fold
             if "predictions" in extras:
-                rows = []
-                for key in extras["predictions"]:
-                    row = OrderedDict([("example",key), ("fold",foldIndex), ("set",setName)])
-                    values = extras["predictions"][key]
-                    for i in range(len(values)):
-                        row["class_" + str(i+1)] = values[i]
-                    rows.append(row)
+                rows = [OrderedDict([("example",key), ("fold",foldIndex), ("set",setName), ("predicted", str(extras["predictions"][key]))]) for key in extras["predictions"]]
+#                for key in extras["predictions"]:
+#                    row = OrderedDict([("example",key), ("fold",foldIndex), ("set",setName), ("predicted", extras["predictions"][key])]) 
+#                     values = extras["predictions"][key]
+#                     for i in range(len(values)):
+#                         row["class_" + str(i+1)] = values[i]
+#                     rows.append(row)
                 self.meta.insert_many("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
@@ -204,30 +201,18 @@ class Classification(object):
             print "search.scoring", search.scoring
             print "search.scorer_", search.scorer_
             print "search.best_estimator_.score", search.best_estimator_.score
-            #y_hidden_score = search.predict_proba(X_hidden)
-            #y_hidden_score = [x[1] for x in y_hidden_score]
-            #score = search.best_estimator_.score(X_hidden, y_hidden)
-            #search.scorer_.predict_proba()
-            print "scorer", search.scorer_(search.best_estimator_, X_hidden, y_hidden)
-            print "accuracy_score", accuracy_score(y_hidden, search.best_estimator_.predict(X_hidden))
             score = search.score(X_hidden, y_hidden) #roc_auc_score(y_hidden, search.best_estimator_.predict(X_hidden))
-            hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, score) 
-            print "Score =", hiddenResult["score"]
-            y_hidden_pred = search.predict_proba(X_hidden) #[list(x) for x in search.predict_proba(X_hidden)]
-            preds = list(search.predict(X_hidden))
-            print y_hidden, preds, listwisePerformance(y_hidden, preds)
-            probas = search.predict_proba(X_hidden)
-            probasList = []
-            for i in range(len(preds)):
-                if preds[i] > 0:
-                    probasList.append(preds[i] * probas[i][1])
-                else:
-                    probasList.append(preds[i] * probas[i][0])
-            print y_hidden, probasList, listwisePerformance(y_hidden, probasList)
-            hiddenExtra = {"predictions":{i:x for i,x in enumerate([list(x) for x in y_hidden_pred])}}
+            print "Score =", score, "(" + self.metric + ")"
+            hiddenResult = self._getResult("hidden", search.best_estimator_.__class__, None, search.best_params_, score)
+            y_hidden_proba = search.predict_proba(X_hidden)
+            if self.classes and len(self.classes) == 2:
+                y_hidden_pred = getClassPredictions(y_hidden_proba, self.classes)
+                print "AUC =", aucForPredictions(y_hidden, y_hidden_pred), "(eval:auc)"
+                hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+            else:
+                hiddenExtra = {"predictions":{i:x for i,x in enumerate([str(list(x)) for x in y_hidden_proba])}}
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
-            
             print "Saving results"
             self.meta.insert("result", hiddenResult)
             self._saveExtras([hiddenExtra], "hidden", True)
