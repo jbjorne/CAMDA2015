@@ -134,17 +134,16 @@ class Classification(object):
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
         # Show the grid search results
+        self.meta.drop("result", 100000)
+        self.meta.drop("prediction", 100000)
+        self.meta.drop("importance", 100000)
         print "---------------------- Grid scores on development set --------------------------"
         results = []
         index = 0
         bestIndex = 0
         bestExtras = None
-        self.meta.drop("result", 100000)
-        self.meta.drop("prediction", 100000)
-        self.meta.drop("importance", 100000)
         for params, mean_score, scores in search.grid_scores_:
-            print scores
-            print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+            print "Grid:", params
             results.append(self._getResult("train", classifier, cv, params, None, mean_score, scores, self.numFolds))
             if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
                 bestIndex = index
@@ -163,7 +162,8 @@ class Classification(object):
                         #print fold, foldProbabilities
                         validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
                 print validationScores, "(eval:auc)"
-                    
+            print scores, "(" + self.metric + ")"
+            print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
         print "---------------------- Best scores on development set --------------------------"
         params, mean_score, scores = search.grid_scores_[bestIndex]
