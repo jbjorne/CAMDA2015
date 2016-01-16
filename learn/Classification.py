@@ -125,7 +125,7 @@ class Classification(object):
         # Run the grid search
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
-        cv = StratifiedKFold(y_train, n_folds=self.numFolds) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         classifier, classifierArgs = self._getClassifier()
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
                                       scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
@@ -222,7 +222,7 @@ class Classification(object):
             self.meta.flush()
             if "predictions" in hiddenExtra:
                 try:
-                    print classification_report(y_hidden, hiddenExtra["predictions"])
+                    print classification_report(y_hidden, getClassPredictions(y_hidden_proba, self.classes))
                 except ValueError, e:
                     print "ValueError in classification_report:", e
         print "--------------------------------------------------------------------------------"
