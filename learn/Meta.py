@@ -106,8 +106,11 @@ class Meta():
         print "Opening database at", dbPath
         return dataset.connect(dbPath)
     
+    def exists(self, tableName):
+        return tableName in self.db._tables or tableName in self.db
+    
     def drop(self, name, reInitCacheSize=-1):
-        if name in self.db._tables:
+        if self.exists(name):
             print "Dropping table", name
             self.db[name].drop()
         assert name not in self.db._tables
@@ -144,7 +147,7 @@ class Meta():
         # Insert rows if enough are available
         rows = self.cache[tableName]
         if len(rows) >= chunkSize and len(rows) > 0:
-            if not tableName in self.db._tables:
+            if not self.exists(tableName):
                 print "Inserting initial row for metadata table", self.db[tableName]
                 self.db[tableName].insert(rows[0], ensure=True)
                 rows[:1] = [] # remove first row
