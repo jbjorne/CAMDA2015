@@ -80,7 +80,7 @@ if __name__ == "__main__":
         print "======================================================"
         print "Analysing"
         print "======================================================"
-        from learn.Analysis import COSMICAnalysis
+        from learn.analyse.Analysis import COSMICAnalysis
         meta = resultPath
         if classification != None:
             meta = classification.meta
