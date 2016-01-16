@@ -91,7 +91,7 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
             predictionByIndex = {}
             for exampleIndex, prediction in zip(test, predictions):
                 predictionByIndex[exampleIndex] = prediction
-            extraRVs["predictions"] = predictionByIndex
+            extraRVs["probabilities"] = predictionByIndex
         if (extraOut == "auto" or "importances" in extraOut) and hasattr(estimator, "feature_importances_"):
             extraRVs["importances"] = estimator.feature_importances_
     ret.append(extraRVs)

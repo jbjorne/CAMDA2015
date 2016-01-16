@@ -166,18 +166,20 @@ class Classification(object):
         self.meta.flush() 
         return search
     
-    def _validateExtras(self, folds, y_train):
+    def _validateExtras(self, folds, labels):
         validationScores = []
         for fold in range(len(folds)):
-            predictions = folds[fold].get("predictions")
-            if predictions:
+            predictions = folds[fold].get("probabilities")
+            if predictions and self.classes and len(self.classes) == 2:
                 foldLabels = []
                 foldProbabilities = []
                 for exampleIndex in predictions:
-                    foldLabels.append(y_train[exampleIndex])
+                    foldLabels.append(labels[exampleIndex])
                     foldProbabilities.append(predictions[exampleIndex])
+                foldPredictions = getClassPredictions(foldProbabilities, self.classes)
                 #print fold, foldProbabilities
-                validationScores.append(aucForProbabilites(foldLabels, foldProbabilities, self.classes))
+                folds[fold]["predictions"] = {i:x for i,x in enumerate(foldPredictions)}
+                validationScores.append(aucForPredictions(foldLabels, foldPredictions))
         return validationScores   
     
     def _saveExtras(self, folds, setName, noFold=False):
@@ -187,7 +189,7 @@ class Classification(object):
             extras = folds[fold]
             foldIndex = None if noFold else fold
             if "predictions" in extras:
-                rows = [OrderedDict([("example",self.indices[setName][key]), ("fold",foldIndex), ("set",setName), ("predicted", str(extras["predictions"][key]))]) for key in extras["predictions"]]
+                rows = [OrderedDict([("example",self.indices[setName][key]), ("fold",foldIndex), ("set",setName), ("predicted", extras["predictions"][key])]) for key in extras["predictions"]]
                 self._insert("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
@@ -205,20 +207,22 @@ class Classification(object):
             hiddenResult["train_size"] = trainSize
             hiddenResult["test_size"] = y_hidden.shape[0]
             y_hidden_proba = search.predict_proba(X_hidden)
-            if self.classes and len(self.classes) == 2:
-                y_hidden_pred = getClassPredictions(y_hidden_proba, self.classes)
-                print "AUC =", aucForPredictions(y_hidden, y_hidden_pred), "(eval:auc)"
-                hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
-            else:
-                hiddenExtra = {"predictions":{i:x for i,x in enumerate([str(list(x)) for x in y_hidden_proba])}}
+            #if self.classes and len(self.classes) == 2:
+            #    y_hidden_pred = getClassPredictions(y_hidden_proba, self.classes)
+            #    print "AUC =", aucForPredictions(y_hidden, y_hidden_pred), "(eval:auc)"
+            #    hiddenExtra = {"predictions":{i:x for i,x in enumerate(y_hidden_pred)}}
+            #else:
+            hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
+            print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
             self._insert("result", [hiddenResult])
             self._saveExtras([hiddenExtra], "hidden", True)
             self.meta.flush()
-            try:
-                print classification_report(y_hidden, y_hidden_pred)
-            except ValueError, e:
-                print "ValueError in classification_report:", e
+            if "predictions" in hiddenExtra:
+                try:
+                    print classification_report(y_hidden, hiddenExtra["predictions"])
+                except ValueError, e:
+                    print "ValueError in classification_report:", e
         print "--------------------------------------------------------------------------------"
