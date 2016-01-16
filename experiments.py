@@ -20,7 +20,7 @@ class Age(FeatureGroup):
 
 class ExpSeq(FeatureGroup):
     def __init__(self): #, cutoff=0.0005):
-        super(ExpSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?")
+        super(ExpSeq, self).__init__("EXP_SEQ", "SELECT gene_id,1000000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?")
         #super(ExpressionSeq, self).__init__("EXP_SEQ", "SELECT gene_id,100000*normalized_read_count as count FROM exp_seq WHERE abs(normalized_read_count) > %f AND icgc_specimen_id=?" % cutoff)
     def buildFeatures(self, row):
         return[(row["gene_id"],)], [row["count"]]
@@ -81,6 +81,7 @@ SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_som
 SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 #SSM_GENE_CONSEQUENCE_V20_FILTER = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"], dummy=True)
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
+SSM_CHROMOSOME_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
 
 CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["mutation_type"])
