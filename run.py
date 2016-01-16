@@ -8,17 +8,13 @@ from utils.common import splitOptions
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
-def getFilters(featureGroups, filters):
-    if featureGroups == None:
-        return None
-    featureGroups = featureGroups.split(",")
-    if filters == None:
-        return [False] * len(featureGroups)
-    filters = filters.split(",")
-    groupIndices = []
-    for featureGroup in featureGroups:
-        groupIndices.append(featureGroup in filters)
-    return groupIndices
+def getFeatureGroups(names, dummy=False):
+    groups = [eval(x) for x in names]
+    for i in range(len(groups)): # Initialize classes
+        if inspect.isclass(groups[i]):
+            groups[i] = groups[i]()
+        groups[i].dummy = dummy
+    return groups
 
 if __name__ == "__main__":
     import argparse
@@ -62,14 +58,11 @@ if __name__ == "__main__":
         if options.projects != None:
             e.projects = options.projects.split(",")
         if options.features != None:
-            filters = getFilters(options.features, options.dummy)
-            print "Using feature groups:", options.features, filters
-            e.featureGroups = [eval(x) for x in options.features.split(",")]
-            for i in range(len(e.featureGroups)): # Initialize classes
-                if inspect.isclass(e.featureGroups[i]):
-                    e.featureGroups[i] = e.featureGroups[i]()
-                if filters[i]:
-                    e.featureGroups[i].dummy = True
+            print "Using feature groups:", options.features
+            e.featureGroups = getFeatureGroups(options.features.split(","))
+            if options.dummy != None:
+                print "With dummy groups:", options.dummy
+                e.featureGroups = getFeatureGroups(options.dummy.split(","), dummy=True) + e.featureGroups
         e.databasePath = options.icgcDB
         e.writeExamples(options.output)
     
