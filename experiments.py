@@ -86,12 +86,18 @@ SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_ope
 CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["mutation_type"])
 CNSM_CHROMOSOME = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type"])
 CNSM_CHROMOSOME_COUNT = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
-CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
+CNSM_GENE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
 
+CNSM_GENE_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "copy_number"])
+CNSM_NUMBER_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected"], "copy_number")
+CNSM_TYPE_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "mutation_type", "copy_number"])
+CNSM_TYPE2_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["gene_affected", "mutation_type"], "copy_number")
 CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"])
 #CNSM_CHROMOSOME_COUNT_V20_FILTER = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type", "copy_number"], dummy=True)
 PROJECT = FeatureGroup("PROJECT", None, ["project_code"])
 AGE = Age()
+
+MIRNA = FeatureGroup("MIRNA", "SELECT DISTINCT KEYS FROM mirna_seq WHERE icgc_specimen_id=?", ["normalized_read_count", "chromosome"])
 
 ###############################################################################
 # Experiments
@@ -105,17 +111,17 @@ class Survival(Experiment):
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
             specimen.project_code,specimen_type,donor_vital_status,
             disease_status_last_followup,donor_age_at_diagnosis,
-            CAST(IFNULL(donor_survival_time, 0) as int) as donor_survival_time,
-            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as donor_interval_of_last_followup
+            CAST(IFNULL(donor_survival_time, 0) as int) as time_survival,
+            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as time_followup
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
             /*P specimen.project_code PROJECTS AND P*/
             donor_vital_status IS NOT NULL AND specimen_type NOT LIKE '%Normal%' AND
-            ((donor_vital_status == 'deceased' AND (donor_survival_time > 0 OR donor_interval_of_last_followup > 0))
+            ((donor_vital_status == 'deceased' AND (time_survival > 0 OR time_followup > 0))
             OR
-            (donor_survival_time > %d OR donor_interval_of_last_followup > %d))
-            """ % (self.days, self.days)
+            (time_survival > {DAYS} OR time_followup > {DAYS}))
+            """.replace("{DAYS}", str(self.days))
     
 #     def getDays(self, example):
 #         days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
@@ -125,7 +131,7 @@ class Survival(Experiment):
 #         #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
     
     def getLabel(self, example):
-        days = max(example["donor_survival_time", "donor_interval_of_last_followup"]) # self.getDays(example)
+        days = max(example["time_survival"], example["time_followup"]) # self.getDays(example)
         #print "DAYS", days
         if example["donor_vital_status"] == "alive":
             assert days >= self.days

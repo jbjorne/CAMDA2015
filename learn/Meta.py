@@ -107,7 +107,7 @@ class Meta():
         return dataset.connect(dbPath)
     
     def drop(self, name, reInitCacheSize=-1):
-        if name in self.db:
+        if name in self.db._tables:
             print "Dropping table", name
             self.db[name].drop()
         assert name not in self.db._tables

@@ -50,6 +50,7 @@ class Classification(object):
         self.y = None
         self.meta = None
         self.classes = None
+        self.indices = None
         # Settings
         self.randomize = False
         self.numFolds = numFolds
@@ -60,12 +61,7 @@ class Classification(object):
         self.verbose = 3
         self.parallel = parallel
         self.classifyHidden = classifyHidden
-        # Results
-        self.bestIndex = None
-        self.results = None
-        self.extras = None
-        self.hiddenResults = None
-        self.hiddenDetails = None
+        self.saveExtra = True
     
     def readExamples(self, inDir, fileStem=None, exampleIO=None, preserveTables=None):
         if fileStem == None:
@@ -97,33 +93,33 @@ class Classification(object):
     def _splitData(self):
         if self.classes:
             print "Class distribution = ", countUnique(self.y)
-        X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
+        indices, X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if self.classes:
             print "Classes y_train = ", countUnique(y_train)
             print "Classes y_hidden = ", countUnique(y_hidden)
-        return X_train, X_hidden, y_train, y_hidden
+        return indices, X_train, X_hidden, y_train, y_hidden
                 
     def classify(self):
         self.meta.dropTables(["result", "prediction", "importance"], 100000)
-        X_train, X_hidden, y_train, y_hidden = self._splitData()
+        self.indices, X_train, X_hidden, y_train, y_hidden = self._splitData()
         search = self._crossValidate(y_train, X_train, self.classifyHidden and (X_hidden.shape[0] > 0))
         if self.classifyHidden:
             self._predictHidden(y_hidden, X_hidden, search, y_train.shape[0])
-    
+        self.indices = None
+        
     def _getResult(self, setName, classifier, cv, params, score=None, fold=None, mean_score=None, scores=None, extra=None):
         result = {"classifier":classifier.__name__, "cv":cv.__class__.__name__ if cv else None,
-                  "params":str(params), "fold":fold, "score":score, "set":setName}
-        if mean_score is not None:
-            result["mean"] = float(mean_score)
-            result["scores"] = ",".join([str(x) for x in list(scores)])
-            result["std"] = float(scores.std() / 2)
+                  "params":str(params), "fold":fold, "score":score, "setName":setName}
+        result["mean"] = float(mean_score) if mean_score is not None else None
+        result["scores"] = ",".join([str(x) for x in list(scores)]) if mean_score is not None else None
+        result["std"] = float(scores.std() / 2) if mean_score is not None else None
         if extra:
             result.update(extra)
         return result
     
     def _insert(self, tableName, rows):
-        self.meta.insert_many("result", rows)
+        self.meta.insert_many(tableName, rows)
         
     def _crossValidate(self, y_train, X_train, refit=False):
         # Run the grid search
@@ -185,17 +181,17 @@ class Classification(object):
         return validationScores   
     
     def _saveExtras(self, folds, setName, noFold=False):
-        if folds == None:
+        if folds == None or not self.saveExtra:
             return
         for fold in range(len(folds)):
             extras = folds[fold]
             foldIndex = None if noFold else fold
             if "predictions" in extras:
-                rows = [OrderedDict([("example",key), ("fold",foldIndex), ("set",setName), ("predicted", str(extras["predictions"][key]))]) for key in extras["predictions"]]
-                self.meta.insert_many("prediction", rows)
+                rows = [OrderedDict([("example",self.indices[setName][key]), ("fold",foldIndex), ("set",setName), ("predicted", str(extras["predictions"][key]))]) for key in extras["predictions"]]
+                self._insert("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
-                self.meta.insert_many("importance", [OrderedDict([("feature",i), ("fold",foldIndex), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
+                self._insert("importance", [OrderedDict([("feature",i), ("fold",foldIndex), ("value",importances[i]), ("set",setName)]) for i in range(len(importances)) if importances[i] != 0])        
         
     def _predictHidden(self, y_hidden, X_hidden, search, trainSize=None):
         if X_hidden.shape[0] > 0:

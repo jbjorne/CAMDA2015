@@ -1,4 +1,5 @@
 import sys, os
+from numpy import array
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.pymersennetwister.mtwister import MTwister
 
@@ -13,13 +14,13 @@ def splitArray(array, setNames):
     divided = {}
     for key in indices:
         divided[key] = array[indices[key]]
-    return divided
-
+    return divided, indices
+    
 def splitData(examples, labels, meta):
     setNames = [x["set"] for x in meta.db["example"].all()]
-    e = splitArray(examples, setNames)
-    l = splitArray(labels, setNames)
-    return e.get("train", []), e.get("hidden", []), l.get("train", []), l.get("hidden", [])   
+    e, indices = splitArray(examples, setNames)
+    l, indices = splitArray(labels, setNames)
+    return indices, e.get("train", array([])), e.get("hidden", array([])), l.get("train", array([])), l.get("hidden", array([]))   
 
 class HiddenSet():
     def __init__(self, seed=1):

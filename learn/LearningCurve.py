@@ -13,18 +13,20 @@ class LearningCurve(Classification):
         self.random = Random(seed)
         self.thresholds = None
         self.currentCutoff = None
+        self.saveExtra = False
     
     def subsample(self, array, thresholds, cutoff):
         indices = []
         assert array.shape[0] == len(thresholds)
         for i in range(len(thresholds)):
-            if thresholds[i] > cutoff:
+            if thresholds[i] < cutoff:
                 indices.append(i)
         return array[indices]
     
-    def _getResult(self, setName, classifier, cv, params, score=None, mean_score=None, scores=None, numFolds=None):
-        result = super(LearningCurve, self)._getResult(setName=setName, classifier=classifier, cv=cv, params=params, score=score, mean_score=mean_score, scores=scores, numFolds=numFolds)
+    def _getResult(self, setName, classifier, cv, params, score=None, fold=None, mean_score=None, scores=None, extra=None):
+        result = super(LearningCurve, self)._getResult(setName=setName, classifier=classifier, cv=cv, params=params, score=score, fold=fold, mean_score=mean_score, scores=scores, extra=extra)
         result["cutoff"] = self.currentCutoff
+        result["step"] = self.currentStep
         return result
     
     def _insert(self, tableName, rows):
@@ -33,11 +35,12 @@ class LearningCurve(Classification):
         super(LearningCurve, self)._insert(tableName, rows)
         
     def classify(self):
-        X_train, X_hidden, y_train, y_hidden = self._splitData()
+        self.indices, X_train, X_hidden, y_train, y_hidden = self._splitData()
         thresholds = [self.random.random() for x in y_train]
         for i in range(self.steps):
             print "----------------------", "Learning curve step", i + 1, "----------------------"
             self.currentCutoff = float(i + 1) / self.steps
+            self.currentStep = i
             print "Cutoff", self.currentCutoff
             y_sample = self.subsample(y_train, thresholds, self.currentCutoff)
             X_sample = self.subsample(X_train, thresholds, self.currentCutoff)
@@ -45,8 +48,9 @@ class LearningCurve(Classification):
                 print "Classes y_sample = ", countUnique(y_sample)
             search = self._crossValidate(y_sample, X_sample, self.classifyHidden and (X_hidden.shape[0] > 0))
             if self.classifyHidden:
-                self._predictHidden(y_hidden, X_hidden, search)
+                self._predictHidden(y_hidden, X_hidden, search, y_sample.shape[0])
         self.currentCutoff = None
+        self.indices = None
 
 if __name__ == "__main__":
     import argparse
@@ -73,5 +77,5 @@ if __name__ == "__main__":
         print "Learning Curve"
         print "======================================================"
         classification = LearningCurve(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
-        classification.readExamples(options.output)
+        classification.readExamples(options.output, preserveTables=["result", "prediction", "importance"])
         classification.classify()
