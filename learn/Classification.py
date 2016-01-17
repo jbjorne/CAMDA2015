@@ -171,7 +171,7 @@ class Classification(object):
         return search
     
     def _calculateBaseline(self, cv, labels):
-        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example WHERE [set] == 'train'")}
+        examples = [row for row in self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'train'")]
         baselines = []
         for trainIndices, testIndices in cv:
             foldLabels = [labels[i] for i in testIndices]
@@ -227,8 +227,7 @@ class Classification(object):
             #else:
             hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
             print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
-            examples = [row["project_code"] for row in self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'hidden'")]
-            print "MCB =", majorityBaseline(y_hidden, examples, "project_code")
+            print "MCB =", majorityBaseline(y_hidden, self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'hidden'"), "project_code")
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
