@@ -3,6 +3,7 @@ def majorityBaseline(labels, groups=None):
     # Count labels by group
     if groups == None:
         groups = len(labels) * ["ALL"]
+    assert len(groups) == len(labels)
     for label, groupKey in zip(labels, groups):
         if groupKey not in counts:
             counts[groupKey] = {} 

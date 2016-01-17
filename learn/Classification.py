@@ -1,6 +1,7 @@
 import sys, os
 from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions,\
     majorityBaseline
+from learn.skext.DisjointStratifiedKFold import DisjointStratifiedKFold
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -128,7 +129,7 @@ class Classification(object):
         # Run the grid search
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
-        cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        cv = DisjointStratifiedKFold(y_train, n_folds=self.numFolds, shuffle=False, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         classifier, classifierArgs = self._getClassifier()
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
                                       scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
@@ -153,7 +154,7 @@ class Classification(object):
                         result[key + "_size"] = search.extras_[index][fold]["counts"][key]
                 results.append(result)
             if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
-                print ["%0.7f" % x for x in self._validateExtras(search.extras_[index], y_train)], "(eval:auc)"
+                print ["%0.8f" % x for x in self._validateExtras(search.extras_[index], y_train)], "(eval:auc)"
             print scores, "(" + self.metric + ")"
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
@@ -228,7 +229,7 @@ class Classification(object):
             #else:
             hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
             print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
-            print "MCB =", majorityBaseline(y_hidden, [self.groups[i] for i in self.indices["train"]])
+            print "MCB =", majorityBaseline(y_hidden, [self.groups[i] for i in self.indices["hidden"]])
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
