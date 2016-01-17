@@ -9,6 +9,7 @@ from collections import defaultdict, OrderedDict
 from HiddenSet import splitData
 from ExampleIO import SVMLightExampleIO
 from Meta import Meta
+import numpy as np
 
 def importNamed(name):
     asName = name.rsplit(".", 1)[-1]
@@ -159,6 +160,8 @@ class Classification(object):
         params, mean_score, scores = search.grid_scores_[bestIndex]
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
+        baselines = self._calculateBaseline(cv, y_train)
+        print "MCB = %0.3f (+/-%0.03f) for" % (np.mean(baselines), np.std(baselines) / 2), baselines
         print "--------------------------------------------------------------------------------"
         # Save the grid search results
         print "Saving results"
@@ -168,7 +171,7 @@ class Classification(object):
         return search
     
     def _calculateBaseline(self, cv, labels):
-        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example")}
+        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example WHERE [set] == 'train'")}
         baselines = []
         for trainIndices, testIndices in cv:
             foldLabels = [labels[i] for i in testIndices]
@@ -178,23 +181,18 @@ class Classification(object):
     
     def _validateExtras(self, folds, labels):
         validationScores = []
-        baselines = []
-        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example")}
         for fold in range(len(folds)):
             predictions = folds[fold].get("probabilities")
             if predictions and self.classes and len(self.classes) == 2:
                 foldLabels = []
                 foldProbabilities = []
-                foldExamples = []
                 for exampleIndex in predictions:
                     foldLabels.append(labels[exampleIndex])
                     foldProbabilities.append(predictions[exampleIndex])
-                    foldExamples.append(examples[exampleIndex])
                 foldPredictions = getClassPredictions(foldProbabilities, self.classes)
                 #print fold, foldProbabilities
                 folds[fold]["predictions"] = {i:x for i,x in enumerate(foldPredictions)}
                 validationScores.append(aucForPredictions(foldLabels, foldPredictions))
-                baselines.append(majorityBaseline(foldLabels, foldExamples, "project_code"))
         return validationScores   
     
     def _saveExtras(self, folds, setName, noFold=False):
@@ -229,6 +227,8 @@ class Classification(object):
             #else:
             hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
             print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
+            examples = [row["project_code"] for row in self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'hidden'")]
+            print "MCB =", majorityBaseline(y_hidden, examples, "project_code")
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
