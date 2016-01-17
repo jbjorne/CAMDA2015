@@ -87,11 +87,11 @@ def _extended_fit_and_score(estimator, X, y, scorer, train, test, verbose,
             extraRVs["estimator"] = estimator
         if extraOut == "auto" or "predictions" in extraOut:
             assert test.shape[0] == X_test.shape[0]
-            predictions = estimator.predict_proba(X_test)
-            predictionByIndex = {}
-            for exampleIndex, prediction in zip(test, predictions):
-                predictionByIndex[exampleIndex] = prediction
-            extraRVs["probabilities"] = predictionByIndex
+            probabilities = estimator.predict_proba(X_test)
+            probabilityByIndex = {}
+            for exampleIndex, prediction in zip(test, probabilities):
+                probabilityByIndex[exampleIndex] = prediction
+            extraRVs["probabilities"] = probabilityByIndex
         if (extraOut == "auto" or "importances" in extraOut) and hasattr(estimator, "feature_importances_"):
             extraRVs["importances"] = estimator.feature_importances_
     ret.append(extraRVs)

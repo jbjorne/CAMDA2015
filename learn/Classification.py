@@ -129,7 +129,7 @@ class Classification(object):
         # Run the grid search
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
-        cv = DisjointStratifiedKFold(y_train, n_folds=self.numFolds, shuffle=False, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         classifier, classifierArgs = self._getClassifier()
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
                                       scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
@@ -184,16 +184,14 @@ class Classification(object):
     def _validateExtras(self, folds, labels):
         validationScores = []
         for fold in range(len(folds)):
-            predictions = folds[fold].get("probabilities")
-            if predictions and self.classes and len(self.classes) == 2:
-                foldLabels = []
-                foldProbabilities = []
-                for exampleIndex in predictions:
-                    foldLabels.append(labels[exampleIndex])
-                    foldProbabilities.append(predictions[exampleIndex])
+            if self.classes and len(self.classes) == 2 and "probabilities" in folds[fold]:
+                probabilityByIndex = folds[fold]["probabilities"]
+                foldIndices = sorted(probabilityByIndex.keys())
+                foldLabels = [labels[i] for i in foldIndices]
+                foldProbabilities = [probabilityByIndex[i] for i in foldIndices]
                 foldPredictions = getClassPredictions(foldProbabilities, self.classes)
                 #print fold, foldProbabilities
-                folds[fold]["predictions"] = {i:x for i,x in enumerate(foldPredictions)}
+                folds[fold]["predictions"] = {i:x for i,x in zip(foldIndices, foldPredictions)}
                 validationScores.append(aucForPredictions(foldLabels, foldPredictions))
         return validationScores   
     
@@ -204,7 +202,7 @@ class Classification(object):
             extras = folds[fold]
             foldIndex = None if noFold else fold
             if "predictions" in extras:
-                rows = [OrderedDict([("example",self.indices[setName][key]), ("fold",foldIndex), ("set",setName), ("predicted", extras["predictions"][key])]) for key in extras["predictions"]]
+                rows = [OrderedDict([("example",self.indices[setName][setIndex]), ("fold",foldIndex), ("set",setName), ("predicted", extras["predictions"][setIndex])]) for setIndex in sorted(extras["predictions"].keys())]
                 self._insert("prediction", rows)
             if "importances" in extras:
                 importances = extras["importances"]
