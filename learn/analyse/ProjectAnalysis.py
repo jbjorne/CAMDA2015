@@ -13,15 +13,16 @@ class ProjectAnalysis(Analysis):
         predictions = None
         if "prediction" in meta.db:
             predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
-        print predictions
+        #print predictions
         grouped = {}
         for example in meta.db.query("SELECT * FROM example"):
             project = example["project_code"]
             if project not in grouped:
                 grouped[project] = {"train":{"labels":[], "predictions":[]}, "hidden":{"labels":[], "predictions":[]}}
-            grouped[project][example["set"]]["labels"].append(example["label"])
+            grouped[project][example["set"]]["labels"].append(float(example["label"]))
             if predictions:
                 grouped[project][example["set"]]["predictions"].append(predictions[example["id"]])
+        print grouped
         rows = []
         for project in sorted(grouped.keys()):
             for setName in ("train", "hidden"):
@@ -31,7 +32,10 @@ class ProjectAnalysis(Analysis):
                 row["pos"] = len([x for x in labels if x > 0])
                 row["neg"] = len([x for x in labels if x < 0])
                 row["majority"] = max(set(labels), key=labels.count)
-                row["baseline"] = majorityBaseline(labels)
-                row["auc"] = aucForPredictions(labels, grouped[project][setName]["predictions"])
+                row["baseline"] = None
+                row["auc"] = None
+                if row["pos"] > 0 and row["neg"] > 0:
+                    row["baseline"] = majorityBaseline(labels)
+                    row["auc"] = aucForPredictions(labels, grouped[project][setName]["predictions"])
                 rows.append(row)
         meta.insert_many("project_analysis", rows, True)
