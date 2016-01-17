@@ -153,7 +153,7 @@ class Classification(object):
                         result[key + "_size"] = search.extras_[index][fold]["counts"][key]
                 results.append(result)
             if hasattr(search, "extras_") and self.classes and len(self.classes) == 2:
-                print self._validateExtras(search.extras_[index], y_train), "(eval:auc)"
+                print ["%0.7f" % x for x in self._validateExtras(search.extras_[index], y_train)], "(eval:auc)"
             print scores, "(" + self.metric + ")"
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
@@ -162,7 +162,7 @@ class Classification(object):
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         baselines = self._calculateBaseline(cv, y_train)
-        print "MCB = %0.3f (+/-%0.03f) for" % (np.mean(baselines), np.std(baselines) / 2), baselines
+        print "MCB = %0.3f (+/-%0.03f) for" % (np.mean(baselines), np.std(baselines) / 2), ["%0.3f" % x for x in baselines]
         print "--------------------------------------------------------------------------------"
         # Save the grid search results
         print "Saving results"
