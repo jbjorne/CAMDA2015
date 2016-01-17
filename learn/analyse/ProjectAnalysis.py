@@ -22,7 +22,6 @@ class ProjectAnalysis(Analysis):
             grouped[project][example["set"]]["labels"].append(float(example["label"]))
             if predictions:
                 grouped[project][example["set"]]["predictions"].append(predictions[example["id"]])
-        print grouped
         rows = []
         for project in sorted(grouped.keys()):
             for setName in ("train", "hidden"):
@@ -31,7 +30,9 @@ class ProjectAnalysis(Analysis):
                 row["examples"] = len(labels)
                 row["pos"] = len([x for x in labels if x > 0])
                 row["neg"] = len([x for x in labels if x < 0])
-                row["majority"] = max(set(labels), key=labels.count)
+                row["majority"] = None
+                if row["pos"] > 0 or row["neg"] > 0:
+                    row["majority"] = max(set(labels), key=labels.count)
                 row["baseline"] = None
                 row["auc"] = None
                 if row["pos"] > 0 and row["neg"] > 0:
