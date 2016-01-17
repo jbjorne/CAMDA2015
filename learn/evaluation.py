@@ -1,8 +1,8 @@
-def majorityBaseline(labels, examples=None, groupBy=None):
+def majorityBaseline(labels, groups=None):
     counts = {}
-    ALL = object()
     # Count labels by group
-    groups = [x[groupBy] for x in examples] if groupBy else len(examples) * [ALL]
+    if groups == None:
+        groups = len(labels) * ["ALL"]
     for label, groupKey in zip(labels, groups):
         if groupKey not in counts:
             counts[groupKey] = {} 

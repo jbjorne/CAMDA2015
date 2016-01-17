@@ -74,6 +74,7 @@ class Classification(object):
         self.X, self.y = exampleIO.readFiles()
         # Read metadata
         self.meta = Meta(os.path.join(inDir, fileStem + ".meta.sqlite"))
+        self.groups = {row["id"]:row["project_code"] for row in self.meta.db.query("SELECT id, project_code FROM example")}
         self.classes = None
         if "class" in self.meta.db.tables:
             self.classes = [x["value"] for x in self.meta.db["class"].all()]
@@ -171,12 +172,12 @@ class Classification(object):
         return search
     
     def _calculateBaseline(self, cv, labels):
-        examples = [row for row in self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'train'")]
+        exampleGroups = [self.groups[i] for i in self.indices["train"]]
         baselines = []
         for trainIndices, testIndices in cv:
             foldLabels = [labels[i] for i in testIndices]
-            foldExamples = [examples[i] for i in testIndices]
-            baselines.append(majorityBaseline(foldLabels, foldExamples, "project_code"))
+            foldGroups = [exampleGroups[i] for i in testIndices]
+            baselines.append(majorityBaseline(foldLabels, foldGroups))
         return baselines
     
     def _validateExtras(self, folds, labels):
@@ -227,7 +228,7 @@ class Classification(object):
             #else:
             hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
             print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
-            print "MCB =", majorityBaseline(y_hidden, self.meta.db.query("SELECT project_code FROM example WHERE [set] == 'hidden'"), "project_code")
+            print "MCB =", majorityBaseline(y_hidden, [self.groups[i] for i in self.indices["train"]])
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"
