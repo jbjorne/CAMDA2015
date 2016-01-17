@@ -30,8 +30,7 @@ class FeatureGroup(object):
         return numFeatures > 0 if self.required else True
     
     def buildFeatures(self, row):
-        # TODO: Do not return features if row[valueKey] is None
-        return [[row[key] for key in self.keys]], [(float(row[self.valueKey]) if row[self.valueKey] else 0.0) if self.valueKey is not None else 1]
+        return [[row[key] for key in self.keys]], [(float(row[self.valueKey]) if row[self.valueKey] else 0.0) if self.valueKey else 1]
         #return self.name + ":" + queryResult['gene_affected'] + ":" + queryResult['consequence_type']
     
     def _getFeatureNameAsString(self, featureNameParts):
