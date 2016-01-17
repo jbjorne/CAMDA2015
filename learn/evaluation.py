@@ -2,13 +2,11 @@ def majorityBaseline(labels, examples=None, groupBy=None):
     counts = {}
     ALL = object()
     # Count labels by group
-    r = range(len(labels))
-    for i in r:
-        groupKey = examples[groupBy] if groupBy else ALL
+    groups = [x[groupBy] for x in examples] if groupBy else len(examples) * [ALL]
+    for label, groupKey in zip(labels, groups):
         if groupKey not in counts:
             counts[groupKey] = {} 
         groupCounts = counts[groupKey]
-        label = labels[i]
         if label not in groupCounts:
             groupCounts[label] = 0
         groupCounts[label] += 1
@@ -17,9 +15,8 @@ def majorityBaseline(labels, examples=None, groupBy=None):
     for groupKey in counts:
         majorityLabel[groupKey] = max(counts[groupKey], key=counts[groupKey].get)
     # Make predictions
-    predictions = []
-    for i in r:
-        
+    predictions = [majorityLabel[group] for group in groups]
+    return aucForPredictions(labels, predictions)
 
 def aucForPredictions(labels, predictions):
     return listwisePerformance(labels, predictions)

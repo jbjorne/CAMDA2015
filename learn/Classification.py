@@ -1,5 +1,6 @@
 import sys, os
-from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions
+from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions,\
+    majorityBaseline
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -166,20 +167,34 @@ class Classification(object):
         self.meta.flush() 
         return search
     
+    def _calculateBaseline(self, cv, labels):
+        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example")}
+        baselines = []
+        for trainIndices, testIndices in cv:
+            foldLabels = [labels[i] for i in testIndices]
+            foldExamples = [examples[i] for i in testIndices]
+            baselines.append(majorityBaseline(foldLabels, foldExamples, "project_code"))
+        return baselines
+    
     def _validateExtras(self, folds, labels):
         validationScores = []
+        baselines = []
+        examples = {row["id"]:row for row in self.meta.db.query("SELECT id,project_code FROM example")}
         for fold in range(len(folds)):
             predictions = folds[fold].get("probabilities")
             if predictions and self.classes and len(self.classes) == 2:
                 foldLabels = []
                 foldProbabilities = []
+                foldExamples = []
                 for exampleIndex in predictions:
                     foldLabels.append(labels[exampleIndex])
                     foldProbabilities.append(predictions[exampleIndex])
+                    foldExamples.append(examples[exampleIndex])
                 foldPredictions = getClassPredictions(foldProbabilities, self.classes)
                 #print fold, foldProbabilities
                 folds[fold]["predictions"] = {i:x for i,x in enumerate(foldPredictions)}
                 validationScores.append(aucForPredictions(foldLabels, foldPredictions))
+                baselines.append(majorityBaseline(foldLabels, foldExamples, "project_code"))
         return validationScores   
     
     def _saveExtras(self, folds, setName, noFold=False):
