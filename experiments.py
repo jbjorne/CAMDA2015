@@ -87,7 +87,7 @@ class MutationCount(FeatureGroup):
         counts = OrderedDict()
         numTotal = numGenes = 0
         for row in connection.execute(self.query, (example['icgc_specimen_id'], )):
-            gene = row.get("gene_affected", "-")
+            gene = row["gene_affected"]
             if gene not in counts:
                 counts[gene] = 0
                 numGenes += 1
@@ -95,10 +95,10 @@ class MutationCount(FeatureGroup):
             numTotal += 1
         if numTotal == 0:
             return False
-        features = counts.keys()
-        values = [("COUNT", counts[key]) for key in features]
-        features.extend([("COUNT", "NUM_TOTAL"), ("COUNT", "NUM_GENES")])
-        values.extend([numTotal, numGenes])
+        keys = counts.keys()
+        features = [("COUNT", key) for key in keys] + [("COUNT", "NUM_TOTAL"), ("COUNT", "NUM_GENES")]
+        values = [counts[key] for key in keys] + [numTotal, numGenes]
+        #print features, values
         self._addFeatures(features, values, exampleFeatures, featureIds, meta)
         return True
 
@@ -119,8 +119,8 @@ SSM_GENE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specime
 SSM_CHROMOSOME = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome"])
 #SSM_GENE_PROJECT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "project_code"])
 SSM_PROJECT = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["project_code"])
-SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
-SSM_TRANSCRIPT_V20 = FeatureGroup("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected"])
+SSM_TRANSCRIPT_V18 = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
+SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected"])
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 #SSM_GENE_CONSEQUENCE_V20_FILTER = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"], dummy=True)
