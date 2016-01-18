@@ -60,6 +60,25 @@ class SSMCluster(SSMClusterBase):
     #    return [("S0", row["chromosome"], row["chromosome_start"] / self.step, row["consequence_type"]),
     #            ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step, row["consequence_type"])]
 
+
+class SSMClusterPair(SSMClusterBase):
+    def __init__(self):
+        super(SSMClusterPair, self).__init__()
+        self.step = 100
+        self.halfStep = self.step / 2
+    def buildFeatures(self, row):
+        return [("S0", row["chromosome"], row["chromosome_start"] / self.step),
+                ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step)], None
+#         return [("S0", row["chromosome"], row["chromosome_start"] / self.step, row["consequence_type"]),
+#                 ("S1", row["chromosome"], (row["chromosome_start"] + self.halfStep) / self.step, row["consequence_type"])], None
+
+# for KIRC-US SSM_GENE_CONSEQUENCE_V20,SSM_TEST,SSM_CHROMOSOME,SSM_CONSEQUENCE,SSMAminoAcid
+class SSMAminoAcid(FeatureGroup):
+    def __init__(self):
+        super(SSMAminoAcid, self).__init__("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["aa_mutation"], required=False)
+    def buildFeatures(self, row):
+        return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
+
 class GenePair(FeatureGroup):
     def __init__(self):
         super(GenePair, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected"])   
@@ -72,17 +91,22 @@ class GenePair(FeatureGroup):
             features.append([row1["gene_affected"], row2["gene_affected"]])
         return features
 
-SSM_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["consequence_type"])
-SSM_GENE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected"])
+SSM_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["consequence_type"])
+SSM_GENE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected"])
+SSM_CHROMOSOME = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome"])
 #SSM_GENE_PROJECT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "project_code"])
 SSM_PROJECT = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["project_code"])
 SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
+SSM_TRANSCRIPT_V20 = FeatureGroup("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected"])
 SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 #SSM_GENE_CONSEQUENCE_V20_FILTER = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"], dummy=True)
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_CHROMOSOME_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
+
+#SSM_ALLELE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["mutated_from_allele"])
+SSM_TEST = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected", "consequence_type"])
 
 CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["mutation_type"])
 CNSM_CHROMOSOME = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type"])
@@ -105,7 +129,7 @@ MIRNA = FeatureGroup("MIRNA", "SELECT DISTINCT KEYS FROM mirna_seq WHERE icgc_sp
 ###############################################################################
 
 class Survival(Experiment):
-    def __init__(self, days=5 * 365):
+    def __init__(self, days=5*365, maxAge=60):
         super(Survival, self).__init__()
         self.days = days
         self.query = """
@@ -119,10 +143,11 @@ class Survival(Experiment):
             WHERE
             /*P specimen.project_code PROJECTS AND P*/
             donor_vital_status IS NOT NULL AND specimen_type NOT LIKE '%Normal%' AND
+            donor_age_at_diagnosis < {AGE} AND
             ((donor_vital_status == 'deceased' AND (time_survival > 0 OR time_followup > 0))
             OR
             (time_survival > {DAYS} OR time_followup > {DAYS}))
-            """.replace("{DAYS}", str(self.days))
+            """.replace("{DAYS}", str(self.days)).replace("{AGE}", str(maxAge))
     
 #     def getDays(self, example):
 #         days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
