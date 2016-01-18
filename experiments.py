@@ -1,6 +1,7 @@
 from learn.Experiment import Experiment
 from learn.FeatureGroup import FeatureGroup
 from itertools import combinations
+from collections import OrderedDict
 
 ###############################################################################
 # Features
@@ -79,6 +80,28 @@ class SSMAminoAcid(FeatureGroup):
     def buildFeatures(self, row):
         return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
 
+class MutationCount(FeatureGroup):
+    def __init__(self):
+        super(MutationCount, self).__init__("COUNT", "SELECT * FROM ssm WHERE icgc_specimen_id=?")
+    def processExample(self, connection, example, exampleFeatures, featureIds, meta):
+        counts = OrderedDict()
+        numTotal = numGenes = 0
+        for row in connection.execute(self.query, (example['icgc_specimen_id'], )):
+            gene = row.get("gene_affected", "-")
+            if gene not in counts:
+                counts[gene] = 0
+                numGenes += 1
+            counts[gene] += 1
+            numTotal += 1
+        if numTotal == 0:
+            return False
+        features = counts.keys()
+        values = [(counts[key],) for key in features]
+        features.extend([("NUM_TOTAL",), ("NUM_GENES",)])
+        values.extend([numTotal, numGenes])
+        self._addFeatures(features, values, exampleFeatures, featureIds, meta)
+        return True
+
 class GenePair(FeatureGroup):
     def __init__(self):
         super(GenePair, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected"])   
@@ -107,6 +130,8 @@ SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_ope
 
 #SSM_ALLELE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["mutated_from_allele"])
 SSM_TEST = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected", "consequence_type"])
+
+SSM_GENE_LIMITED = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE consequence_type == 'exon_variant' AND icgc_specimen_id=?", ["gene_affected"])
 
 CNSM_MUTATION_TYPE = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["mutation_type"])
 CNSM_CHROMOSOME = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM copy_number_somatic_mutation WHERE mutation_type IS NOT 'undetermined' AND icgc_specimen_id=?", ["chromosome", "mutation_type"])
