@@ -96,8 +96,8 @@ class MutationCount(FeatureGroup):
         if numTotal == 0:
             return False
         features = counts.keys()
-        values = [(counts[key],) for key in features]
-        features.extend([("NUM_TOTAL",), ("NUM_GENES",)])
+        values = [("COUNT", counts[key]) for key in features]
+        features.extend([("COUNT", "NUM_TOTAL"), ("COUNT", "NUM_GENES")])
         values.extend([numTotal, numGenes])
         self._addFeatures(features, values, exampleFeatures, featureIds, meta)
         return True
