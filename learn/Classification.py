@@ -37,14 +37,13 @@ def countUnique(values):
         counts[value] += 1
     return dict(counts)
     
-def getOptions(execString):
-    exec(execString)
-    execLocals = locals()
-    execReturn = {}
-    for execKey in execLocals:
-        if not execKey.startswith("exec"):
-            execReturn[execKey] = execLocals[execKey]
-    return execReturn
+def getOptions(string):
+    d = {}
+    for pair in string.split(";"):
+        key, value = pair.split("=", 1)
+        value = eval(value)
+        d[key] = value
+    return d
 
 class Classification(object):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
@@ -138,13 +137,13 @@ class Classification(object):
         print "---------------------- Grid scores on development set --------------------------"
         results = []
         index = 0
-        bestIndex = 0
         bestExtras = None
+        bestScores = None
         for params, mean_score, scores in search.grid_scores_:
             print "Grid:", params
             results.append(self._getResult("train", classifier, cv, params, None, None, mean_score, scores, extra={"train_size":None, "test_size":None}))
-            if index == 0 or float(mean_score) > results[bestIndex]["mean"]:
-                bestIndex = index
+            if bestScores == None or float(mean_score) > bestScores[1]:
+                bestScores = (params, mean_score, scores)
                 if hasattr(search, "extras_"):
                     bestExtras = search.extras_[index]
             for fold in range(len(scores)):
@@ -159,7 +158,7 @@ class Classification(object):
             print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)                    
             index += 1
         print "---------------------- Best scores on development set --------------------------"
-        params, mean_score, scores = search.grid_scores_[bestIndex]
+        params, mean_score, scores = bestScores
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         baselines = self._calculateBaseline(cv, y_train)
