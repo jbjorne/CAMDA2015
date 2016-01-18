@@ -16,7 +16,7 @@ class FeatureGroup(object):
         else:
             queryResult = [example]
         numFeatures = 0
-        for row in [x for x in queryResult]:
+        for row in queryResult:
             features, values = self.buildFeatures(row)
             numFeatures += len(features)
             if values == None:
