@@ -6,26 +6,31 @@ from learn.evaluation import majorityBaseline, aucForPredictions
 class ProjectAnalysis(Analysis): 
     def __init__(self, dataPath=None):
         super(ProjectAnalysis, self).__init__(dataPath=dataPath)
+        self.predictions = None
+        self.grouped = None
+    
+    def _addToProject(self, example, project):
+        if project not in self.grouped:
+            self.grouped[project] = {"train":{"labels":[], "predictions":[]}, "hidden":{"labels":[], "predictions":[]}}
+        self.grouped[project][example["set"]]["labels"].append(float(example["label"]))
+        if self.predictions:
+            self.grouped[project][example["set"]]["predictions"].append(self.predictions[example["id"]])
         
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
         meta.drop("project_analysis")
-        predictions = None
+        self.predictions = None
         if "prediction" in meta.db:
-            predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
+            self.predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
         #print predictions
-        grouped = {}
+        self.grouped = {}
         for example in meta.db.query("SELECT * FROM example"):
-            project = example["project_code"]
-            if project not in grouped:
-                grouped[project] = {"train":{"labels":[], "predictions":[]}, "hidden":{"labels":[], "predictions":[]}}
-            grouped[project][example["set"]]["labels"].append(float(example["label"]))
-            if predictions:
-                grouped[project][example["set"]]["predictions"].append(predictions[example["id"]])
+            self._addToProject(example, example["project_code"])
+            self._addToProject(example, "all projects")
         rows = []
-        for project in sorted(grouped.keys()):
+        for project in sorted(self.grouped.keys()):
             for setName in ("train", "hidden"):
-                labels = grouped[project][setName]["labels"]
+                labels = self.grouped[project][setName]["labels"]
                 row = OrderedDict([("project",project), ("setName", setName)])
                 row["examples"] = len(labels)
                 row["pos"] = len([x for x in labels if x > 0])
@@ -37,6 +42,6 @@ class ProjectAnalysis(Analysis):
                 row["auc"] = None
                 if row["pos"] > 0 and row["neg"] > 0:
                     row["baseline"] = majorityBaseline(labels)
-                    row["auc"] = aucForPredictions(labels, grouped[project][setName]["predictions"])
+                    row["auc"] = aucForPredictions(labels, self.grouped[project][setName]["predictions"])
                 rows.append(row)
         meta.insert_many("project_analysis", rows, True)
