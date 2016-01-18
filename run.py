@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
     #parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
-    parser.add_argument('-a', "--action", default=None, dest="action")
+    parser.add_argument('-a', "--action", default="build,classify,analyse", dest="action")
     groupE = parser.add_argument_group('build', 'Example Generation')
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
     groupE.add_argument('-e', '--experiment', help='Experiment class', default="RemissionMutTest")
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     groupC.add_argument("--hidden", default=False, action="store_true", dest="hidden")
     groupC.add_argument('--preDispatch', help='', default='2*n_jobs')
     groupA = parser.add_argument_group('Analysis', 'Analysis for classified data')
-    groupA.add_argument("-y", "--analyses", default="COSMICAnalysis")
+    groupA.add_argument("-y", "--analyses", default="ProjectAnalysis")
     options = parser.parse_args()
     
     actions = splitOptions(options.action, ["build", "classify", "analyse"])
