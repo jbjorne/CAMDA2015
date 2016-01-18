@@ -2,6 +2,9 @@ import sys, os
 from learn.evaluation import aucForPredictions, aucForProbabilites, getClassPredictions,\
     majorityBaseline
 from learn.skext.DisjointStratifiedKFold import DisjointStratifiedKFold
+from utils.common import getOptions
+from learn.skext.metrics import balanced_accuracy_score
+from sklearn.metrics.scorer import make_scorer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -36,14 +39,6 @@ def countUnique(values):
     for value in values:
         counts[value] += 1
     return dict(counts)
-    
-def getOptions(string):
-    d = {}
-    for pair in string.split(";"):
-        key, value = pair.split("=", 1)
-        value = eval(value)
-        d[key] = value
-    return d
 
 class Classification(object):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
@@ -101,6 +96,7 @@ class Classification(object):
         if self.classes:
             print "Classes y_train = ", countUnique(y_train)
             print "Classes y_hidden = ", countUnique(y_hidden)
+            print "MCB(y_train) =", majorityBaseline(y_train, [self.groups[i] for i in indices["train"]])
         return indices, X_train, X_hidden, y_train, y_hidden
                 
     def classify(self):
@@ -130,8 +126,11 @@ class Classification(object):
         print "Args", self.classifierArgs
         cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
         classifier, classifierArgs = self._getClassifier()
+        metric = self.metric
+        if metric == "bas":
+            metric = make_scorer(balanced_accuracy_score)
         search = ExtendedGridSearchCV(classifier(), classifierArgs, refit=refit, cv=cv, 
-                                      scoring=self.metric, verbose=self.verbose, n_jobs=self.parallel, 
+                                      scoring=metric, verbose=self.verbose, n_jobs=self.parallel, 
                                       pre_dispatch=int(self.preDispatch) if self.preDispatch.isdigit() else self.preDispatch)
         search.fit(X_train, y_train)
         print "---------------------- Grid scores on development set --------------------------"
@@ -177,6 +176,7 @@ class Classification(object):
         for trainIndices, testIndices in cv:
             foldLabels = [labels[i] for i in testIndices]
             foldGroups = [exampleGroups[i] for i in testIndices]
+            #print len(foldLabels)
             baselines.append(majorityBaseline(foldLabels, foldGroups))
         return baselines
     
@@ -190,6 +190,7 @@ class Classification(object):
                 foldProbabilities = [probabilityByIndex[i] for i in foldIndices]
                 foldPredictions = getClassPredictions(foldProbabilities, self.classes)
                 #print fold, foldProbabilities
+                #print len(foldLabels)
                 folds[fold]["predictions"] = {i:x for i,x in zip(foldIndices, foldPredictions)}
                 validationScores.append(aucForPredictions(foldLabels, foldPredictions))
         return validationScores   

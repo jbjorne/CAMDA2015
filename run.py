@@ -3,7 +3,7 @@ import inspect
 from experiments import *
 from learn.Classification import Classification
 import utils.Stream as Stream
-from utils.common import splitOptions
+from utils.common import splitOptions, getOptions
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
@@ -29,6 +29,7 @@ if __name__ == "__main__":
     groupE.add_argument('-d', '--dummy', help='Feature groups used only for filtering (comma-separated list)', default=None)
     groupE.add_argument('-p', '--projects', help='Projects used in example generation', default=None)
     groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
+    groupE.add_argument('-x', '--extra', default=None)
     groupC = parser.add_argument_group('classify', 'Example Classification')
     groupC.add_argument('-c','--classifier', help='', default=None)
     groupC.add_argument('-r','--classifierArguments', help='', default=None)
@@ -53,7 +54,10 @@ if __name__ == "__main__":
         print "Building Examples"
         print "======================================================"
         ExperimentClass = eval(options.experiment)
-        e = ExperimentClass()
+        if options.extra:
+            e = ExperimentClass(**getOptions(options.extra))
+        else:
+            e = ExperimentClass()
         e.includeSets = ("train", "hidden") if options.hidden else ("train",)
         if options.projects != None:
             e.projects = options.projects.split(",")

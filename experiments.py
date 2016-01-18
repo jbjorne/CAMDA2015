@@ -80,27 +80,31 @@ class SSMAminoAcid(FeatureGroup):
     def buildFeatures(self, row):
         return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
 
-class MutationCount(FeatureGroup):
-    def __init__(self):
-        super(MutationCount, self).__init__("COUNT", "SELECT * FROM ssm WHERE icgc_specimen_id=?")
+class FeatureCount(FeatureGroup):
+    def __init__(self, name, table, key):
+        super(FeatureCount, self).__init__(name, "SELECT * FROM " + table + " WHERE icgc_specimen_id=?")
+        self.key = key
     def processExample(self, connection, example, exampleFeatures, featureIds, meta):
         counts = OrderedDict()
-        numTotal = numGenes = 0
+        numTotal = numUnique = 0
         for row in connection.execute(self.query, (example['icgc_specimen_id'], )):
-            gene = row["gene_affected"]
-            if gene not in counts:
-                counts[gene] = 0
-                numGenes += 1
-            counts[gene] += 1
+            value = row[self.key]
+            if value not in counts:
+                counts[value] = 0
+                numUnique += 1
+            counts[value] += 1
             numTotal += 1
         if numTotal == 0:
             return False
         keys = counts.keys()
-        features = [("COUNT", key) for key in keys] + [("COUNT", "NUM_TOTAL"), ("COUNT", "NUM_GENES")]
-        values = [counts[key] for key in keys] + [numTotal, numGenes]
+        features = [(self.name, key) for key in keys] + [(self.name, "NUM_TOTAL"), (self.name, "NUM_GENES")]
+        values = [counts[key] for key in keys] + [numTotal, numUnique]
         #print features, values
         self._addFeatures(features, values, exampleFeatures, featureIds, meta)
         return True
+
+MUTATION_COUNT = FeatureCount("N_MUT", "ssm", "gene_affected")
+CONSEQUENCE_COUNT = FeatureCount("N_MUT", "ssm", "consequence_type")
 
 class GenePair(FeatureGroup):
     def __init__(self):
@@ -121,8 +125,8 @@ SSM_CHROMOSOME = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_s
 SSM_PROJECT = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["project_code"])
 SSM_TRANSCRIPT_V18 = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["transcript_affected"])
 SSM_TRANSCRIPT = FeatureGroup("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected"])
-SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
-SSM_GENE_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
+SSM_GENE_CONSEQUENCE_V18 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
+SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])
 #SSM_GENE_CONSEQUENCE_V20_FILTER = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"], dummy=True)
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_CHROMOSOME_CONSEQUENCE_V20 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
@@ -217,9 +221,9 @@ class RemissionBase(Experiment):
     def getLabel(self, example):
         return 'remission' in example['disease_status_last_followup']
         
-class RemissionV20(Experiment):
+class Remission(Experiment):
     def __init__(self):
-        super(RemissionV20, self).__init__()
+        super(Remission, self).__init__()
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
             specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis

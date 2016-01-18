@@ -4,3 +4,11 @@ def splitOptions(optionString, allowedValues=None, delimiter=","):
         for action in actions:
             assert action in allowedValues
     return actions
+
+def getOptions(string):
+    d = {}
+    for pair in string.split(";"):
+        key, value = pair.split("=", 1)
+        value = eval(value)
+        d[key] = value
+    return d

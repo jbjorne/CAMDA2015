@@ -1,4 +1,4 @@
-def majorityBaseline(labels, groups=None):
+def getMajorityPredictions(labels, groups=None):
     counts = {}
     # Count labels by group
     if groups == None:
@@ -16,8 +16,12 @@ def majorityBaseline(labels, groups=None):
     for groupKey in counts:
         majorityLabel[groupKey] = max(counts[groupKey], key=counts[groupKey].get)
     # Make predictions
-    predictions = [majorityLabel[group] for group in groups]
-    return aucForPredictions(labels, predictions)
+    return [majorityLabel[group] for group in groups]
+
+def majorityBaseline(labels, groups=None, metric=None):
+    if metric == None:
+        metric = aucForPredictions
+    return metric(labels, getMajorityPredictions(labels, groups))
 
 def aucForPredictions(labels, predictions):
     return listwisePerformance(labels, predictions)
