@@ -21,12 +21,7 @@ class FeatureGroup(object):
             numFeatures += len(features)
             if values == None:
                 values = [1] * len(features) # Use default weight for all features
-            assert len(features) == len(values)
-            if not self.dummy:
-                for feature, value in zip(features, values):
-                    if not isinstance(feature, basestring):
-                        feature = self._getFeatureNameAsString(feature)
-                    exampleFeatures[self._getFeatureId(feature, featureIds, meta)] = value
+            self._addFeatures(features, values, exampleFeatures, featureIds, meta)
         return numFeatures > 0 if self.required else True
     
     def buildFeatures(self, row):
@@ -41,3 +36,11 @@ class FeatureGroup(object):
             featureIds[featureName] = len(featureIds)
             meta.insert("feature", {"name":featureName, "id":featureIds[featureName]})
         return featureIds[featureName]
+    
+    def _addFeatures(self, features, values, exampleFeatures, featureIds, meta):
+        assert len(features) == len(values)
+        if not self.dummy:
+            for feature, value in zip(features, values):
+                if not isinstance(feature, basestring):
+                    feature = self._getFeatureNameAsString(feature)
+                exampleFeatures[self._getFeatureId(feature, featureIds, meta)] = value
