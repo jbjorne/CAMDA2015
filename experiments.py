@@ -3,6 +3,7 @@ from learn.FeatureGroup import FeatureGroup
 from itertools import combinations
 from collections import OrderedDict
 from learn.analyse.mapping import ensemblToName
+import os
 
 ###############################################################################
 # Features
@@ -85,20 +86,56 @@ class Mutation(FeatureGroup):
     def __init__(self):
         super(Mutation, self).__init__("MUT")
     def processExample(self, connection, example, exampleFeatures, featureIds, meta):
-        ssm = [x for x in connection.execute("SELECT DISTINCT gene_affected FROM ssm WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
+        ssm = [x for x in connection.execute("SELECT DISTINCT gene_affected,consequence_type FROM ssm WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
         if len(ssm) == 0: return False
         exp = [x for x in connection.execute("SELECT gene_id,1000000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
         if len(exp) == 0: return False
         #mutated = set([x for x in [ensemblToName(row["gene_affected"]) for row in ssm] if x != None])
-        mutated = [row["gene_affected"] for row in ssm]
-        mutated = set(mutated + [x for x in [ensemblToName(gene) for gene in mutated] if x != None])
+        mutated = set([x["gene_affected"] for x in ssm])
+        mutated = set([x for x in [ensemblToName(gene) for gene in mutated] if x != None])
+        mutationTypes = set([x["consequence_type"] for x in ssm])
+        #print mutationTypes
         #print mutated
         features, values = [], []
-        for row in exp:
-            if row["gene_id"] in mutated:
-                features.append(row["gene_id"])
-                values.append(row["count"])
+        for expRow in exp:
+            geneId = expRow["gene_id"]
+            expValue = 1 #expRow["count"]
+            if geneId in mutated:
+                mutated.remove(geneId)
+                features.append((geneId, "mutated"))
+                values.append(expValue)
+                for ssmRow in ssm:
+                    features.append((geneId, ssmRow["consequence_type"]))
+                    values.append(expValue)
+            else:
+                features.append((geneId, "normal"))
+                values.append(expValue)
+        print mutated
+            ##features.append(row["gene_id"])
+            ##values.append(abs(row["count"]) if row["gene_id"] in mutated else -abs(row["count"]))
+            ###values.append(1.0 if row["gene_id"] in mutated else -1.0)
         self._addFeatures(features, values, exampleFeatures, featureIds, meta)
+        return True
+    
+class SSMMutation(FeatureGroup):
+    def __init__(self):
+        super(SSMMutation, self).__init__("MUT")
+    def initialize(self, dataPath):
+        with open(os.path.join(dataPath, "exported-ssm-genes-160121.txt"), 'rt') as f:
+            self.ssmGenes = [x.strip() for x in f.readlines()]
+    def processExample(self, connection, example, exampleFeatures, featureIds, meta):
+        ssm = [x for x in connection.execute("SELECT DISTINCT gene_affected,consequence_type FROM ssm WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
+        if len(ssm) == 0: return False
+        mutated = set([x["gene_affected"] for x in ssm])
+        features = []
+        for gene in self.ssmGenes:
+            if gene in mutated:
+                features.append((gene, "mutated"))
+                for ssmRow in ssm:
+                    features.append((gene, ssmRow["consequence_type"]))
+            else:
+                features.append((gene, "normal"))
+        self._addFeatures(features, None, exampleFeatures, featureIds, meta)
         return True
 
 class FeatureCount(FeatureGroup):
@@ -130,7 +167,6 @@ CONSEQUENCE_COUNT = FeatureCount("N_MUT", "ssm", "consequence_type")
 class GenePair(FeatureGroup):
     def __init__(self):
         super(GenePair, self).__init__("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected"])   
-    
     def buildRows(self, rows):
         features = []
         for row1, row2 in combinations(rows, 2):
@@ -138,6 +174,16 @@ class GenePair(FeatureGroup):
             features.append([row2["gene_affected"]])
             features.append([row1["gene_affected"], row2["gene_affected"]])
         return features
+
+class SSMParts(FeatureGroup):
+    def __init__(self):
+        super(SSMParts, self).__init__("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type"])   
+    def buildRows(self, rows):
+        features = []
+        for row in rows:
+            for part in row["consequence_type"].split("_"):
+                features.append([row["gene_affected"], part])
+        return features, None
 
 SSM_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["consequence_type"])
 SSM_GENE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected"])
@@ -152,6 +198,7 @@ SSM_GENE_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE 
 SSM_CHROMOSOME_CONSEQUENCE_V18 = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_CHROMOSOME_CONSEQUENCE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["chromosome", "consequence_type"])
 SSM_GENE_POS = FeatureGroup("SSM", "SELECT KEYS FROM simple_somatic_mutation_open WHERE icgc_specimen_id=?", ["gene_affected", "consequence_type", "chromosome", "chromosome_start", "chromosome_end"])
+SSM_GENE_TYPE = FeatureGroup("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["gene_affected", "mutation_type"])
 
 #SSM_ALLELE = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["mutated_from_allele"])
 SSM_TEST = FeatureGroup("SSM", "SELECT DISTINCT KEYS FROM ssm WHERE icgc_specimen_id=?", ["transcript_affected", "consequence_type"])
@@ -191,7 +238,7 @@ class Survival(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            /*P specimen.project_code PROJECTS AND P*/
+            /*{FILTER}*/
             donor_vital_status IS NOT NULL AND specimen_type NOT LIKE '%Normal%' AND
             donor_age_at_diagnosis < {AGE} AND
             ((donor_vital_status == 'deceased' AND (time_survival > 0 OR time_followup > 0))
@@ -233,7 +280,7 @@ class Remission(Experiment):
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE
-            /*P specimen.project_code PROJECTS AND P*/
+            /*{FILTER}*/
             specimen_type IS NOT NULL AND
             ((donor_vital_status IS 'alive' AND 
             disease_status_last_followup IS 'complete remission') OR

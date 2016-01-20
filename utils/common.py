@@ -1,3 +1,4 @@
+from collections import OrderedDict
 def splitOptions(optionString, allowedValues=None, delimiter=","):
     actions = [x.strip() for x in optionString.split(delimiter)]
     if allowedValues:
@@ -6,7 +7,7 @@ def splitOptions(optionString, allowedValues=None, delimiter=","):
     return actions
 
 def getOptions(string):
-    d = {}
+    d = OrderedDict()
     for pair in string.split(";"):
         key, value = pair.split("=", 1)
         value = eval(value)

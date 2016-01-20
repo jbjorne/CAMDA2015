@@ -11,11 +11,13 @@ mapping.DATA_PATH = DATA_PATH
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
 def getFeatureGroups(names, dummy=False):
+    global DATA_PATH
     groups = [eval(x) for x in names]
     for i in range(len(groups)): # Initialize classes
         if inspect.isclass(groups[i]):
             groups[i] = groups[i]()
         groups[i].dummy = dummy
+        groups[i].initialize(DATA_PATH)
     return groups
 
 if __name__ == "__main__":
@@ -61,8 +63,7 @@ if __name__ == "__main__":
         else:
             e = ExperimentClass()
         e.includeSets = ("train", "hidden") if options.hidden else ("train",)
-        if options.projects != None:
-            e.projects = options.projects.split(",")
+        e.projects = options.projects
         if options.features != None:
             print "Using feature groups:", options.features
             e.featureGroups = getFeatureGroups(options.features.split(","))

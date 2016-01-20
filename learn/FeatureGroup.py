@@ -10,6 +10,9 @@ class FeatureGroup(object):
         self.required = required
         self.dummy = dummy
     
+    def initialize(self, dataPath):
+        pass
+    
     def processExample(self, connection, example, exampleFeatures, featureIds, meta):
         if self.query:
             queryResult = connection.execute(self.query, (example['icgc_specimen_id'], ))
@@ -19,8 +22,6 @@ class FeatureGroup(object):
         for row in queryResult:
             features, values = self.buildFeatures(row)
             numFeatures += len(features)
-            if values == None:
-                values = [1] * len(features) # Use default weight for all features
             self._addFeatures(features, values, exampleFeatures, featureIds, meta)
         return numFeatures > 0 if self.required else True
     
@@ -38,6 +39,8 @@ class FeatureGroup(object):
         return featureIds[featureName]
     
     def _addFeatures(self, features, values, exampleFeatures, featureIds, meta):
+        if values == None:
+            values = [1] * len(features) # Use default weight for all features
         assert len(features) == len(values)
         if not self.dummy:
             for feature, value in zip(features, values):

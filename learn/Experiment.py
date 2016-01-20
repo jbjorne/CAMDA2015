@@ -1,5 +1,6 @@
 import sys, os
 from learn.HiddenSet import HiddenSet
+from utils.common import getOptions
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
@@ -10,23 +11,24 @@ from ExampleIO import SVMLightExampleIO
 
 class Experiment(object):
     def _queryExamples(self):
-        if self.query:
-            query = self.query
-        else:
-            query = "SELECT " + self.exampleFields + "\n"
-            query += "FROM " + self.exampleTable + "\n"
-            query += "WHERE "
-            if self.projects != None:
-                query += "      project_code IN ('" + "','".join(self.projects) + "') AND"
-            query += self.exampleWhere
         if self.projects != None:
-            mode = "LIKE" if "%" in "".join(self.projects) else "IN"
-            query = query.replace("PROJECTS", mode + " ('" + "','".join(self.projects) + "')").replace("/*P", "").replace("P*/", "")
-        self.query = query
+            assert "/*{FILTER}*/" in self.query
+            if "=" in self.projects:
+                rules = getOptions(self.projects)
+            else:
+                rules = {"specimen.project_code":self.projects.split(",")}
+            expressions = []
+            for key in rules:
+                mode = "LIKE" if "%" in "".join(self.projects) else "IN"
+                values = rules[key]
+                if isinstance(values, basestring):
+                    values = [values]
+                expressions.append(" ".join([key, mode, "('" + "','".join(values) + "')"]))
+            self.query = self.query.replace("/*{FILTER}*/", " AND ".join(expressions) + " AND ")
         print "=========================== Example generation query ==========================="
-        print query
+        print self.query
         print "================================================================================"
-        return [dict(x) for x in self.getConnection().execute(query)]
+        return [dict(x) for x in self.getConnection().execute(self.query)]
     
     def getLabel(self, example):
         raise NotImplementedError
