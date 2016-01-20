@@ -96,7 +96,7 @@ class Classification(object):
         if self.classes:
             print "Classes y_train = ", countUnique(y_train)
             print "Classes y_hidden = ", countUnique(y_hidden)
-            print "MCB(y_train) =", majorityBaseline(y_train, [self.groups[i] for i in indices["train"]])
+            print "MCB(y_train) =", majorityBaseline(y_train, [self.groups[i] for i in indices["train"]], self.metric), "(" + self.metric + ")"
         return indices, X_train, X_hidden, y_train, y_hidden
                 
     def classify(self):
@@ -161,7 +161,7 @@ class Classification(object):
         print scores
         print "%0.3f (+/-%0.03f) for %r" % (mean_score, scores.std() / 2, params)
         baselines = self._calculateBaseline(cv, y_train)
-        print "MCB = %0.3f (+/-%0.03f) for" % (np.mean(baselines), np.std(baselines) / 2), ["%0.3f" % x for x in baselines]
+        print "MCB = %0.3f (+/-%0.03f) for" % (np.mean(baselines), np.std(baselines) / 2), ["%0.3f" % x for x in baselines], "(" + self.metric + ")"
         print "--------------------------------------------------------------------------------"
         # Save the grid search results
         print "Saving results"
@@ -177,7 +177,7 @@ class Classification(object):
             foldLabels = [labels[i] for i in testIndices]
             foldGroups = [exampleGroups[i] for i in testIndices]
             #print len(foldLabels)
-            baselines.append(majorityBaseline(foldLabels, foldGroups))
+            baselines.append(majorityBaseline(foldLabels, foldGroups, self.metric))
         return baselines
     
     def _validateExtras(self, folds, labels):
@@ -227,7 +227,7 @@ class Classification(object):
             #else:
             hiddenExtra = {"probabilities":{i:x for i,x in enumerate(y_hidden_proba)}}
             print "AUC =", self._validateExtras([hiddenExtra], y_hidden)[0]
-            print "MCB =", majorityBaseline(y_hidden, [self.groups[i] for i in self.indices["hidden"]])
+            print "MCB =", majorityBaseline(y_hidden, [self.groups[i] for i in self.indices["hidden"]], self.metric), "(" + self.metric + ")"
             if hasattr(search.best_estimator_, "feature_importances_"):
                 hiddenExtra["importances"] = search.best_estimator_.feature_importances_
             print "Saving results"

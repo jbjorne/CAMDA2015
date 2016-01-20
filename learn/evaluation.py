@@ -1,3 +1,4 @@
+from sklearn.metrics.scorer import SCORERS, make_scorer
 def getMajorityPredictions(labels, groups=None):
     counts = {}
     # Count labels by group
@@ -21,6 +22,8 @@ def getMajorityPredictions(labels, groups=None):
 def majorityBaseline(labels, groups=None, metric=None):
     if metric == None:
         metric = aucForPredictions
+    if isinstance(metric, basestring):
+        metric = SCORERS[metric]._score_func
     return metric(labels, getMajorityPredictions(labels, groups))
 
 def aucForPredictions(labels, predictions):
