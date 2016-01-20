@@ -4,8 +4,10 @@ from experiments import *
 from learn.Classification import Classification
 import utils.Stream as Stream
 from utils.common import splitOptions, getOptions
+from learn.analyse import mapping
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
+mapping.DATA_PATH = DATA_PATH
 DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
 def getFeatureGroups(names, dummy=False):

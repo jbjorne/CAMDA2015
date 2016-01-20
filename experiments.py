@@ -80,6 +80,24 @@ class SSMAminoAcid(FeatureGroup):
     def buildFeatures(self, row):
         return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
 
+class Mutation(FeatureGroup):
+    def __init__(self):
+        super(Mutation, self).__init__("MUT")
+    def processExample(self, connection, example, exampleFeatures, featureIds, meta):
+        ssm = [x for x in connection.execute("SELECT DISTINCT gene_affected FROM ssm WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
+        if len(ssm) == 0: return False
+        exp = [x for x in connection.execute("SELECT gene_id,1000000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
+        if len(exp) == 0: return False
+        mutated = set([row["gene_affected"] for row in ssm])
+        print mutated
+        features, values = [], []
+        for row in exp:
+            if row["gene_id"] in mutated:
+                features.append(row["gene_id"])
+                values.append(row["count"])
+        self._addFeatures(features, values, exampleFeatures, featureIds, meta)
+        return True
+
 class FeatureCount(FeatureGroup):
     def __init__(self, name, table, key):
         super(FeatureCount, self).__init__(name, "SELECT * FROM " + table + " WHERE icgc_specimen_id=?")
@@ -179,8 +197,7 @@ class Survival(Experiment):
             """.replace("{DAYS}", str(self.days)).replace("{AGE}", str(maxAge))
     
     def getLabel(self, example):
-        days = max(example["time_survival"], example["time_followup"]) # self.getDays(example)
-        #print "DAYS", days
+        days = max(example["time_survival"], example["time_followup"])
         if example["donor_vital_status"] == "alive":
             assert days >= self.days
             return True
@@ -188,10 +205,9 @@ class Survival(Experiment):
             assert example["donor_vital_status"] == "deceased"
             return days >= self.days
 
-class RemissionBase(Experiment):
+class RemissionV18(Experiment):
     def __init__(self):
-        super(RemissionBase, self).__init__()
-        #self.projects = ["KIRC-US"]
+        super(RemissionV18, self).__init__()
         self.exampleTable = "clinical"
         self.exampleFields = "icgc_donor_id,icgc_specimen_id,project_code,donor_vital_status,disease_status_last_followup,specimen_type,donor_interval_of_last_followup"
         self.exampleWhere = """
