@@ -90,11 +90,8 @@ class Mutation(FeatureGroup):
         exp = [x for x in connection.execute("SELECT gene_id,1000000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
         if len(exp) == 0: return False
         #mutated = set([x for x in [ensemblToName(row["gene_affected"]) for row in ssm] if x != None])
-        mutated = set([row["gene_id"] for row in exp])
-        for gene in mutated:
-            name = ensemblToName(gene)
-            if name:
-                mutated.add(name)
+        mutated = [row["gene_affected"] for row in ssm]
+        mutated = set(mutated + [x for x in [ensemblToName(gene) for gene in mutated] if x != None])
         #print mutated
         features, values = [], []
         for row in exp:
