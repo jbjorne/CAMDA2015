@@ -2,6 +2,7 @@ from learn.Experiment import Experiment
 from learn.FeatureGroup import FeatureGroup
 from itertools import combinations
 from collections import OrderedDict
+from learn.analyse.mapping import ensemblToName
 
 ###############################################################################
 # Features
@@ -88,8 +89,13 @@ class Mutation(FeatureGroup):
         if len(ssm) == 0: return False
         exp = [x for x in connection.execute("SELECT gene_id,1000000*normalized_read_count as count FROM exp_seq WHERE icgc_specimen_id=?", (example['icgc_specimen_id'],))]
         if len(exp) == 0: return False
-        mutated = set([row["gene_affected"] for row in ssm])
-        print mutated
+        #mutated = set([x for x in [ensemblToName(row["gene_affected"]) for row in ssm] if x != None])
+        mutated = set([row["gene_id"] for row in exp])
+        for gene in mutated:
+            name = ensemblToName(gene)
+            if name:
+                mutated.add(name)
+        #print mutated
         features, values = [], []
         for row in exp:
             if row["gene_id"] in mutated:

@@ -2,7 +2,7 @@ import os
 DATA_PATH = None
 ENSEMBL_TO_NAME = None
 
-def _loadEnsemblToName(self, filePath):
+def _loadEnsemblToName(filePath = None):
     global DATA_PATH
     mapping = {}
     if filePath == None:
@@ -14,10 +14,10 @@ def _loadEnsemblToName(self, filePath):
     f.close()
     for line in lines:
         splits = line.split()
-        self.mapping[splits[0]] = splits[1]
+        mapping[splits[0]] = splits[1]
     return mapping
 
-def getName(ensemblId):
+def ensemblToName(ensemblId):
     global ENSEMBL_TO_NAME
     if not ENSEMBL_TO_NAME:
         ENSEMBL_TO_NAME = _loadEnsemblToName()
