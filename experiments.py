@@ -178,13 +178,6 @@ class Survival(Experiment):
             (time_survival > {DAYS} OR time_followup > {DAYS}))
             """.replace("{DAYS}", str(self.days)).replace("{AGE}", str(maxAge))
     
-#     def getDays(self, example):
-#         days = max([int(example[key]) for key in ["dilf", "st"] if example[key] != None])
-#         #if example['delay']:
-#         #    days -= int(example['delay'])
-#         return days
-#         #return max((example.get("donor_survival_time", 0), example.get("donor_interval_of_last_followup", 0))
-    
     def getLabel(self, example):
         days = max(example["time_survival"], example["time_followup"]) # self.getDays(example)
         #print "DAYS", days
@@ -194,13 +187,6 @@ class Survival(Experiment):
         else:
             assert example["donor_vital_status"] == "deceased"
             return days >= self.days
-
-#         if example["donor_survival_time"]  != None:
-#             assert example["donor_vital_status"] == "deceased"
-#             return example["donor_survival_time"] >= self.days
-#         else:
-#             assert example["donor_vital_status"] == "alive"
-#             return True
 
 class RemissionBase(Experiment):
     def __init__(self):
@@ -215,8 +201,6 @@ class RemissionBase(Experiment):
             (donor_vital_status IS 'deceased')) AND
             specimen_type NOT LIKE '%Normal%'
             """
-        #self.filter = "SELECT * FROM simple_somatic_mutation_open WHERE icgc_specimen_id=? LIMIT 1"
-        #self.unique = "icgc_donor_id"
     
     def getLabel(self, example):
         return 'remission' in example['disease_status_last_followup']
@@ -238,45 +222,11 @@ class Remission(Experiment):
             (disease_status_last_followup IS NULL OR disease_status_last_followup NOT LIKE '%remission%'))) AND
             specimen_type NOT LIKE '%Normal%'
             """
-            #specimen_interval is NULL AND
-            #specimen_type LIKE 'Primary%' AND
     
     def getLabel(self, example):
-        #if example['disease_status_last_followup']:
         if example['disease_status_last_followup'] and ('remission' in example['disease_status_last_followup']):
             assert example['donor_vital_status'] == 'alive'
             return True
         else:
             assert example['donor_vital_status'] == 'deceased'
             return False
-
-
-class RemissionMutTest(RemissionBase):
-    def __init__(self):
-        super(RemissionMutTest, self).__init__()
-        self.featureGroups = [SSM_GENE_CONSEQUENCE]
-
-class RemissionConsequence(RemissionBase):
-    def __init__(self):
-        super(RemissionConsequence, self).__init__()
-        self.featureGroups = [SSM_CONSEQUENCE]
-
-class RemissionGene(RemissionBase):
-    def __init__(self):
-        super(RemissionGene, self).__init__()
-        self.featureGroups = [SSM_GENE]
-
-class RemissionMutSites(RemissionBase):
-    def __init__(self):
-        super(RemissionMutSites, self).__init__()
-        self.featureGroups = [SSM_GENE_POS]
-
-class RemissionMutClusterSimple(RemissionBase):
-    def __init__(self):
-        super(RemissionMutClusterSimple, self).__init__()
-        self.featureGroups = [SSMClusterSimple()]
-
-class RemissionMutCluster(RemissionBase):
-    def __init__(self):
-        super(RemissionMutCluster, self).__init__()
-        self.featureGroups = [SSMCluster()]
