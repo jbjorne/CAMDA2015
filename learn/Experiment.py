@@ -1,6 +1,7 @@
 import sys, os
 from learn.HiddenSet import HiddenSet
 from utils.common import getOptions
+from _collections import defaultdict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
@@ -54,6 +55,7 @@ class Experiment(object):
         self.classIds = {'True':1, 'False':-1}
         # General
         self.projects = None
+        self.balanceBy = None
         
         self.query = None
         self.exampleTable = "clinical"
@@ -64,7 +66,7 @@ class Experiment(object):
         self.hiddenCutoff = 0.3
         self.includeSets = ("train", "hidden")
         # Generated data
-        self.examples = None
+        #self.examples = None
         self.meta = None
         #self.unique = None
     
@@ -132,35 +134,68 @@ class Experiment(object):
 #     def getExampleMeta(self, example, classId, features):
 #         return dict(example, label=str(classId), features=len(features))
     
+    def _balanceClasses(self, examples, groupBy):
+        examples = [x for x in examples if x["set"] == "train"]
+        counts = defaultdict(lambda: defaultdict(int))
+        for example in examples:
+            counts[example[groupBy]][example["label"]] += 1
+        print counts
+        limits = defaultdict(lambda: defaultdict(int))
+        for groupKey in counts:
+            minorityClassSize = counts[groupKey][min(counts[groupKey], key=counts[groupKey].get)]
+            for classId in counts[groupKey]:
+                limits[groupKey][classId] = minorityClassSize
+        print limits
+        sys.exit()
+        counts = defaultdict(lambda: defaultdict(int))
+        for example in examples:
+            groupKey = example[groupBy]
+            classId = example["label"]
+            counts[groupKey][classId] += 1
+            example["balanced"] = counts[groupKey][classId] < limits[groupKey][classId]
+    
+    def _defineSets(self, examples):
+        hiddenSet = HiddenSet()
+        for example in examples:
+            example["hidden"] = hiddenSet.getDonorThreshold(example["icgc_donor_id"])
+            example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
+
+    def _defineLabels(self, examples):
+        for example in examples:
+            assert "label" not in example
+            example["label"] = self.getClassId(self.getLabel(example))
+    
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
         print "Experiment:", self.__class__.__name__
         self.meta = Meta(metaDataFileName, clear=True)
         self.meta.insert("experiment", {"name":self.__class__.__name__, "query":self.query, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
-        for classId in self.classIds:
-            self.meta.insert("class", {"label":classId, "value":self.classIds[classId]})
         self.meta.flush()
         self.meta.initCache("feature", 100000)
-        self.examples = self._queryExamples()
+        # Initialize examples
+        examples = self._queryExamples()
+        self._defineLabels(examples)
         #numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
-        numExamples = len(self.examples)
-        numHidden = 0
-        hiddenSet = HiddenSet()
-        #uniqueValues = set()
+        self._defineSets(examples)
+        self.balanceBy = "project_code"
+        if self.balanceBy:
+            self._balanceClasses(examples, self.balanceBy)
+        numExamples = len(examples)
         print "Examples " +  str(numExamples)
+        # Build examples and features
+        setCounts = defaultdict(int)
         count = 0
-        built = 0
-        for example in self.examples:
+        numBuilt = 0
+        for example in examples:
             count += 1
-            example["hidden"] = hiddenSet.getDonorThreshold(example["icgc_donor_id"])
-            example["set"] = "hidden" if example["hidden"] < self.hiddenCutoff else "train"
             if example["set"] not in self.includeSets:
                 print "Skipping", example["icgc_donor_id"], "from set", example["set"]
                 continue
-            if example["set"] == "hidden":
-                numHidden += 1
+            if "balanced" in example and not example["balanced"]:
+                print "Unbalanced", example["icgc_donor_id"], "from set", example["set"], "skipped"
+            setCounts[example["set"]] += 1
 
             print "Processing example", example
-            classId = self.getClassId(self.getLabel(example))
+            #classId = self.getClassId(self.getLabel(example))
             #if self._filterExample(example):
             #    print "NOTE: Filtered example"
             #    continue
@@ -169,17 +204,19 @@ class Experiment(object):
 #                 uniqueValues.add(example[self.unique])
             
             features = self._buildFeatures(example)
-            print classId, str(len(features)), str(count) + "/" + str(numExamples)
+            print example["label"], str(len(features)), str(count) + "/" + str(numExamples)
             if self.filter(example, features):
                 continue
             #self.exampleMeta.append(self.getExampleMeta(example, classId, features))
             #self.meta.insert("example", self.getExampleMeta(example, classId, features))
-            self.meta.insert("example", dict(example, id=built, label=str(classId), features=len(features)))
-            exampleWriter.writeExample(classId, features)
-            built += 1
+            self.meta.insert("example", dict(example, id=numBuilt, features=len(features)))
+            exampleWriter.writeExample(example["label"], features)
+            numBuilt += 1
         
+        for classId in self.classIds:
+            self.meta.insert("class", {"label":classId, "id":self.classIds[classId]})
         self.meta.flush()
-        print "Built", built, "examples (" + str(numHidden) + " hidden) with", len(self.featureIds), "unique features"
+        print "Built", numBuilt, "examples (" + str(dict(setCounts)) + ") with", len(self.featureIds), "unique features"
         #self.saveMetaData(metaDataFileName)
     
 #     def _writeExamples(self, classIds, featureVectors, exampleWriter):

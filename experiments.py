@@ -296,3 +296,10 @@ class Remission(Experiment):
         else:
             assert example['donor_vital_status'] == 'deceased'
             return False
+
+class RemissionProject(Remission):
+    def __init__(self):
+        super(RemissionProject, self).__init__()
+        self.classIds = {}
+    def getLabel(self, example):
+        return example["project_code"]

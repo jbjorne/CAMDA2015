@@ -72,7 +72,7 @@ class Classification(object):
         self.groups = {row["id"]:row["project_code"] for row in self.meta.db.query("SELECT id, project_code FROM example")}
         self.classes = None
         if "class" in self.meta.db.tables:
-            self.classes = [x["value"] for x in self.meta.db["class"].all()]
+            self.classes = [int(x["id"]) for x in self.meta.db["class"].all()]
         self._clearResults(preserveTables)
     
     def _clearResults(self, preserveTables):
