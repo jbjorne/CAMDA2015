@@ -134,25 +134,25 @@ class Experiment(object):
 #     def getExampleMeta(self, example, classId, features):
 #         return dict(example, label=str(classId), features=len(features))
     
-    def _balanceClasses(self, examples, groupBy):
-        examples = [x for x in examples if x["set"] == "train"]
-        counts = defaultdict(lambda: defaultdict(int))
-        for example in examples:
-            counts[example[groupBy]][example["label"]] += 1
-        print counts
-        limits = defaultdict(lambda: defaultdict(int))
-        for groupKey in counts:
-            minorityClassSize = counts[groupKey][min(counts[groupKey], key=counts[groupKey].get)]
-            for classId in counts[groupKey]:
-                limits[groupKey][classId] = minorityClassSize
-        print limits
-        sys.exit()
-        counts = defaultdict(lambda: defaultdict(int))
-        for example in examples:
-            groupKey = example[groupBy]
-            classId = example["label"]
-            counts[groupKey][classId] += 1
-            example["balanced"] = counts[groupKey][classId] < limits[groupKey][classId]
+#     def _balanceClasses(self, examples, groupBy):
+#         examples = [x for x in examples if x["set"] == "train"]
+#         counts = defaultdict(lambda: defaultdict(int))
+#         for example in examples:
+#             counts[example[groupBy]][example["label"]] += 1
+#         print counts
+#         limits = defaultdict(lambda: defaultdict(int))
+#         for groupKey in counts:
+#             minorityClassSize = counts[groupKey][min(counts[groupKey], key=counts[groupKey].get)]
+#             for classId in counts[groupKey]:
+#                 limits[groupKey][classId] = minorityClassSize
+#         print limits
+#         sys.exit()
+#         counts = defaultdict(lambda: defaultdict(int))
+#         for example in examples:
+#             groupKey = example[groupBy]
+#             classId = example["label"]
+#             counts[groupKey][classId] += 1
+#             example["balanced"] = counts[groupKey][classId] < limits[groupKey][classId]
     
     def _defineSets(self, examples):
         hiddenSet = HiddenSet()
@@ -176,9 +176,9 @@ class Experiment(object):
         self._defineLabels(examples)
         #numHidden = hidden.setHiddenValuesByFraction(self.examples, self.hiddenCutoff)
         self._defineSets(examples)
-        self.balanceBy = "project_code"
-        if self.balanceBy:
-            self._balanceClasses(examples, self.balanceBy)
+#         self.balanceBy = "project_code"
+#         if self.balanceBy:
+#             self._balanceClasses(examples, self.balanceBy)
         numExamples = len(examples)
         print "Examples " +  str(numExamples)
         # Build examples and features
@@ -190,8 +190,8 @@ class Experiment(object):
             if example["set"] not in self.includeSets:
                 print "Skipping", example["icgc_donor_id"], "from set", example["set"]
                 continue
-            if "balanced" in example and not example["balanced"]:
-                print "Unbalanced", example["icgc_donor_id"], "from set", example["set"], "skipped"
+#             if "balanced" in example and not example["balanced"]:
+#                 print "Unbalanced", example["icgc_donor_id"], "from set", example["set"], "skipped"
             setCounts[example["set"]] += 1
 
             print "Processing example", example

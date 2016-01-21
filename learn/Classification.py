@@ -5,6 +5,7 @@ from learn.skext.DisjointStratifiedKFold import DisjointStratifiedKFold
 from utils.common import getOptions
 from learn.skext.metrics import balanced_accuracy_score
 from sklearn.metrics.scorer import make_scorer
+from learn.skext.BalancedIteratorCV import BalancedIteratorCV
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.cross_validation import StratifiedKFold
 from skext.gridSearch import ExtendedGridSearchCV
@@ -124,7 +125,8 @@ class Classification(object):
         # Run the grid search
         print "Cross-validating for", self.numFolds, "folds"
         print "Args", self.classifierArgs
-        cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        #cv = StratifiedKFold(y_train, n_folds=self.numFolds, shuffle=True, random_state=1) #self.getCV(y_train, self.meta.meta, numFolds=self.numFolds)
+        cv = BalancedIteratorCV(y_train, n_folds=self.numFolds, shuffle=True, random_state=1, examples=[x for x in self.meta.db.query("SELECT * from example WHERE [set] == 'train';")], groupBy="project_code")
         classifier, classifierArgs = self._getClassifier()
         metric = self.metric
         if metric == "bas":
