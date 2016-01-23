@@ -55,29 +55,23 @@ class SubsetClassification(Classification):
     def classify(self):
         examples = self.meta.db["example"].all()
         projects = sorted(set([x["project_code"] for x in examples]))
-        combinations = [[x] for x in projects]
-        for combination in combinations:
-            self.classifyGrow(combination, projects)
+        self.classifyGrow([], projects)
+#         combinations = [[x] for x in projects]
+#         for combination in combinations:
+#             self.classifyGrow(combination, projects)
         
-    def classifyGrow(self, combination, projects):
-        examples = self.meta.db["example"].all()
-        projects = sorted(set([x["project_code"] for x in examples]))
-        combinations = [[x] for x in projects]
-        projectResults = {}
-        for combination in combinations:
-            self.classifyProjects(combination)
-            tag = self._getTag(combination)
-            results = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag=?", (tag,))
-            for result in results:
-                project = result["project"]
-                if project in combination:
-                    if result["auc"] > projectResults.get(project, -1):
-                        projectResults[project] = result["auc"]
-                    else:
-                        dropped = True
-                        break
-            if dropped:
-                break
+    def classifyGrow(self, combination, allProjects, prevResults=None):
+        if prevResults == None:
+            prevResults = {}
+        for project in allProjects:
+            extended = combination + [project]
+            self.classifyProjects(extended)
+            rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(extended)))
+            results = {row["project"]:row["auc"] for row in rows}
+            for key in results:
+                if results[key] != None and results[key] < results.get(key, -1):
+                    return # Performance dropped
+            self.classifyGrow(extended, allProjects, results)
                         
 
 # if __name__ == "__main__":
