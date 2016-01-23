@@ -29,12 +29,15 @@ class FeatureAnalysis(Analysis):
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
         meta.drop("feature_distribution")
+        meta.drop("overlap")
         print "Reading example files"
         vectors = self.readExamples(inDir, fileStem)
         examples = [x for x in meta.db["example"]]
         assert len(examples) == len(vectors)
         examples, vectors = self._filterHidden(examples, vectors, hidden)
         counts = self._countFeatures(examples, vectors)
+        print "Building matrix"
+        meta.insert_many("overlap", self._buildMatrix(examples, vectors), True)
         print "Sorting features"
         x = range(len(counts))
         y = sorted([counts[i]["TOTAL"] for i in counts], reverse=True)
@@ -63,8 +66,8 @@ class FeatureAnalysis(Analysis):
                 counts[index]["TOTAL"] += 1
         return counts
                 
-    def buildMatrix(self, examples, vectors, hidden):
-        featuresInProject = defaultdict(lambda: set)
+    def _buildMatrix(self, examples, vectors):
+        featuresInProject = defaultdict(set)
         exampleCounts = defaultdict(int)
         for example, vector in zip(examples, vectors):
             project = example["project_code"]
@@ -81,10 +84,14 @@ class FeatureAnalysis(Analysis):
                         overlap[project][otherProject] += 1
                         break
         rows = []
-        for key in sorted(overlap):
-            row = OrderedDict([("project",key)])
-            for otherProject in overlap[key]:
-                row[otherProject] = overlap[key]
+        for project in sorted(overlap):
+            row = OrderedDict([("project",project)])
+            for otherProject in overlap[project]:
+                row[otherProject] = overlap[project][otherProject]
+            row["examples"] = exampleCounts[project]
+            row["unique_features"] = len(featuresInProject[project])
+            print row
+        return rows
         
     def _visualize(self, x, y, outPath):
         fig = plt.figure()
