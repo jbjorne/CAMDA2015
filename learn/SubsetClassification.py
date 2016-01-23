@@ -41,8 +41,12 @@ class SubsetClassification(Classification):
         self.classifyGrow([], projects)
     
     def getCombinationResults(self, projects):
-        rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(projects)))
-        results = {row["project"]:row["auc"] for row in rows}
+        if self.meta.exists("project_analysis"):
+            rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(projects)))
+            results = {row["project"]:row["auc"] for row in rows}
+        else:
+            print "WARNING, table project_analysis does not exist" 
+            results = {}
         return results
         
     def classifyGrow(self, combination, allProjects, prevResults=None, seenTags=None):
@@ -62,9 +66,11 @@ class SubsetClassification(Classification):
                 seenTags.add(tag)
             else:
                 print "Skipping seen combination", tag
-            rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(extended)))
-            results = {row["project"]:row["auc"] for row in rows}
+            results = self.getCombinationResults(extended)
             for key in results:
-                if results[key] != None and results[key] < results.get(key, -1):
+                if results[key] != None and results[key] < prevResults.get(key, -1):
+                    print "Lower performance for combination", tag, results, "/", prevResults
                     return # Performance dropped
+                else:
+                    print "Better performance for combination", tag, results, "/", prevResults
             self.classifyGrow(extended, allProjects, results, seenTags)

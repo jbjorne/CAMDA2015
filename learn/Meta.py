@@ -94,6 +94,7 @@ class Meta():
         self.defaultCacheSize = 10000
         self.cacheSize = {}
         self.cache = {}
+        self.dbPath = None
     
     def _openDB(self, dbPath, copyFrom=None, clear=False):
         if (clear or (copyFrom != None)) and os.path.exists(dbPath):
@@ -103,11 +104,20 @@ class Meta():
             print "Copying database from", dbPath
             shutil.copy2(copyFrom, dbPath)
         dbPath = "sqlite:///" + os.path.abspath(dbPath)
+        self.dbPath = dbPath
         print "Opening database at", dbPath
         return dataset.connect(dbPath)
     
+    def _reconnect(self):
+        if self.dbPath:
+            self.db = dataset.connect(self.dbPath)
+    
     def exists(self, tableName):
-        return tableName in self.db._tables
+        rows = [x for x in self.db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';".replace("{table_name}", tableName))]
+        return len(rows) > 0
+        #self._reconnect()
+        #print tableName, self.db._tables, self.db.tables, (tableName in self.db._tables), (tableName in self.db.tables)
+        #return (tableName in self.db._tables) and (tableName in self.db.tables)
     
     def drop(self, name, reInitCacheSize=-1):
         print "Dropping table", name
@@ -148,12 +158,16 @@ class Meta():
         rows = self.cache[tableName]
         if len(rows) >= chunkSize and len(rows) > 0:
             if not self.exists(tableName):
+                #print self.db.tables, self.db.metadata.tables.keys(), self.db._tables.keys()
                 print "Inserting initial row for metadata table", self.db[tableName]
+                #print self.db.tables, self.db.metadata.tables.keys(), self.db._tables.keys()
                 self.db[tableName].insert(rows[0], ensure=True)
                 rows[:1] = [] # remove first row
             if len(rows) > 0:
                 startTime = time.time()
+                #print self.db.tables, self.db.metadata.tables.keys(), self.db._tables.keys()
                 print "Inserting", len(rows), "rows to", str(self.db[tableName]) + "...",
+                #print self.db.tables, self.db.metadata.tables.keys(), self.db._tables.keys()
                 self.db[tableName].insert_many(rows, chunk_size=chunkSize, ensure=False)
                 rows[:] = [] # clear the cache
                 print "done in %.2f" % (time.time() - startTime)
