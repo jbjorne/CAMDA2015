@@ -27,7 +27,7 @@ class SubsetClassification(Classification):
         self.analysis = None
     
     def _getTag(self, projects):
-        return ",".join(projects)
+        return ",".join(sorted(projects))
     
     def classifyProjects(self, projects):
         print "----------------------", "Classifying projects", projects, "----------------------"
@@ -59,21 +59,35 @@ class SubsetClassification(Classification):
 #         combinations = [[x] for x in projects]
 #         for combination in combinations:
 #             self.classifyGrow(combination, projects)
+    
+    def getCombinationResults(self, projects):
+        rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(projects)))
+        results = {row["project"]:row["auc"] for row in rows}
+        return results
         
-    def classifyGrow(self, combination, allProjects, prevResults=None):
+    def classifyGrow(self, combination, allProjects, prevResults=None, seenTags=None):
         if prevResults == None:
             prevResults = {}
+        if seenTags == None:
+            seenTags = set()
         for project in allProjects:
             if project in combination:
                 continue
             extended = combination + [project]
-            self.classifyProjects(extended)
+            if len(extended) == 1:
+                print "================", "Processing project", project, "(" + str(allProjects.index(project)) + "/" + str(len(allProjects)) + ")", "================"
+            tag = self._getTag(extended)
+            if tag not in seenTags:
+                self.classifyProjects(extended)
+                seenTags.add(tag)
+            else:
+                print "Skipping seen combination", tag
             rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(extended)))
             results = {row["project"]:row["auc"] for row in rows}
             for key in results:
                 if results[key] != None and results[key] < results.get(key, -1):
                     return # Performance dropped
-            self.classifyGrow(extended, allProjects, results)
+            self.classifyGrow(extended, allProjects, results, seenTags)
                         
 
 # if __name__ == "__main__":
