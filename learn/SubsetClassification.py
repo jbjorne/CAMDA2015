@@ -42,7 +42,7 @@ class SubsetClassification(Classification):
     
     def getCombinationResults(self, projects):
         if self.meta.exists("project_analysis"):
-            rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(projects)))
+            rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND project is not 'all projects' AND tag='{TAG}'".replace("{TAG}", self._getTag(projects)))
             results = {row["project"]:row["auc"] for row in rows}
         else:
             print "WARNING, table project_analysis does not exist" 
@@ -67,10 +67,16 @@ class SubsetClassification(Classification):
             else:
                 print "Skipping seen combination", tag
             results = self.getCombinationResults(extended)
+            lowerPerformance = None
             for key in results:
+                if key == "all projects":
+                    continue
                 if results[key] != None and results[key] < prevResults.get(key, -1):
-                    print "Lower performance for combination", tag, results, "/", prevResults
-                    return # Performance dropped
-                else:
-                    print "Better performance for combination", tag, results, "/", prevResults
+                    lowerPerformance = key
+                    break
+            if lowerPerformance:
+                print "Lower performance for project", lowerPerformance, "in combination", tag, results, "/", prevResults
+                return # Performance dropped
+            else:
+                print "Better performance for all projects in combination", tag, results, "/", prevResults
             self.classifyGrow(extended, allProjects, results, seenTags)
