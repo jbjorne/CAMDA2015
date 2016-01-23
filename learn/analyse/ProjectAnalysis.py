@@ -22,9 +22,10 @@ class ProjectAnalysis(Analysis):
         if self.predictions:
             projectGroup["predictions"].append(self.predictions[example["id"]])
         
-    def analyse(self, inDir, fileStem=None, hidden=False):
+    def analyse(self, inDir, fileStem=None, hidden=False, tag=None, clear=True):
         meta = self._getMeta(inDir, fileStem)
-        meta.drop("project_analysis")
+        if clear:
+            meta.drop("project_analysis")
         self.predictions = None
         if "prediction" in meta.db:
             self.predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
@@ -39,7 +40,7 @@ class ProjectAnalysis(Analysis):
                 labels = self.grouped[project][setName]["labels"]
                 groups = self.grouped[project][setName]["groups"]
                 predictions = self.grouped[project][setName]["predictions"]
-                row = OrderedDict([("project",project), ("setName", setName)])
+                row = OrderedDict([("project",project), ("setName", setName), ("tag", tag)])
                 row["examples"] = len(labels)
                 row["pos"] = len([x for x in labels if x > 0])
                 row["neg"] = len([x for x in labels if x < 0])

@@ -38,8 +38,7 @@ class FeatureAnalysis(Analysis):
         examples, vectors = self._filterHidden(examples, vectors, hidden)
         counts = self._countFeatures(examples, vectors)
         print "Building matrix"
-        rows = self._buildMatrix(examples, vectors)
-        meta.insert_many("overlap", rows, True)
+        meta.insert_many("overlap", self._buildMatrix(examples, vectors), True)
         print "Sorting features"
         x = range(len(counts))
         y = sorted([counts[i]["TOTAL"] for i in counts], reverse=True)
@@ -68,9 +67,9 @@ class FeatureAnalysis(Analysis):
                 counts[index]["TOTAL"] += 1
         return counts
                 
-    def _buildMatrix(self, examples, vectors):
-        featuresInProject = defaultdict(set)
+    def _buildMatrix(self, examples, vectors, cutoff=10):
         exampleCounts = defaultdict(int)
+        featuresInProject = defaultdict(set)
         for example, vector in zip(examples, vectors):
             project = example["project_code"]
             exampleCounts[project] += 1
@@ -78,20 +77,30 @@ class FeatureAnalysis(Analysis):
                 featuresInProject[project].add(index)
         projects = sorted(featuresInProject.keys())
         overlap = defaultdict(lambda: defaultdict(int))
-        for example, vector in zip(examples, vectors):
-            project = example["project_code"]
+        for project in projects:
             for otherProject in projects:
-                for index in vector:
-                    if index in featuresInProject[otherProject]:
-                        overlap[project][otherProject] += 1
-                        break
+                featureCount = len(featuresInProject[project])
+                #otherFeatureCount = len(featuresInProject[otherProject])
+                overlapCount = 0
+                for feature in featuresInProject[project]:
+                    if feature in featuresInProject[otherProject]:
+                        overlapCount += 1
+                overlap[project][otherProject] = float(overlapCount) / featureCount
+
+#         for example, vector in zip(examples, vectors):
+#             project = example["project_code"]
+#             for otherProject in projects:
+#                 for index in vector:
+#                     if index in featuresInProject[otherProject]:
+#                         overlap[project][otherProject] += 1
+#                         break
         rows = []
         for project in sorted(overlap):
             row = OrderedDict([("project",project)])
+            row["examples"] = exampleCounts[project]
+            row["features"] = len(featuresInProject[project])
             for otherProject in overlap[project]:
                 row[otherProject.replace("-", "_")] = overlap[project][otherProject]
-            row["examples"] = exampleCounts[project]
-            row["unique_features"] = len(featuresInProject[project])
             rows.append(row)
         return rows
         
