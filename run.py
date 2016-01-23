@@ -72,9 +72,9 @@ if __name__ == "__main__":
                 e.featureGroups = getFeatureGroups(options.dummy.split(","), dummy=True) + e.featureGroups
         e.databasePath = options.icgcDB
         e.writeExamples(options.output)
+        e = None
     
     resultPath = os.path.join(options.output, "classification.json")
-    classification = None
     if "classify" in actions:
         print "======================================================"
         print "Classifying"
@@ -82,11 +82,10 @@ if __name__ == "__main__":
         classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
         classification.readExamples(options.output)
         classification.classify()
+        classification = None
     
     if "analyse" in actions and options.analyses is not None:
         meta = resultPath
-        if classification != None:
-            meta = classification.meta
         for analysisName in options.analyses.split(","):
             print "======================================================"
             print "Analysing", analysisName

@@ -1,90 +1,90 @@
-from collections import OrderedDict
-import json
+#from collections import OrderedDict
+#import json
 import time
 import os
 import shutil
 import dataset
 
-###############################################################################
-# Output directory processing
-###############################################################################
-
-def getProjects(dirname, filter=None, numTopFeatures=0, returnPaths=False):
-    projects = {}
-    print "Reading results from", dirname
-    filenames = os.listdir(dirname)
-    index = 0
-    if filter == None:
-        filter = {}
-    for dirpath, dirnames, filenames in os.walk(dirname):
-        for filename in filenames:
-            index += 1
-            filePath = os.path.join(dirpath, filename)
-            found = True
-            if filter.get("filename") != None:
-                for substrings in filter["filename"]:
-                    if isinstance(substrings, basestring):
-                        substrings = [substrings]
-                    match = False
-                    for substring in substrings: 
-                        if substring in filename:
-                            match = True
-                    if not match:
-                        found = False
-                        break
-            if found and os.path.isfile(filePath) and filePath.endswith(".json"):
-                # Read project results
-                meta = Meta(filePath)
-                options = {}
-                optionsList = meta["experiment"]["options"]
-                if optionsList != None:
-                    optionsList = optionsList.split(",")
-                    for optionPair in optionsList:
-                        key, value = optionPair.split("=")
-                        options[key] = value
-                # Filter by features
-                if filter.get("features") == None or ("features" in options and options["features"] == filter.get("features")):
-                    # Add results for project...
-                    projectName = meta["template"]["project"]
-                    if projectName not in filter.get("projects"):
-                        continue
-                    if projectName not in projects:
-                        projects[projectName] = {}
-                    project = projects[projectName]
-                    # ... for experiment ...
-                    experimentName = meta["experiment"]["name"]
-                    if experimentName not in filter.get("experiments"):
-                        continue
-                    if experimentName not in project:
-                        project[experimentName] = {}
-                    experiment = project[experimentName]
-                    # ... for classifier ...
-                    classifierName = meta["results"]["best"]["classifier"]
-                    if classifierName not in filter.get("classifiers"):
-                        continue
-                    if returnPaths:
-                        experiment[classifierName] = filePath
-                    else:
-                        experiment[classifierName] = meta
-                    print "Read", filename, str(index+1) #+ "/" + str(len(filenames))
-                    #experiment["classifier"] = meta["results"]["best"]["classifier"]
-    return projects
-
-def compareFeatures(a, b):
-    if isinstance(a, int) and isinstance(b, int):
-        return a - b
-    elif isinstance(a, dict) and isinstance(b, int):
-        return -1
-    elif isinstance(a, int) and isinstance(b, dict):
-        return 1
-    elif "sort" in a and "sort" in b:
-        return -cmp(a["sort"], b["sort"])
-    elif "sort" in a:
-        return -1
-    elif "sort" in b:
-        return 1
-    else: # a and b are dict, neither has a sort attribute
-        return a["id"] - b["id"]
+# ###############################################################################
+# # Output directory processing
+# ###############################################################################
+# 
+# def getProjects(dirname, filter=None, numTopFeatures=0, returnPaths=False):
+#     projects = {}
+#     print "Reading results from", dirname
+#     filenames = os.listdir(dirname)
+#     index = 0
+#     if filter == None:
+#         filter = {}
+#     for dirpath, dirnames, filenames in os.walk(dirname):
+#         for filename in filenames:
+#             index += 1
+#             filePath = os.path.join(dirpath, filename)
+#             found = True
+#             if filter.get("filename") != None:
+#                 for substrings in filter["filename"]:
+#                     if isinstance(substrings, basestring):
+#                         substrings = [substrings]
+#                     match = False
+#                     for substring in substrings: 
+#                         if substring in filename:
+#                             match = True
+#                     if not match:
+#                         found = False
+#                         break
+#             if found and os.path.isfile(filePath) and filePath.endswith(".json"):
+#                 # Read project results
+#                 meta = Meta(filePath)
+#                 options = {}
+#                 optionsList = meta["experiment"]["options"]
+#                 if optionsList != None:
+#                     optionsList = optionsList.split(",")
+#                     for optionPair in optionsList:
+#                         key, value = optionPair.split("=")
+#                         options[key] = value
+#                 # Filter by features
+#                 if filter.get("features") == None or ("features" in options and options["features"] == filter.get("features")):
+#                     # Add results for project...
+#                     projectName = meta["template"]["project"]
+#                     if projectName not in filter.get("projects"):
+#                         continue
+#                     if projectName not in projects:
+#                         projects[projectName] = {}
+#                     project = projects[projectName]
+#                     # ... for experiment ...
+#                     experimentName = meta["experiment"]["name"]
+#                     if experimentName not in filter.get("experiments"):
+#                         continue
+#                     if experimentName not in project:
+#                         project[experimentName] = {}
+#                     experiment = project[experimentName]
+#                     # ... for classifier ...
+#                     classifierName = meta["results"]["best"]["classifier"]
+#                     if classifierName not in filter.get("classifiers"):
+#                         continue
+#                     if returnPaths:
+#                         experiment[classifierName] = filePath
+#                     else:
+#                         experiment[classifierName] = meta
+#                     print "Read", filename, str(index+1) #+ "/" + str(len(filenames))
+#                     #experiment["classifier"] = meta["results"]["best"]["classifier"]
+#     return projects
+# 
+# def compareFeatures(a, b):
+#     if isinstance(a, int) and isinstance(b, int):
+#         return a - b
+#     elif isinstance(a, dict) and isinstance(b, int):
+#         return -1
+#     elif isinstance(a, int) and isinstance(b, dict):
+#         return 1
+#     elif "sort" in a and "sort" in b:
+#         return -cmp(a["sort"], b["sort"])
+#     elif "sort" in a:
+#         return -1
+#     elif "sort" in b:
+#         return 1
+#     else: # a and b are dict, neither has a sort attribute
+#         return a["id"] - b["id"]
 
 class Meta():
     def __init__(self, filePath=None, copyFrom=None, clear=False):

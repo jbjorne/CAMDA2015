@@ -5,26 +5,62 @@ from learn.evaluation import majorityBaseline, aucForPredictions,\
     getMajorityPredictions
 from learn.skext.metrics import balanced_accuracy_score
 from sklearn.metrics.classification import accuracy_score
+from learn.ExampleIO import SVMLightExampleIO
+from _collections import defaultdict
 
-class ProjectAnalysis(Analysis): 
+class FeatureAnalysis(Analysis): 
     def __init__(self, dataPath=None):
-        super(ProjectAnalysis, self).__init__(dataPath=dataPath)
+        super(FeatureAnalysis, self).__init__(dataPath=dataPath)
         self.predictions = None
         self.grouped = None
     
-    def _addToProject(self, example, project):
-        if project not in self.grouped:
-            self.grouped[project] = {"train":{"labels":[], "predictions":[], "groups":[]}, 
-                                     "hidden":{"labels":[], "predictions":[], "groups":[]}}
-        projectGroup = self.grouped[project][example["set"]]
-        projectGroup["labels"].append(float(example["label"]))
-        projectGroup["groups"].append(example["project_code"])
-        if self.predictions:
-            projectGroup["predictions"].append(self.predictions[example["id"]])
+    def readExamples(self, inDir, fileStem=None, exampleIO=None):
+        if fileStem == None:
+            fileStem = "examples"
+        # Read examples
+        vectors = []
+        f = open(os.path.join(inDir, fileStem), "rt")
+        for line in f:
+            vector = {}
+            cls, features = line.strip().split(maxsplits=1)
+            features = features.split()
+            for feature in features:
+                index, value = feature.split(":")
+                vector[int(index)] = float(value)
+            vectors.append(vector)
+        f.close()
+        return vectors
         
     def analyse(self, inDir, fileStem=None, hidden=False):
+        print "Reading example files"
+        vectors = self.readExamples(inDir, fileStem)
         meta = self._getMeta(inDir, fileStem)
         meta.drop("project_analysis")
+        print "Reading features"
+        examples = [x for x in meta.db["example"]]
+        assert len(examples) == len(vectors)
+        counts = {}
+        for example, vector in zip(examples, vectors):
+            project = example["project_code"]
+            if project not in counts:
+                counts[project] = defaultdict(int)
+            projectCounts = counts[project]
+            for index in vector:
+                projectCounts[index] += 1
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         self.predictions = None
         if "prediction" in meta.db:
             self.predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
