@@ -1,4 +1,4 @@
-import os
+import sys, os
 from learn.analyse.Analysis import Analysis
 from collections import defaultdict, OrderedDict
 import matplotlib.pyplot as plt
@@ -30,6 +30,7 @@ class FeatureAnalysis(Analysis):
         meta = self._getMeta(inDir, fileStem)
         meta.drop("feature_distribution")
         meta.drop("overlap")
+        #sys.exit()
         print "Reading example files"
         vectors = self.readExamples(inDir, fileStem)
         examples = [x for x in meta.db["example"]]
@@ -37,7 +38,8 @@ class FeatureAnalysis(Analysis):
         examples, vectors = self._filterHidden(examples, vectors, hidden)
         counts = self._countFeatures(examples, vectors)
         print "Building matrix"
-        meta.insert_many("overlap", self._buildMatrix(examples, vectors), True)
+        rows = self._buildMatrix(examples, vectors)
+        meta.insert_many("overlap", rows, True)
         print "Sorting features"
         x = range(len(counts))
         y = sorted([counts[i]["TOTAL"] for i in counts], reverse=True)
@@ -87,10 +89,10 @@ class FeatureAnalysis(Analysis):
         for project in sorted(overlap):
             row = OrderedDict([("project",project)])
             for otherProject in overlap[project]:
-                row[otherProject] = overlap[project][otherProject]
+                row[otherProject.replace("-", "_")] = overlap[project][otherProject]
             row["examples"] = exampleCounts[project]
             row["unique_features"] = len(featuresInProject[project])
-            print row
+            rows.append(row)
         return rows
         
     def _visualize(self, x, y, outPath):

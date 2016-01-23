@@ -107,12 +107,13 @@ class Meta():
         return dataset.connect(dbPath)
     
     def exists(self, tableName):
-        return tableName in self.db._tables or tableName in self.db
+        return tableName in self.db._tables
     
     def drop(self, name, reInitCacheSize=-1):
         if self.exists(name):
             print "Dropping table", name
             self.db[name].drop()
+        assert not self.exists(name)
         assert name not in self.db._tables
         if reInitCacheSize > -1:
             self.initCache(name, reInitCacheSize)
