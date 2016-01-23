@@ -52,16 +52,16 @@ class ProjectAnalysis(Analysis):
                     row["majority"] = max(set(labels), key=labels.count)
                 row["auc_baseline"] = None
                 row["auc"] = None
-                row["bas_baseline"] = None
-                row["bas"] = None
+                #row["bas_baseline"] = None
+                #row["bas"] = None
                 row["accuracy"] = None
                 row["accuracy_baseline"] = None
                 if row["pos"] > 0 and row["neg"] > 0:
                     majorityPredictions = getMajorityPredictions(labels, groups)
                     row["auc"] = aucForPredictions(labels, self.grouped[project][setName]["predictions"])
                     row["auc_baseline"] = aucForPredictions(labels, majorityPredictions)
-                    row["bas"] = balanced_accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in predictions])
-                    row["bas_baseline"] = majorityBaseline(labels, [(-1.0 if x < 0 else 1.0) for x in majorityPredictions])
+                    #row["bas"] = balanced_accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in predictions])
+                    #row["bas_baseline"] = majorityBaseline(labels, [(-1.0 if x < 0 else 1.0) for x in majorityPredictions])
                     row["accuracy"] = accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in predictions])
                     row["accuracy_baseline"] = accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in majorityPredictions])
                 rows.append(row)

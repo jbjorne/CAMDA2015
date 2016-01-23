@@ -26,6 +26,9 @@ class SubsetClassification(Classification):
         super(SubsetClassification, self).__init__(classifierName, classifierArgs, numFolds, parallel, metric, getCV, preDispatch, classifyHidden)
         self.analysis = None
     
+    def _getTag(self, projects):
+        return ",".join(projects)
+    
     def classifyProjects(self, projects):
         print "----------------------", "Classifying projects", projects, "----------------------"
         setNames = []
@@ -40,7 +43,7 @@ class SubsetClassification(Classification):
             if self.classifyHidden:
                 self._predictHidden(y_hidden, X_hidden, search, y_train.shape[0])
             print "Analysing project performance"
-            self.analysis.analyse(self.inDir, None, X_hidden.shape[0] > 0, tag=",".join(projects), clear=False, projects=projects)
+            self.analysis.analyse(self.inDir, None, X_hidden.shape[0] > 0, tag=self._getTag(projects), clear=False, projects=projects)
         except ValueError, err:
             print(traceback.format_exc())
     
@@ -52,8 +55,30 @@ class SubsetClassification(Classification):
     def classify(self):
         examples = self.meta.db["example"].all()
         projects = sorted(set([x["project_code"] for x in examples]))
-        for project in projects:
-            self.classifyProjects([project])
+        combinations = [[x] for x in projects]
+        for combination in combinations:
+            self.classifyGrow(combination, projects)
+        
+    def classifyGrow(self, combination, projects):
+        examples = self.meta.db["example"].all()
+        projects = sorted(set([x["project_code"] for x in examples]))
+        combinations = [[x] for x in projects]
+        projectResults = {}
+        for combination in combinations:
+            self.classifyProjects(combination)
+            tag = self._getTag(combination)
+            results = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag=?", (tag,))
+            for result in results:
+                project = result["project"]
+                if project in combination:
+                    if result["auc"] > projectResults.get(project, -1):
+                        projectResults[project] = result["auc"]
+                    else:
+                        dropped = True
+                        break
+            if dropped:
+                break
+                        
 
 # if __name__ == "__main__":
 #     import argparse
