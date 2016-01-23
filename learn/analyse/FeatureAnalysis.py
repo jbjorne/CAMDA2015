@@ -1,12 +1,7 @@
 import os
 from learn.analyse.Analysis import Analysis
-from collections import OrderedDict
-from learn.evaluation import majorityBaseline, aucForPredictions,\
-    getMajorityPredictions
-from learn.skext.metrics import balanced_accuracy_score
-from sklearn.metrics.classification import accuracy_score
-from learn.ExampleIO import SVMLightExampleIO
-from _collections import defaultdict
+from collections import defaultdict
+import matplotlib.pyplot as plt
 
 class FeatureAnalysis(Analysis): 
     def __init__(self, dataPath=None):
@@ -16,13 +11,13 @@ class FeatureAnalysis(Analysis):
     
     def readExamples(self, inDir, fileStem=None, exampleIO=None):
         if fileStem == None:
-            fileStem = "examples"
+            fileStem = "examples.yX"
         # Read examples
         vectors = []
         f = open(os.path.join(inDir, fileStem), "rt")
         for line in f:
             vector = {}
-            cls, features = line.strip().split(maxsplits=1)
+            cls, features = line.strip().split(" ", 1)
             features = features.split()
             for feature in features:
                 index, value = feature.split(":")
@@ -35,66 +30,51 @@ class FeatureAnalysis(Analysis):
         print "Reading example files"
         vectors = self.readExamples(inDir, fileStem)
         meta = self._getMeta(inDir, fileStem)
-        meta.drop("project_analysis")
+        meta.drop("feature_distribution")
         print "Reading features"
         examples = [x for x in meta.db["example"]]
         assert len(examples) == len(vectors)
-        counts = {}
+        counts = defaultdict(lambda: defaultdict(int))
+        TOTAL = object()
+        print "Processing examples"
         for example, vector in zip(examples, vectors):
             project = example["project_code"]
-            if project not in counts:
-                counts[project] = defaultdict(int)
-            projectCounts = counts[project]
+            if example["set"] == "hidden" and not hidden: # skip hidden set examples
+                continue
             for index in vector:
-                projectCounts[index] += 1
+                counts[index][project] += 1
+                counts[index][TOTAL] += 1
+        print "Sorting features"
+        x = range(len(counts))
+        y = sorted([counts[i][TOTAL] for i in counts], reverse=True)
+        self._visualize(x, y, os.path.join(inDir, "features.pdf"))
+        print "Saving features"
+        rows = [{"id":i, "total":counts[i][TOTAL]} for i in sorted(counts.keys())]
+        meta.insert_many("feature_distribution", rows, True)
+        
+    def _visualize(self, x, y, outPath):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.hist(y, 100, log=True)
+#        ax.plot(x, y)
+        #fig.subplots_adjust(left=0.5, bottom=0.2)
+#         ylim = ax.get_ylim()
+#         ax.set_ylim((ylim[0] - 0.01 * (ylim[1] - ylim[0]), ylim[1]))
+#         xlim = ax.get_xlim()
+#         ax.set_xlim((xlim[0] - 0.01 * (xlim[1] - xlim[0]), xlim[1]))
+#        ax.set_yscale('log')
+        plt.grid()
+        if outPath != None:
+            fig.savefig(outPath)
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        self.predictions = None
-        if "prediction" in meta.db:
-            self.predictions = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
-        #print predictions
-        self.grouped = {}
-        for example in meta.db.query("SELECT * FROM example"):
-            self._addToProject(example, example["project_code"])
-            self._addToProject(example, "all projects")
-        rows = []
-        for project in sorted(self.grouped.keys()):
-            for setName in ("train", "hidden"):
-                labels = self.grouped[project][setName]["labels"]
-                groups = self.grouped[project][setName]["groups"]
-                predictions = self.grouped[project][setName]["predictions"]
-                row = OrderedDict([("project",project), ("setName", setName)])
-                row["examples"] = len(labels)
-                row["pos"] = len([x for x in labels if x > 0])
-                row["neg"] = len([x for x in labels if x < 0])
-                row["majority"] = None
-                if row["pos"] > 0 or row["neg"] > 0:
-                    row["majority"] = max(set(labels), key=labels.count)
-                row["auc_baseline"] = None
-                row["auc"] = None
-                row["bas_baseline"] = None
-                row["bas"] = None
-                row["accuracy"] = None
-                row["accuracy_baseline"] = None
-                if row["pos"] > 0 and row["neg"] > 0:
-                    majorityPredictions = getMajorityPredictions(labels, groups)
-                    row["auc"] = aucForPredictions(labels, self.grouped[project][setName]["predictions"])
-                    row["auc_baseline"] = aucForPredictions(labels, majorityPredictions)
-                    row["bas"] = balanced_accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in predictions])
-                    row["bas_baseline"] = majorityBaseline(labels, [(-1.0 if x < 0 else 1.0) for x in majorityPredictions])
-                    row["accuracy"] = accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in predictions])
-                    row["accuracy_baseline"] = accuracy_score(labels, [(-1.0 if x < 0 else 1.0) for x in majorityPredictions])
-                rows.append(row)
-        meta.insert_many("project_analysis", rows, True)
+#         fig = plt.plot(x, y)#, facecolor='green', alpha=0.5, normed=1)
+#         plt.xlabel('Feature')
+#         plt.ylabel('Occurrences')
+#         plt.title(r'Test')
+#         fig.subplots_adjust(bottom=0.2)
+#         #plt.yscale('log')
+#         #plt.show()
+        if outPath != None:
+            plt.savefig(outPath)
