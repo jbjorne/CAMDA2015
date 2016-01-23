@@ -2,6 +2,7 @@ import os
 import inspect
 from experiments import *
 from learn.Classification import Classification
+from learn.SubsetClassification import SubsetClassification
 import utils.Stream as Stream
 from utils.common import splitOptions, getOptions
 from learn.analyse import mapping
@@ -35,6 +36,7 @@ if __name__ == "__main__":
     groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
     groupE.add_argument('-x', '--extra', default=None)
     groupC = parser.add_argument_group('classify', 'Example Classification')
+    groupC.add_argument('-s', '--classification', help='', default="Classification")
     groupC.add_argument('-c','--classifier', help='', default=None)
     groupC.add_argument('-r','--classifierArguments', help='', default=None)
     groupC.add_argument('-m','--metric', help='', default="roc_auc")
@@ -79,7 +81,8 @@ if __name__ == "__main__":
         print "======================================================"
         print "Classifying"
         print "======================================================"
-        classification = Classification(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
+        ClassificationClass = eval(options.classification)
+        classification = ClassificationClass(options.classifier, options.classifierArguments, options.numFolds, options.parallel, options.metric, classifyHidden=options.hidden)
         classification.readExamples(options.output)
         classification.classify()
         classification = None

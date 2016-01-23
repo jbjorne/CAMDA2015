@@ -22,7 +22,7 @@ class ProjectAnalysis(Analysis):
         if self.predictions:
             projectGroup["predictions"].append(self.predictions[example["id"]])
         
-    def analyse(self, inDir, fileStem=None, hidden=False, tag=None, clear=True):
+    def analyse(self, inDir, fileStem=None, hidden=False, tag=None, clear=True, projects=None):
         meta = self._getMeta(inDir, fileStem)
         if clear:
             meta.drop("project_analysis")
@@ -32,6 +32,9 @@ class ProjectAnalysis(Analysis):
         #print predictions
         self.grouped = {}
         for example in meta.db.query("SELECT * FROM example"):
+            projectCode = example["project_code"]
+            if projects and projectCode not in projects:
+                continue
             self._addToProject(example, example["project_code"])
             self._addToProject(example, "all projects")
         rows = []

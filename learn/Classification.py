@@ -89,10 +89,12 @@ class Classification(object):
         print "Using classifier", classifier.__name__, "with arguments", classifierArgs
         return classifier, classifierArgs
     
-    def _splitData(self):
+    def _splitData(self, setNames=None):
         if self.classes:
             print "Class distribution = ", countUnique(self.y)
-        indices, X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, self.meta) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
+        if setNames == None:
+            setNames = [x["set"] for x in self.meta.db["example"].all()]
+        indices, X_train, X_hidden, y_train, y_hidden = splitData(self.X, self.y, setNames) #hidden.split(self.X, self.y, meta=self.meta.db["example"].all())
         print "Sizes", [X_train.shape[0], y_train.shape[0]], [X_hidden.shape[0], y_hidden.shape[0]]
         if self.classes:
             print "Classes y_train = ", countUnique(y_train)

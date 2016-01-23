@@ -8,16 +8,20 @@ def splitArray(array, setNames):
     indices = {}
     for i in range(len(setNames)):
         setName = setNames[i]
+        if setName == None: # skip this example
+            continue
         if setName not in indices:
             indices[setName] = []
         indices[setName].append(i)
     divided = {}
-    for key in indices:
-        divided[key] = array[indices[key]]
+    for setName in indices:
+        divided[setName] = array[indices[setName]]
     return divided, indices
+
+# def splitExamples(examples, labels, meta):
+#     return splitData(examples, labels, [x["set"] for x in meta.db["example"].all()])
     
-def splitData(examples, labels, meta):
-    setNames = [x["set"] for x in meta.db["example"].all()]
+def splitData(examples, labels, setNames):
     e, indices = splitArray(examples, setNames)
     l, indices = splitArray(labels, setNames)
     return indices, e.get("train", array([])), e.get("hidden", array([])), l.get("train", array([])), l.get("hidden", array([]))   
