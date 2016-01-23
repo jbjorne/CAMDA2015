@@ -64,6 +64,8 @@ class SubsetClassification(Classification):
         if prevResults == None:
             prevResults = {}
         for project in allProjects:
+            if project in combination:
+                continue
             extended = combination + [project]
             self.classifyProjects(extended)
             rows = self.meta.db.query("SELECT * FROM project_analysis WHERE setName=='train' AND tag='{TAG}'".replace("{TAG}", self._getTag(extended)))
