@@ -14,6 +14,7 @@ class SubsetClassification(Classification):
     
     def classifyProjects(self, projects):
         print "----------------------", "Classifying projects", projects, "----------------------"
+        self.meta.dropTables(["result", "prediction", "importance"], 100000)
         setNames = []
         for example in self.meta.db["example"].all():
             if example["project_code"] in projects:
@@ -68,15 +69,22 @@ class SubsetClassification(Classification):
                 print "Skipping seen combination", tag
             results = self.getCombinationResults(extended)
             lowerPerformance = None
+            allAreNone = True
             for key in results:
                 if key == "all projects":
                     continue
+                if results[key] != None:
+                    allAreNone = False
                 if results[key] != None and results[key] < prevResults.get(key, -1):
                     lowerPerformance = key
                     break
-            if lowerPerformance:
+            # Report the status
+            if allAreNone:
+                print "No results for any projects in combination", tag, results, "/", prevResults
+            elif lowerPerformance:
                 print "Lower performance for project", lowerPerformance, "in combination", tag, results, "/", prevResults
-                return # Performance dropped
             else:
                 print "Better performance for all projects in combination", tag, results, "/", prevResults
-            self.classifyGrow(extended, allProjects, results, seenTags)
+            # Continue if needed
+            if not (allAreNone or lowerPerformance):
+                self.classifyGrow(extended, allProjects, results, seenTags)
