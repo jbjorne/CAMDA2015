@@ -1,6 +1,6 @@
 import os
 from learn.analyse.Analysis import Analysis
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import matplotlib.pyplot as plt
 
 class FeatureAnalysis(Analysis): 
@@ -27,30 +27,64 @@ class FeatureAnalysis(Analysis):
         return vectors
         
     def analyse(self, inDir, fileStem=None, hidden=False):
-        print "Reading example files"
-        vectors = self.readExamples(inDir, fileStem)
         meta = self._getMeta(inDir, fileStem)
         meta.drop("feature_distribution")
-        print "Reading features"
+        print "Reading example files"
+        vectors = self.readExamples(inDir, fileStem)
         examples = [x for x in meta.db["example"]]
         assert len(examples) == len(vectors)
-        counts = defaultdict(lambda: defaultdict(int))
-        TOTAL = object()
-        print "Processing examples"
-        for example, vector in zip(examples, vectors):
-            project = example["project_code"]
-            if example["set"] == "hidden" and not hidden: # skip hidden set examples
-                continue
-            for index in vector:
-                counts[index][project] += 1
-                counts[index][TOTAL] += 1
+        examples, vectors = self._filterHidden(examples, vectors, hidden)
+        counts = self._countFeatures(examples, vectors)
         print "Sorting features"
         x = range(len(counts))
-        y = sorted([counts[i][TOTAL] for i in counts], reverse=True)
+        y = sorted([counts[i]["TOTAL"] for i in counts], reverse=True)
         self._visualize(x, y, os.path.join(inDir, "features.pdf"))
         print "Saving features"
-        rows = [{"id":i, "total":counts[i][TOTAL]} for i in sorted(counts.keys())]
+        rows = [{"id":i, "total":counts[i]["TOTAL"]} for i in sorted(counts.keys())]
         meta.insert_many("feature_distribution", rows, True)
+    
+    def _filterHidden(self, examples, vectors, hidden):
+        newExamples = []
+        newVectors = []
+        for example, vector in zip(examples, vectors):
+            if example["set"] == "hidden" and not hidden: # skip hidden set examples
+                continue
+            newExamples.append(example)
+            newVectors.append(vector)
+        return newExamples, newVectors
+    
+    def _countFeatures(self, examples, vectors):
+        print "Counting features"
+        counts = defaultdict(lambda: defaultdict(int))
+        for example, vector in zip(examples, vectors):
+            project = example["project_code"]
+            for index in vector:
+                counts[index][project] += 1
+                counts[index]["TOTAL"] += 1
+        return counts
+                
+    def buildMatrix(self, examples, vectors, hidden):
+        featuresInProject = defaultdict(lambda: set)
+        exampleCounts = defaultdict(int)
+        for example, vector in zip(examples, vectors):
+            project = example["project_code"]
+            exampleCounts[project] += 1
+            for index in vector:
+                featuresInProject[project].add(index)
+        projects = sorted(featuresInProject.keys())
+        overlap = defaultdict(lambda: defaultdict(int))
+        for example, vector in zip(examples, vectors):
+            project = example["project_code"]
+            for otherProject in projects:
+                for index in vector:
+                    if index in featuresInProject[otherProject]:
+                        overlap[project][otherProject] += 1
+                        break
+        rows = []
+        for key in sorted(overlap):
+            row = OrderedDict([("project",key)])
+            for otherProject in overlap[key]:
+                row[otherProject] = overlap[key]
         
     def _visualize(self, x, y, outPath):
         fig = plt.figure()
@@ -64,6 +98,8 @@ class FeatureAnalysis(Analysis):
 #         ax.set_xlim((xlim[0] - 0.01 * (xlim[1] - xlim[0]), xlim[1]))
 #        ax.set_yscale('log')
         plt.grid()
+        plt.ylabel("Frequency")
+        plt.xlabel("Feature Occurrences")
         if outPath != None:
             fig.savefig(outPath)
         
