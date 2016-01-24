@@ -2,6 +2,7 @@ from learn.analyse.Analysis import Analysis
 from learn.evaluation import getMajorityPredictions
 import matplotlib.pyplot as plt
 import os
+from utils.common import getOptions
 
 class SurvivalAnalysis(Analysis): 
     def __init__(self, dataPath=None):
@@ -9,6 +10,12 @@ class SurvivalAnalysis(Analysis):
     
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
+        
+        experiment = [x for x in meta.db["experiment"].all()][0]
+        experimentVars = getOptions(experiment["vars"])
+        assert "days" in experimentVars
+        days = experimentVars["days"]
+        
         #meta.drop("survival")
         targetSet = "hidden" if hidden else "train"
         examples = [x for x in meta.db["example"].all() if x["set"] == targetSet]
@@ -26,9 +33,9 @@ class SurvivalAnalysis(Analysis):
                 datasets[category][cls].append(example)
             print category, len(datasets[category][1]), len(datasets[category][-1])
         
-        self._visualize(datasets, os.path.join(inDir, "survival.pdf"))
+        self._visualize(datasets, days, os.path.join(inDir, "survival.pdf"))
     
-    def _visualize(self, datasets, outPath):
+    def _visualize(self, datasets, cutoff, outPath):
         for category in datasets:
             for cls in (1, -1):
                 donors = datasets[category][cls]
@@ -46,6 +53,8 @@ class SurvivalAnalysis(Analysis):
                     y.append(alive / numDonors)
                 #print category, cls, x, y
                 plt.step(x, y, where='post', label=category[0] + ":" + str(cls))
+        axes = plt.gca()
+        axes.set_xlim([0, cutoff])
         plt.ylabel("Live donors")
         plt.xlabel("Days")
         plt.legend()
