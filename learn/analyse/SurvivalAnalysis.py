@@ -3,10 +3,20 @@ from learn.evaluation import getMajorityPredictions
 import matplotlib.pyplot as plt
 import os
 from utils.common import getOptions
+from learn.analyse.threshold import optimalFThreshold
 
 class SurvivalAnalysis(Analysis): 
     def __init__(self, dataPath=None):
         super(SurvivalAnalysis, self).__init__(dataPath=dataPath)
+    
+#     def getSet(self, meta, setName):
+#         examples = [x for x in meta.db["example"].all() if x["set"] == setName]
+#         probabilitiesDict = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
+#         probabilities = [probabilitiesDict[x["id"]] for x in examples]
+#         predictions = [(-1 if x < 0 else 1) for x in probabilities]
+#         labels = [x["label"] for x in examples]
+#         groups = [x["project_code"] for x in examples]
+#         return examples, labels, groups, predictions, probabilities
     
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
@@ -19,11 +29,14 @@ class SurvivalAnalysis(Analysis):
         #meta.drop("survival")
         targetSet = "hidden" if hidden else "train"
         examples = [x for x in meta.db["example"].all() if x["set"] == targetSet]
-        probabilities = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
-        predictions = [(-1 if probabilities[x["id"]] < 0 else 1) for x in examples]
+        probabilitiesDict = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
+        probabilities = [probabilitiesDict[x["id"]] for x in examples]
+        predictions = [(-1 if x < 0 else 1) for x in probabilities]
         labels = [x["label"] for x in examples]
         groups = [x["project_code"] for x in examples]
         majorityPredictions = getMajorityPredictions(labels, groups)
+        
+        print "Threshold", optimalFThreshold(probabilities, labels)
         
         datasets = {"label":{1:[], -1:[]}, "majority":{1:[], -1:[]}, "classified":{1:[], -1:[]}}
         for results, category in zip((labels, majorityPredictions, predictions), ("label", "majority", "classified")):
