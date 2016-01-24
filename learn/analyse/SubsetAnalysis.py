@@ -16,6 +16,13 @@ class SubsetAnalysis(Analysis):
                 assert key not in hiddenByTag
                 hiddenByTag[key] = result
         return hiddenByTag
+    
+    def getRatio(self, result):
+        if result:
+            pos = result.get("pos", 0)
+            neg = result.get("neg", 0)
+            return str(pos) + ":" + str(neg)
+        return None
         
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
@@ -42,7 +49,7 @@ class SubsetAnalysis(Analysis):
         for tag in sorted(resultsByTag.keys()):
             keep = True
             for project in resultsByTag[tag]:
-                if resultsByTag[tag][project].get("auc", -1) < baselines.get(project, {}).get("auc", -1):
+                if resultsByTag[tag][project].get("auc", -1) <= baselines.get(project, {}).get("auc", -1):
                     keep = False
                     break
             if keep:
@@ -53,14 +60,17 @@ class SubsetAnalysis(Analysis):
         rows = []
         for result in kept:
             row = OrderedDict()
-            row["project"] = result["project"]
+            project = result["project"]
+            row["project"] = project
             row["auc"] = result["auc"]
             row["single"] = baselines[project]["auc"]
             row["delta"] = row["auc"] - row["single"] if (row["auc"] != None and row["single"] != None) else None
+            row["ratio"] = self.getRatio(result)
             row["combination"] = result["tag"]
             row["auc_hidden"] = hiddenByTag.get(project + ":" + result["tag"], {}).get("auc")
             row["single_hidden"] = hiddenByTag.get(project + ":" + project, {}).get("auc")
             row["delta_hidden"] = row["auc_hidden"] - row["single_hidden"] if (row["auc_hidden"] != None and row["single_hidden"] != None) else None
+            row["ratio_hidden"] = self.getRatio(hiddenByTag.get(project + ":" + result["tag"]))
             rows.append(row)
         meta.insert_many("best_combinations", rows, True)
 
