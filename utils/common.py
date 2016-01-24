@@ -8,8 +8,9 @@ def splitOptions(optionString, allowedValues=None, delimiter=","):
 
 def getOptions(string):
     d = OrderedDict()
-    for pair in string.split(";"):
-        key, value = pair.split("=", 1)
-        value = eval(value)
-        d[key] = value
+    if string and len(string) > 0:
+        for pair in string.split(";"):
+            key, value = pair.split("=", 1)
+            value = eval(value)
+            d[key] = value
     return d

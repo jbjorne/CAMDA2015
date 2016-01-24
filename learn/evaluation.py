@@ -69,3 +69,15 @@ def listwisePerformance(correct, predicted):
                 auc += 0.5
     auc /= pos * neg
     return auc
+
+def statistics(correct, predicted):
+    assert len(correct) == len(predicted)
+    results = {}
+    for label, pred in zip(correct, predicted):
+        if pred not in results:
+            results[pred] = {True:0, False:0}
+        if label != pred:
+            results[pred][False] += 1
+        else:
+            results[pred][True] += 1
+    return results

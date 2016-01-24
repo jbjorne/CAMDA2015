@@ -1,6 +1,6 @@
 from learn.analyse.Analysis import Analysis
 from learn.evaluation import getMajorityPredictions, getMajorityClasses,\
-    getMajorityPredictionsPredefined
+    getMajorityPredictionsPredefined, statistics
 import matplotlib.pyplot as plt
 import os
 from utils.common import getOptions
@@ -65,7 +65,7 @@ class SurvivalAnalysis(Analysis):
             for result, example in zip(results, examples):
                 cls = 1 if result > 0 else -1
                 datasets[category][cls].append(example)
-            print category, len(datasets[category][1]), len(datasets[category][-1])
+            print category, (len(datasets[category][1]), len(datasets[category][-1])), statistics(labels, results)
 
         self._visualize(datasets, days, self._getOutFileName(inDir, setName, useThresholding))
     
