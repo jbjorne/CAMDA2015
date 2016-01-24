@@ -44,8 +44,7 @@ class SurvivalAnalysis(Analysis):
         if useThresholding:
             threshold = self.getThreshold(meta)
         
-        targetSet = "hidden" if setName else "train"
-        examples, probabilities = self.getSet(meta, targetSet)
+        examples, probabilities = self.getSet(meta, setName)
         predictions = [(-1 if x < threshold else 1) for x in probabilities]
         labels = [x["label"] for x in examples]
         groups = [x["project_code"] for x in examples]
