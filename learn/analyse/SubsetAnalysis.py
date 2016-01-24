@@ -49,7 +49,9 @@ class SubsetAnalysis(Analysis):
         for tag in sorted(resultsByTag.keys()):
             keep = True
             for project in resultsByTag[tag]:
-                if resultsByTag[tag][project].get("auc", -1) <= baselines.get(project, {}).get("auc", -1):
+                if resultsByTag[tag][project]["auc"] == None:
+                    continue
+                if resultsByTag[tag][project]["auc"] <= baselines.get(project, {}).get("auc", -1):
                     keep = False
                     break
             if keep:
@@ -63,7 +65,7 @@ class SubsetAnalysis(Analysis):
             project = result["project"]
             row["project"] = project
             row["auc"] = result["auc"]
-            row["single"] = baselines[project]["auc"]
+            row["single"] = baselines.get(project, {}).get("auc")
             row["delta"] = row["auc"] - row["single"] if (row["auc"] != None and row["single"] != None) else None
             row["ratio"] = self.getRatio(result)
             row["combination"] = result["tag"]
