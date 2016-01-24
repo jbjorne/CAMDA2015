@@ -2,6 +2,7 @@ import sys, os
 from learn.HiddenSet import HiddenSet
 from utils.common import getOptions
 from _collections import defaultdict
+from collections import OrderedDict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sqlite3
 import math
@@ -69,6 +70,8 @@ class Experiment(object):
         #self.examples = None
         self.meta = None
         #self.unique = None
+        self.baseClassVars = None
+        self.baseClassVars = set(vars(self).keys())
     
 #     def generateOrNot(self, example, verbose=True):
 #         if not self.includeHiddenSet and example["hidden"] < self.hiddenCutoff:
@@ -165,10 +168,25 @@ class Experiment(object):
             assert "label" not in example
             example["label"] = self.getClassId(self.getLabel(example))
     
+    def _getChildVars(self):
+        members = vars(self)
+        names = sorted(members.keys())
+        childVars = OrderedDict()
+        for name in names:
+            if name not in self.baseClassVars:
+                childVars[name] = members[name]
+        return childVars
+    
     def buildExamples(self, metaDataFileName=None, exampleWriter=None):
         print "Experiment:", self.__class__.__name__
         self.meta = Meta(metaDataFileName, clear=True)
-        self.meta.insert("experiment", {"name":self.__class__.__name__, "query":self.query, "time":time.strftime("%c"), "dbFile":self.databasePath, "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
+        childVars = self._getChildVars()
+        self.meta.insert("experiment", {"name":self.__class__.__name__, 
+                                        "query":self.query,
+                                        "vars":";".join([x+"="+str(childVars[x]) for x in childVars]),
+                                        "time":time.strftime("%c"), 
+                                        "dbFile":self.databasePath, 
+                                        "dbModified":time.strftime("%c", time.localtime(os.path.getmtime(self.databasePath)))})
         self.meta.flush()
         self.meta.initCache("feature", 100000)
         # Initialize examples

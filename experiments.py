@@ -229,6 +229,7 @@ class Survival(Experiment):
     def __init__(self, days=5*365, maxAge=60):
         super(Survival, self).__init__()
         self.days = days
+        self.maxAge = maxAge
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
             specimen.project_code,specimen_type,donor_vital_status,
@@ -244,7 +245,7 @@ class Survival(Experiment):
             ((donor_vital_status == 'deceased' AND (time_survival > 0 OR time_followup > 0))
             OR
             (time_survival > {DAYS} OR time_followup > {DAYS}))
-            """.replace("{DAYS}", str(self.days)).replace("{AGE}", str(maxAge))
+            """.replace("{DAYS}", str(self.days)).replace("{AGE}", str(self.maxAge))
     
     def getLabel(self, example):
         days = max(example["time_survival"], example["time_followup"])
