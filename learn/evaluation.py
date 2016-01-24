@@ -1,5 +1,12 @@
 from sklearn.metrics.scorer import SCORERS, make_scorer
 def getMajorityPredictions(labels, groups=None):
+    majorityLabel = getMajorityClasses(labels, groups)
+    return [majorityLabel[group] for group in groups]
+
+def getMajorityPredictionsPredefined(groups, majorityLabel):
+    return [majorityLabel[group] for group in groups]
+
+def getMajorityClasses(labels, groups=None):
     counts = {}
     # Count labels by group
     if groups == None:
@@ -16,8 +23,7 @@ def getMajorityPredictions(labels, groups=None):
     majorityLabel = {}
     for groupKey in counts:
         majorityLabel[groupKey] = max(counts[groupKey], key=counts[groupKey].get)
-    # Make predictions
-    return [majorityLabel[group] for group in groups]
+    return majorityLabel
 
 def majorityBaseline(labels, groups=None, metric=None):
     if metric == None:

@@ -1,5 +1,6 @@
 from learn.analyse.Analysis import Analysis
-from learn.evaluation import getMajorityPredictions
+from learn.evaluation import getMajorityPredictions, getMajorityClasses,\
+    getMajorityPredictionsPredefined
 import matplotlib.pyplot as plt
 import os
 from utils.common import getOptions
@@ -21,6 +22,12 @@ class SurvivalAnalysis(Analysis):
         F, P, R, threshold = optimalFThreshold(probabilities, labels)
         print "optimal values: F:%f, P:%f, R:%f, threshold:%f" %(F,P,R,threshold)
         return threshold
+    
+    def getMajority(self, meta):
+        examples, probabilities = self.getSet(meta, "train")
+        labels = [x["label"] for x in examples]
+        groups = [x["project_code"] for x in examples]
+        return getMajorityClasses(labels, groups)
     
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
@@ -48,7 +55,9 @@ class SurvivalAnalysis(Analysis):
         predictions = [(-1 if x < threshold else 1) for x in probabilities]
         labels = [x["label"] for x in examples]
         groups = [x["project_code"] for x in examples]
-        majorityPredictions = getMajorityPredictions(labels, groups)
+        
+        majorityClasses = self.getMajority(meta)
+        majorityPredictions = getMajorityPredictionsPredefined(groups, majorityClasses)
         
         datasets = {"label":{1:[], -1:[]}, "majority":{1:[], -1:[]}, "classified":{1:[], -1:[]}}
         for results, category in zip((labels, majorityPredictions, predictions), ("label", "majority", "classified")):
