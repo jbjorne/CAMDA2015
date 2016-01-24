@@ -36,6 +36,8 @@ class SurvivalAnalysis(Analysis):
         self._visualize(datasets, days, os.path.join(inDir, "survival.pdf"))
     
     def _visualize(self, datasets, cutoff, outPath):
+        colors = {1:"blue", -1:"red"}
+        styles = {"classified":"-", "label":":", "majority":"--"}
         for category in datasets:
             for cls in (1, -1):
                 donors = datasets[category][cls]
@@ -52,9 +54,10 @@ class SurvivalAnalysis(Analysis):
                             alive += 1
                     y.append(alive / numDonors)
                 #print category, cls, x, y
-                plt.step(x, y, where='post', label=category[0] + ":" + str(cls))
+                plt.step(x, y, where='post', label=category[0] + ":" + str(cls), color=colors[cls], linestyle=styles[category])
         axes = plt.gca()
         axes.set_xlim([0, cutoff])
+        axes.set_ylim([0, 1.01])
         plt.ylabel("Live donors")
         plt.xlabel("Days")
         plt.legend()
