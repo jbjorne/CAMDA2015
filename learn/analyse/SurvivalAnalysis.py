@@ -29,10 +29,19 @@ class SurvivalAnalysis(Analysis):
         experimentVars = getOptions(experiment["vars"])
         assert "days" in experimentVars
         days = experimentVars["days"]
+        self.analyseSet(inDir, meta, "train", days, False)
+        self.analyseSet(inDir, meta, "train", days, True)
+        if hidden:
+            self.analyseSet(inDir, meta, "hidden", days, False)
+            self.analyseSet(inDir, meta, "hidden", days, True)
+    
+    def analyseSet(self, inDir, meta, setName, days, useThresholding=False):
+        print "Analysing", setName, useThresholding
+        threshold = 0   
+        if useThresholding:
+            threshold = self.getThreshold(meta)
         
-        threshold = self.getThreshold(meta)
-        
-        targetSet = "hidden" if hidden else "train"
+        targetSet = "hidden" if setName else "train"
         examples, probabilities = self.getSet(meta, targetSet)
         predictions = [(-1 if x < threshold else 1) for x in probabilities]
         labels = [x["label"] for x in examples]
@@ -46,8 +55,15 @@ class SurvivalAnalysis(Analysis):
                 cls = 1 if result > 0 else -1
                 datasets[category][cls].append(example)
             print category, len(datasets[category][1]), len(datasets[category][-1])
-        
-        self._visualize(datasets, days, os.path.join(inDir, "survival.pdf"))
+
+        self._visualize(datasets, days, self._getOutFileName(inDir, setName, useThresholding))
+    
+    def _getOutFileName(self, inDir, setName, useThresholding):
+        filename = "survival-" + setName
+        if useThresholding:
+            filename += "-threshold"
+        filename += ".pdf"
+        return os.path.join(inDir, filename)
     
     def _visualize(self, datasets, cutoff, outPath):
         colors = {1:"blue", -1:"red"}
@@ -77,3 +93,4 @@ class SurvivalAnalysis(Analysis):
         plt.legend()
         if outPath != None:
             plt.savefig(outPath)
+        plt.close()
