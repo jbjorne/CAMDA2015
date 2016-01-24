@@ -24,6 +24,9 @@ class SurvivalAnalysis(Analysis):
     
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
+        for filename in os.listdir(inDir):
+            if filename.startswith("survival-") and filename.endswith(".pdf"):
+                os.remove(os.path.join(inDir, filename))
         
         experiment = [x for x in meta.db["experiment"].all()][0]
         experimentVars = getOptions(experiment["vars"])
