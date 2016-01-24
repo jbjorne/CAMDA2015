@@ -1,5 +1,6 @@
 from learn.analyse.Analysis import Analysis
 from learn.evaluation import getMajorityPredictions
+import matplotlib.pyplot as plt
 
 class SurvivalAnalysis(Analysis): 
     def __init__(self, dataPath=None):
@@ -21,4 +22,22 @@ class SurvivalAnalysis(Analysis):
             for result, example in zip(results, examples):
                 cls = 1 if result > 0 else -1
                 datasets[category][cls].append(example)
-        
+    
+    def _visualize(self, datasets, outPath):
+        for category in datasets:
+            for cls in (1, -1):
+                donors = datasets[category][cls]
+                if len(donors) < 1:
+                    continue
+                maxTime = max([x["time_survival"] for x in donors])
+                x = [0] + sorted([x["time_survival"] for x in donors if x["time_survival"] <= maxTime])
+                y = []
+                for point in x:
+                    alive = 0
+                    for donor in donors:
+                        if donor["time_survival"] > point:
+                            alive += 1
+                    y.append(alive)
+                plt.step(x, y, label=category + ":" + str(cls))
+        if outPath != None:
+            plt.savefig(outPath)
