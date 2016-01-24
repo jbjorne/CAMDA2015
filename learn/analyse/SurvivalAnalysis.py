@@ -9,7 +9,8 @@ class SurvivalAnalysis(Analysis):
     def analyse(self, inDir, fileStem=None, hidden=False):
         meta = self._getMeta(inDir, fileStem)
         #meta.drop("survival")
-        examples = [x for x in meta.db["example"].all()]
+        targetSet = "hidden" if hidden else "train"
+        examples = [x for x in meta.db["example"].all() if x["setName"] == targetSet]
         probabilities = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
         predictions = [(-1 if x < 0 else 1) for x in probabilities]
         labels = [x["label"] for x in examples]
@@ -29,15 +30,17 @@ class SurvivalAnalysis(Analysis):
                 donors = datasets[category][cls]
                 if len(donors) < 1:
                     continue
-                maxTime = max([x["time_survival"] for x in donors])
-                x = [0] + sorted([x["time_survival"] for x in donors if x["time_survival"] <= maxTime])
+                #maxTime = max([x["time_survival"] for x in donors])
+                x = [0] + sorted([x["time_survival"] for x in donors if x["time_survival"] != None])
                 y = []
                 for point in x:
                     alive = 0
                     for donor in donors:
-                        if donor["time_survival"] > point:
+                        if donor["time_survival"] == None or donor["time_survival"] > point:
                             alive += 1
                     y.append(alive)
                 plt.step(x, y, label=category + ":" + str(cls))
+        plt.ylabel("Live donors")
+        plt.xlabel("Days")
         if outPath != None:
             plt.savefig(outPath)
