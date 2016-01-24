@@ -8,6 +8,7 @@ class SubsetClassification(Classification):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
         super(SubsetClassification, self).__init__(classifierName, classifierArgs, numFolds, parallel, metric, getCV, preDispatch, classifyHidden)
         self.analysis = None
+        self.resultCutoff = 0.6
     
     def _getTag(self, projects):
         return ",".join(sorted(projects))
@@ -68,23 +69,30 @@ class SubsetClassification(Classification):
             else:
                 print "Skipping seen combination", tag
             results = self.getCombinationResults(extended)
-            lowerPerformance = None
             allAreNone = True
+            lowerPerformance = None
+            belowCutoff = None
             for key in results:
                 if key == "all projects":
                     continue
                 if results[key] != None:
                     allAreNone = False
-                if results[key] != None and results[key] < prevResults.get(key, -1):
-                    lowerPerformance = key
-                    break
+                    if results[key] < prevResults.get(key, -1):
+                        lowerPerformance = key
+                        break
+                    if results[key] < self.resultCutoff:
+                        belowCutoff = key
+                        break
             # Report the status
+            statusString = tag, results, "/", prevResults
             if allAreNone:
-                print "No results for any projects in combination", tag, results, "/", prevResults
+                print "No results for any projects in combination", statusString
+            elif belowCutoff:
+                print "Project", belowCutoff, "is below the cutoff", self.resultCutoff, "in combination", statusString
             elif lowerPerformance:
-                print "Lower performance for project", lowerPerformance, "in combination", tag, results, "/", prevResults
+                print "Lower performance for project", lowerPerformance, "in combination", statusString
             else:
-                print "Better performance for all projects in combination", tag, results, "/", prevResults
+                print "Better performance for all projects in combination", statusString
             # Continue if needed
-            if not (allAreNone or lowerPerformance):
+            if not (allAreNone or lowerPerformance != None or belowCutoff != None):
                 self.classifyGrow(extended, allProjects, results, seenTags)
