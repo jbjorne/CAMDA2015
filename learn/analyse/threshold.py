@@ -2,6 +2,12 @@ import sys
 
 #Utility functions
 
+def balancedThreshold(predictions, correct):
+    F, P, R, threshold = optimalFThreshold(predictions, correct)
+    F, P, R, threshold2 = optimalFThreshold([-x for x in predictions], [-x for x in correct])
+    threshold2 = -threshold2
+    return F, P, R, 0.5 * (threshold + threshold2)
+    
 def optimalFThreshold(predictions, correct):
     """Seeks the optimal threshold in terms of F-score for dividing
     the positive and negative classes"""

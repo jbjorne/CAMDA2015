@@ -8,7 +8,7 @@ class SubsetClassification(Classification):
     def __init__(self, classifierName, classifierArgs, numFolds=10, parallel=1, metric='roc_auc', getCV=None, preDispatch='2*n_jobs', classifyHidden=False):
         super(SubsetClassification, self).__init__(classifierName, classifierArgs, numFolds, parallel, metric, getCV, preDispatch, classifyHidden)
         self.analysis = None
-        self.resultCutoff = 0.5 #0.6
+        self.resultCutoff = 0.5
     
     def _getTag(self, projects):
         return ",".join(sorted(projects))

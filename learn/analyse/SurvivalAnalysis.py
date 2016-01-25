@@ -1,17 +1,24 @@
 from learn.analyse.Analysis import Analysis
 from learn.evaluation import getMajorityPredictions, getMajorityClasses,\
-    getMajorityPredictionsPredefined, statistics
+    getMajorityPredictionsPredefined, statistics, listwisePerformance
 import matplotlib.pyplot as plt
 import os
 from utils.common import getOptions
-from learn.analyse.threshold import optimalFThreshold
+from learn.analyse.threshold import optimalFThreshold, balancedThreshold
 
 class SurvivalAnalysis(Analysis): 
     def __init__(self, dataPath=None):
         super(SurvivalAnalysis, self).__init__(dataPath=dataPath)
+        self.days = None
+        self.examples = None
     
     def getSet(self, meta, setName):
-        examples = [x for x in meta.db["example"].all() if x["set"] == setName]
+        if self.examples == None:
+            self.examples = [x for x in meta.db["example"].all()]
+            numExamples = len(self.examples)
+            self.examples = [x for x in self.examples if (x["donor_vital_status"] == "deceased" or x["time_survival"] > self.days or x["time_followup"] > self.days)]
+            print "Right censored", numExamples - len(self.examples), "examples"
+        examples = [x for x in self.examples if x["set"] == setName]
         probabilitiesDict = {x["example"]:x["predicted"] for x in meta.db["prediction"].all()}
         probabilities = [probabilitiesDict[x["id"]] for x in examples]
         return examples, probabilities
@@ -37,15 +44,16 @@ class SurvivalAnalysis(Analysis):
         
         experiment = [x for x in meta.db["experiment"].all()][0]
         experimentVars = getOptions(experiment["vars"])
-        assert "days" in experimentVars
-        days = experimentVars["days"]
-        self.analyseSet(inDir, meta, "train", days, False)
-        self.analyseSet(inDir, meta, "train", days, True)
+        self.days = 5 * 365
+        if "days" in experimentVars:
+            self.days = experimentVars["days"]
+        self.analyseSet(inDir, meta, "train", False)
+        self.analyseSet(inDir, meta, "train", True)
         if hidden:
-            self.analyseSet(inDir, meta, "hidden", days, False)
-            self.analyseSet(inDir, meta, "hidden", days, True)
+            self.analyseSet(inDir, meta, "hidden", False)
+            self.analyseSet(inDir, meta, "hidden", True)
     
-    def analyseSet(self, inDir, meta, setName, days, useThresholding=False):
+    def analyseSet(self, inDir, meta, setName, useThresholding=False):
         print "Analysing", setName, useThresholding
         threshold = 0   
         if useThresholding:
@@ -66,8 +74,9 @@ class SurvivalAnalysis(Analysis):
                 cls = 1 if result > 0 else -1
                 datasets[category][cls].append(example)
             print category, (len(datasets[category][1]), len(datasets[category][-1])), statistics(labels, results)
-
-        self._visualize(datasets, days, self._getOutFileName(inDir, setName, useThresholding))
+            print listwisePerformance(labels, results)
+            
+        self._visualize(datasets, self.days, self._getOutFileName(inDir, setName, useThresholding))
     
     def _getOutFileName(self, inDir, setName, useThresholding):
         filename = "survival-" + setName
@@ -86,7 +95,7 @@ class SurvivalAnalysis(Analysis):
                     continue
                 numDonors = float(len(donors))
                 #maxTime = max([x["time_survival"] for x in donors])
-                x = [0] + sorted([x["time_survival"] for x in donors if x["time_survival"] > 0])
+                x = range(0, cutoff)#[0] + sorted([x["time_survival"] for x in donors if x["time_survival"] > 0])
                 y = []
                 for point in x:
                     alive = 0
@@ -101,7 +110,7 @@ class SurvivalAnalysis(Analysis):
         axes.set_ylim([0, 1.01])
         plt.ylabel("Live donors")
         plt.xlabel("Days")
-        plt.legend()
+        plt.legend(loc='lower left')
         if outPath != None:
             plt.savefig(outPath)
         plt.close()

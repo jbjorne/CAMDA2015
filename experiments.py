@@ -82,6 +82,12 @@ class SSMAminoAcid(FeatureGroup):
     def buildFeatures(self, row):
         return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
 
+# class MIRNA(FeatureGroup):
+#     def __init__(self):
+#         super(SSMAminoAcid, self).__init__("SSM", "SELECT KEYS FROM ssm WHERE icgc_specimen_id=?", ["normalized_read_count", "chromosome_start"], required=False)
+#     def buildFeatures(self, row):
+#         return [("AA", ''.join([x for x in (row["aa_mutation"] if row["aa_mutation"] else "-") if not x.isdigit()]))], None
+
 class Mutation(FeatureGroup):
     def __init__(self):
         super(Mutation, self).__init__("MUT")
@@ -219,7 +225,9 @@ CNSM_CHROMOSOME_COUNT_V20 = FeatureGroup("CNSM", "SELECT DISTINCT KEYS FROM cnsm
 PROJECT = FeatureGroup("PROJECT", None, ["project_code"])
 AGE = Age()
 
-MIRNA = FeatureGroup("MIRNA", "SELECT DISTINCT KEYS FROM mirna_seq WHERE icgc_specimen_id=?", ["normalized_read_count", "chromosome"])
+MIRNA = FeatureGroup("MIRNA", "SELECT DISTINCT normalized_read_count,chromosome_start/10000 as pos FROM mirna_seq WHERE icgc_specimen_id=?", ["pos"], "normalized_read_count")
+#MIRNA = FeatureGroup("MIRNA", "SELECT DISTINCT KEYS FROM mirna_seq WHERE icgc_specimen_id=?", ["chromosome"], "normalized_read_count")
+PEXP = FeatureGroup("PEXP", "SELECT DISTINCT KEYS FROM pexp WHERE icgc_specimen_id=?", ["antibody_id"], "normalized_expression_level")
 
 ###############################################################################
 # Experiments
@@ -277,7 +285,9 @@ class Remission(Experiment):
         super(Remission, self).__init__()
         self.query = """
             SELECT specimen.icgc_donor_id,specimen.icgc_specimen_id,
-            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis
+            specimen.project_code,specimen_type,donor_vital_status,disease_status_last_followup,donor_age_at_diagnosis,
+            CAST(IFNULL(donor_survival_time, 0) as int) as time_survival,
+            CAST(IFNULL(donor_interval_of_last_followup, 0) as int) as time_followup
             FROM donor INNER JOIN specimen
             ON specimen.icgc_donor_id = donor.icgc_donor_id 
             WHERE

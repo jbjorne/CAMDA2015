@@ -210,7 +210,6 @@ class Experiment(object):
                 continue
 #             if "balanced" in example and not example["balanced"]:
 #                 print "Unbalanced", example["icgc_donor_id"], "from set", example["set"], "skipped"
-            setCounts[example["set"]] += 1
 
             print "Processing example", example
             #classId = self.getClassId(self.getLabel(example))
@@ -229,6 +228,7 @@ class Experiment(object):
             #self.meta.insert("example", self.getExampleMeta(example, classId, features))
             self.meta.insert("example", dict(example, id=numBuilt, features=len(features)))
             exampleWriter.writeExample(example["label"], features)
+            setCounts[example["set"]] += 1
             numBuilt += 1
         
         for classId in self.classIds:
