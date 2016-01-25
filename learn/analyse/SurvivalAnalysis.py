@@ -85,6 +85,18 @@ class SurvivalAnalysis(Analysis):
         filename += ".pdf"
         return os.path.join(inDir, filename)
     
+    def _drawCurve(self, donors, cutoff, label, color, style):
+        numDonors = float(len(donors))
+        x = range(0, cutoff)
+        y = []
+        for point in x:
+            alive = 0
+            for donor in donors:
+                if donor["time_survival"] == 0 or donor["time_survival"] > point:
+                    alive += 1
+            y.append(alive / numDonors)
+        plt.step(x, y, where='post', label=label, color=color, linestyle=style) 
+    
     def _visualize(self, datasets, cutoff, outPath):
         colors = {1:"blue", -1:"red"}
         styles = {"classified":"-", "label":":", "majority":"--"}
@@ -93,18 +105,9 @@ class SurvivalAnalysis(Analysis):
                 donors = datasets[category][cls]
                 if len(donors) < 1:
                     continue
-                numDonors = float(len(donors))
-                #maxTime = max([x["time_survival"] for x in donors])
-                x = range(0, cutoff)#[0] + sorted([x["time_survival"] for x in donors if x["time_survival"] > 0])
-                y = []
-                for point in x:
-                    alive = 0
-                    for donor in donors:
-                        if donor["time_survival"] == 0 or donor["time_survival"] > point:
-                            alive += 1
-                    y.append(alive / numDonors)
-                #print category, cls, x, y
-                plt.step(x, y, where='post', label=category[0] + ":" + str(cls), color=colors[cls], linestyle=styles[category])
+                self._drawCurve(donors, cutoff, category[0] + ("+" if cls > 0 else "-") + " (" + str(len(donors)) + ")", colors[cls], styles[category])
+        allDonors = datasets["label"][1] + datasets["label"][-1]
+        self._drawCurve(allDonors, cutoff, "all (" + str(len(allDonors)) + ")", "magenta", ":")
         axes = plt.gca()
         axes.set_xlim([0, cutoff])
         axes.set_ylim([0, 1.01])
