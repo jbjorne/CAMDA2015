@@ -2,7 +2,7 @@ import sys, os
 import json
 import gzip
 import csv
-from test import getProjectFiles, basicDataTypes
+from database.download import getProjectFiles, basicDataTypes
 import dataset
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import utils.Stream as Stream
