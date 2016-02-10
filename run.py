@@ -7,9 +7,9 @@ import src.utils.Stream as Stream
 from src.utils.common import splitOptions, getOptions
 from src.analyse import mapping
 
-DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
-mapping.DATA_PATH = DATA_PATH
-DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
+# DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
+# mapping.DATA_PATH = DATA_PATH
+# DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
 def getFeatureGroups(names, dummy=False):
     global DATA_PATH
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Run University of Turku experiments for CAMDA 2015')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
-    #parser.add_argument('-d', "--debug", default=False, action="store_true", dest="debug")
+    parser.add_argument('-d', "--dataPath", default=os.path.expanduser("~/CAMDA2015-data/"), help='Data files path')
     parser.add_argument('-a', "--action", default="build,classify,analyse", dest="action")
     groupE = parser.add_argument_group('build', 'Example Generation')
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     groupE.add_argument('-f', '--features', help='Feature groups (comma-separated list)', default=None)
     groupE.add_argument('-d', '--dummy', help='Feature groups used only for filtering (comma-separated list)', default=None)
     groupE.add_argument('-p', '--projects', help='Projects used in example generation', default=None)
-    groupE.add_argument('-b', '--icgcDB', default=DB_PATH, dest="icgcDB")
+    groupE.add_argument('-b', '--icgcDB', default=None, dest="icgcDB", help="Optional path for the ICGC database")
     groupE.add_argument('-x', '--extra', default=None)
     groupC = parser.add_argument_group('classify', 'Example Classification')
     groupC.add_argument('-s', '--classification', help='', default="Classification")
@@ -51,7 +51,9 @@ if __name__ == "__main__":
     options = parser.parse_args()
     
     actions = splitOptions(options.action, ["build", "classify", "analyse"])
-    
+    if options.icgcDB == None:
+        options.icgcDB = options.join(options.dataPath, "ICGC-20.sqlite")
+    mapping.DATA_PATH = options.dataPath
     Stream.openLog(os.path.join(options.output, "log.txt"), clear = "build" in actions)
     print "Options:", options.__dict__
     

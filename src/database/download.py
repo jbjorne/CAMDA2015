@@ -65,7 +65,7 @@ def downloadProjects(downloadDir, skipTypes, includeProjects=None, clear=False):
     for project in projects:
         count += 1
         print "Processing project",  project["id"], "(" + str(count) + "/" + str(len(projects)) + ")"
-        if includeProjects != None and project not in includeProjects:
+        if includeProjects != None and project["id"] not in includeProjects:
             print "Skipped project", project["id"]
             continue
         projectFiles = getProjectFiles(project)

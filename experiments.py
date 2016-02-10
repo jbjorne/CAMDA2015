@@ -234,7 +234,7 @@ PEXP = FeatureGroup("PEXP", "SELECT DISTINCT KEYS FROM pexp WHERE icgc_specimen_
 ###############################################################################
 
 class Survival(Experiment):
-    def __init__(self, days=5*365, maxAge=60):
+    def __init__(self, days=5*365, maxAge=70):
         super(Survival, self).__init__()
         self.days = days
         self.maxAge = maxAge

@@ -36,7 +36,7 @@ class SurvivalAnalysis(Analysis):
         groups = [x["project_code"] for x in examples]
         return getMajorityClasses(labels, groups)
     
-    def analyse(self, inDir, fileStem=None, hidden=False):
+    def analyse(self, inDir, fileStem=None, hidden=False, useThresholding=False):
         meta = self._getMeta(inDir, fileStem)
         for filename in os.listdir(inDir):
             if filename.startswith("survival-") and filename.endswith(".pdf"):
@@ -48,10 +48,12 @@ class SurvivalAnalysis(Analysis):
         if "days" in experimentVars:
             self.days = experimentVars["days"]
         self.analyseSet(inDir, meta, "train", False)
-        self.analyseSet(inDir, meta, "train", True)
+        if useThresholding:
+            self.analyseSet(inDir, meta, "train", True)
         if hidden:
             self.analyseSet(inDir, meta, "hidden", False)
-            self.analyseSet(inDir, meta, "hidden", True)
+            if useThresholding:
+                self.analyseSet(inDir, meta, "hidden", True)
     
     def analyseSet(self, inDir, meta, setName, useThresholding=False):
         print "Analysing", setName, useThresholding

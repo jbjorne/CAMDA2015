@@ -6,7 +6,7 @@ from src.utils.common import splitOptions
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='')
+    parser = argparse.ArgumentParser(description='Download ICGC release 20 and store it in an SQLite database')
     parser.add_argument('-o', '--output', help='Output directory', default=None)
     parser.add_argument('-a', "--action", default="download,build", dest="action")
     parser.add_argument('-s','--skipTypes', default="meth_array,meth_seq", help="Do not download or import these dataTypes")
@@ -36,4 +36,4 @@ if __name__ == "__main__":
         print "======================================================"
         print "Building ICGC database"
         print "======================================================"
-        importProjects(options.download, options.output, skipTypes, limitTypes, options.batchSize)
+        importProjects(options.download, os.path.join(options.output, "ICGC-20.sqlite"), skipTypes, limitTypes, options.batchSize)
