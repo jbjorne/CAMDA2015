@@ -1,6 +1,4 @@
-import sys, os
 from numpy import array
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.pymersennetwister.mtwister import MTwister
 
 def splitArray(array, setNames):
