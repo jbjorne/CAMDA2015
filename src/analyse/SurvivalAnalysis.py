@@ -3,7 +3,7 @@ from src.evaluation import getMajorityPredictions, getMajorityClasses,\
     getMajorityPredictionsPredefined, statistics, listwisePerformance
 import matplotlib.pyplot as plt
 import os
-from utils.common import getOptions
+from src.utils.common import getOptions
 from src.analyse.threshold import optimalFThreshold, balancedThreshold
 
 class SurvivalAnalysis(Analysis): 

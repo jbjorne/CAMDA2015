@@ -3,8 +3,8 @@ import inspect
 from experiments import *
 from src.Classification import Classification
 from src.SubsetClassification import SubsetClassification
-import utils.Stream as Stream
-from utils.common import splitOptions, getOptions
+import src.utils.Stream as Stream
+from src.utils.common import splitOptions, getOptions
 from src.analyse import mapping
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
