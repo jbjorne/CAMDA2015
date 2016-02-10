@@ -1,5 +1,5 @@
 import sys, os
-from learn.analyse.Analysis import Analysis
+from src.analyse.Analysis import Analysis
 from collections import OrderedDict
 
 class SubsetAnalysis(Analysis): 

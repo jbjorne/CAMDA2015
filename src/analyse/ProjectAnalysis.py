@@ -1,9 +1,9 @@
 import os
-from learn.analyse.Analysis import Analysis
+from src.analyse.Analysis import Analysis
 from collections import OrderedDict
-from learn.evaluation import majorityBaseline, aucForPredictions,\
+from src.evaluation import majorityBaseline, aucForPredictions,\
     getMajorityPredictions
-from learn.skext.metrics import balanced_accuracy_score
+from src.skext.metrics import balanced_accuracy_score
 from sklearn.metrics.classification import accuracy_score
 
 class ProjectAnalysis(Analysis): 

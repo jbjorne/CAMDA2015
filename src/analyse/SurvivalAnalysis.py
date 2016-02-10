@@ -1,10 +1,10 @@
-from learn.analyse.Analysis import Analysis
-from learn.evaluation import getMajorityPredictions, getMajorityClasses,\
+from src.analyse.Analysis import Analysis
+from src.evaluation import getMajorityPredictions, getMajorityClasses,\
     getMajorityPredictionsPredefined, statistics, listwisePerformance
 import matplotlib.pyplot as plt
 import os
 from utils.common import getOptions
-from learn.analyse.threshold import optimalFThreshold, balancedThreshold
+from src.analyse.threshold import optimalFThreshold, balancedThreshold
 
 class SurvivalAnalysis(Analysis): 
     def __init__(self, dataPath=None):

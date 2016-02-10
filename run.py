@@ -1,11 +1,11 @@
 import os
 import inspect
 from experiments import *
-from learn.Classification import Classification
-from learn.SubsetClassification import SubsetClassification
+from src.Classification import Classification
+from src.SubsetClassification import SubsetClassification
 import utils.Stream as Stream
 from utils.common import splitOptions, getOptions
-from learn.analyse import mapping
+from src.analyse import mapping
 
 DATA_PATH = os.path.expanduser("~/data/CAMDA2015-data-local/")
 mapping.DATA_PATH = DATA_PATH
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             print "======================================================"
             print "Analysing", analysisName
             print "======================================================"
-            exec "from learn.analyse." + analysisName + " import " + analysisName
+            exec "from src.analyse." + analysisName + " import " + analysisName
             analysisClass = eval(analysisName)
             analysisObj = analysisClass(dataPath=DATA_PATH)
             analysisObj.analyse(options.output, hidden=options.hidden)

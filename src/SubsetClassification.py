@@ -1,5 +1,5 @@
 import sys, os
-from learn.analyse.ProjectAnalysis import ProjectAnalysis
+from src.analyse.ProjectAnalysis import ProjectAnalysis
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Classification import Classification
 import traceback

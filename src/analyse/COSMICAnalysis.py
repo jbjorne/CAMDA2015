@@ -1,5 +1,5 @@
 import os
-from learn.analyse.Analysis import Analysis
+from src.analyse.Analysis import Analysis
 import csv
 import matplotlib.pyplot as plt
 

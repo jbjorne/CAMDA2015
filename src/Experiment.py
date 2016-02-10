@@ -1,5 +1,5 @@
 import sys, os
-from learn.HiddenSet import HiddenSet
+from src.HiddenSet import HiddenSet
 from utils.common import getOptions
 from _collections import defaultdict
 from collections import OrderedDict
