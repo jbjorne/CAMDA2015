@@ -2,10 +2,9 @@ import sys, os
 import json
 import gzip
 import csv
-from database.download import getProjectFiles, basicDataTypes
+from download import getProjectFiles, basicDataTypes
 import dataset
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import utils.Stream as Stream
 import time
 
 COLUMNS = {
@@ -154,7 +153,6 @@ if __name__ == "__main__":
     parser.add_argument('-b','--batchSize', type=int, default=200000, help="SQL insert rows")
     options = parser.parse_args()
     
-    Stream.openLog(options.output + ".log.txt", clear = True)
     importProjects(options.input, 
                    options.output, 
                    options.skipTypes.split(",") if options.skipTypes else None, 
