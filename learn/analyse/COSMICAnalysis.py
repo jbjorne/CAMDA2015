@@ -50,13 +50,20 @@ class COSMICAnalysis(Analysis):
             featureId = feature["id"]
             if feature["id"] not in weights:
                 continue
-            featureType, geneId, mutationType = feature["name"].split(":")
-            geneName = self.mapping.get(geneId, "")
+            splits = feature["name"].split(":")
+            if len(splits) == 3:
+                featureType, geneId, mutationType = feature["name"].split(":")
+            else:
+                expSeqTag, geneId = feature["name"].split(":")
+                mutationType = None
+            geneName = geneId
+            if geneId.startswith("ENSG"):
+                geneName = self.mapping.get(geneId, "")
             hit = self.cosmic.get(geneName)
-            row = {"id":featureId, "weight":weights[featureId], "set":exampleSet, "hit":None, "name":None, "entrez":None}
+            row = {"id":featureId, "gene_name":geneName, "gene_id":geneId, "weight":weights[featureId], "set":exampleSet, "mutation":mutationType, "hit":None, "description":None, "entrez":None}
             if hit:
                 hitCount += 1
-                row.update({"hit":hit["Gene Symbol"], "name":hit["Name"], "entrez":hit["Entrez GeneId"]})
+                row.update({"hit":hit["Gene Symbol"], "description":hit["Name"], "entrez":hit["Entrez GeneId"]})
             rows.append(row)
         print "Ranking features"
         rows = sorted(rows, key=lambda k: k['weight'], reverse=True)
