@@ -3,6 +3,31 @@ University of Turku in the CAMDA 2015 Challenge
 
 This code implements the experiments of the University of Turku IT Department for the [CAMDA 2015 Challenge](http://camda2015.bioinf.jku.at). The program concerns analysis of the ICGC cancer dataset using various machine learning methods. The data processing and experiment pipeline code builds on our work for the 2014 CAMDA challenge.
 
+Dependencies
+----------------------------------------
+The dependencies are listed in `requirements.txt`. Except for scikit-learn, other versions of the libraries may also work.
+
+Building the Database
+----------------------------------------
+All of the experiments rely on an SQLite database constructed from the ICGC data, so the database needs to be build first. The database can also be used for other applications without any need for the rest of the programs.
+
+To build the database, run `python buildDB.py -o OUTPUT_DIR`, where OUTPUT_DIR is the name of the directory in which to download the ICGC files and build the database. The buildDB.py program will both download the ICGC files and build the database. To construct a database from already downloaded files please use the command line option `--action` or `--a`. The other options can be used to limit download and database import to a subset of the ICGC projects and data types. By default, methylation data will not be downloaded.
+
+> NOTE: Downloading the ICGC release files will require about 12,2 Gb of disk space, and constructing the database will require an additional 56 Gb so please make sure you 
+have enough free space before starting.
+
+Other data files
+----------------------------------------
+Once you have the ICGC database built, you can run most of the experiments. The only exception is the analysis of ranked features with the COSMIC database. If you wish to perform this analysis, you will need the COSMIC cancer census file `cancer_gene_census.csv` which you will need to get from the COSMIC website at `http://cancer.sanger.ac.uk/census/` (the COSMIC license does not allow redistribution of this file). Pl
+
+The Experiment Programs
+----------------------------------------
+All experiments can be run using the program `run.py`. The experimental code uses a three-step system. One or more of these actions can be performed using the command line option `--action` or `--a`.
+
+###Generating examples for machine learning
+Examples are generated using the `build` action. A class is derived from src.Experiment to define the rules and limits for example generation. Classes for the experiments described in the paper are defined in the file `experiments.py`.
+
+
 Using the code
 ----------------------------------------
 1. Install [Scikit-learn](http://scikit-learn.org/). Everything has been developed for version 0.16.1. Other versions may or may not work.
