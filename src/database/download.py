@@ -48,13 +48,15 @@ def getProjectFiles(project):
         files.append((dataType, downloadURL))
     return files
         
-def downloadProjects(downloadDir, skipTypes, clear=False):
+def downloadProjects(downloadDir, skipTypes, includeProjects=None, clear=False):
     if clear and os.path.exists(downloadDir):
         shutil.rmtree(downloadDir)
+    if not os.path.exists(downloadDir):
+        os.makedirs(downloadDir)
     
     print "Reading ICGC project info from", projectsURL
     projects = requests.get(projectsURL)
-    projectsFilePath = os.path.join(downloadDir, "projects.json") 
+    projectsFilePath = os.path.join(downloadDir, "projects.json")
     with open(projectsFilePath, 'w') as outfile:
         json.dump(projects.json(), outfile, indent=4, sort_keys=True)
     print "Project info saved to", projectsFilePath
@@ -63,6 +65,9 @@ def downloadProjects(downloadDir, skipTypes, clear=False):
     for project in projects:
         count += 1
         print "Processing project",  project["id"], "(" + str(count) + "/" + str(len(projects)) + ")"
+        if includeProjects != None and project not in includeProjects:
+            print "Skipped project", project["id"]
+            continue
         projectFiles = getProjectFiles(project)
         for dataType, downloadURL in projectFiles:
             if dataType in skipTypes:
