@@ -7,7 +7,7 @@ Required Libraries and Data
 ---------------------------
 
 ### Dependencies
-The dependencies are listed in `requirements.txt`. Except for scikit-learn, other versions of the libraries may also work.
+The dependencies are listed in `requirements.txt`. Except for scikit-learn, other versions of the libraries may also work. The specific version 0.16.0 of scikit-learn is required for our extensions to work with it.
 
 ### Building the Database
 All of the experiments rely on an SQLite database constructed from the ICGC data, so the database needs to be build first. The database can also be used for other applications without any need for the rest of the programs.
@@ -16,7 +16,7 @@ To build the database, run `python buildDB.py -o OUTPUT_DIR`, where OUTPUT_DIR i
 
 Depending on the speed of your network connection and computer, downloading the ICGC files and building the database can be a very slow process. When using a regular desktop machine, generally around 24 hours should be reserved for the whole process. The database needs to be built only once, and after this step, running the experiments is relatively quick.
 
-> NOTE: Downloading the ICGC release files will require about 12,2 Gb of disk space, and constructing the database will require an additional 56 Gb so please make sure you 
+> NOTE: Downloading the ICGC release files will require about 12.2 Gb of disk space, and constructing the database will require an additional 56 Gb so please make sure you 
 have enough free space before starting.
 
 ### Other data files
@@ -26,13 +26,13 @@ The Experiment System
 ----------------------------------------
 All experiments can be run using the program `run.py`. The experimental code uses a three-step system. One or more of these actions can be performed using the command line option `--action` or `--a`.
 
-###Generating examples for machine learning
+### Generating examples for machine learning
 Examples are generated using the `build` action. A class is derived from src.Experiment to define the rules and limits for example generation. Classes for the experiments described in the paper are defined in the file `experiments.py`.
 
-###Classification
+### Classification
 Examples are classified using the `classify` action. A class can be derived from src.Classification to customize the overall approach for classifying the examples. For most experiments, src.Classification can be used as is. For defining the scikit-learn classifier and its parameters, the  `--classifier` and `--classifierArguments` of `run.py` can be used.
 
-###Analyses
+### Analyses
 Classified examples can be used for various analyses with the `analyse` action. Analysis classes can be derived from src.analyse.Analysis to define such analyses, and the `--analyses` options of `run.py` can be used to choose which analyses to run for the experiment. Several predefined analyses are available in the src.analyse package.
 
 Running the Experiments
@@ -43,16 +43,16 @@ With the following commands we assume the ICGC database is located at `~/CAMDA20
 
 In all the experiments, please replace `[OUTPUT]` with the name of the output directory.
 
-###Classification Performance, COSMIC and Survival analyses
+### Classification Performance, COSMIC and Survival analyses
 
 Classification performance is measured for the `Remission` task using the `ExpSeq` and `SSM_GENE_CONSEQUENCE` feature groups and for the `Survival` task using the `ExpSeq` feature group. These experiments produce the data shown in the paper Tables 1, 2 and 3. For the `Remission` experiments also the COSMIC analysis is run, shown in the paper in Table 5 and Figure 2. For the `Survival` experiment the survival analysis is run, shown in the paper in Figure 1.
 
-1. `run.py -e Remission -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[1000];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
-2. `run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[100];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
-3. `run.py -e Survival -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -p %-US -n 5 -y ProjectAnalysis,SurvivalAnalysis --hidden`
+1. `python run.py -e Remission -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[1000];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
+2. `python run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[100];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
+3. `python run.py -e Survival -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -p %-US -n 5 -y ProjectAnalysis,SurvivalAnalysis --hidden`
 
-###Subset Classification
+### Subset Classification
 
 To determine project combinations that improve performance for all included projects when using `SSM_GENE_CONSEQUENCE` features, the src.SubsetClassification class together with src.analyse.SubsetAnalysis is used.
 
-`run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -n 5 -s SubsetClassification -y SubsetAnalysis --hidden -p %-US`
+`python run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -n 5 -s SubsetClassification -y SubsetAnalysis --hidden -p %-US`
