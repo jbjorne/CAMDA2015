@@ -49,10 +49,10 @@ Classification performance is measured for the `Remission` task using the `ExpSe
 
 1. `python run.py -e Remission -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[1000];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
 2. `python run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[100];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,COSMICAnalysis --hidden`
-3. `python run.py -e Survival -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -p %-US -n 5 -y ProjectAnalysis,SurvivalAnalysis --hidden`
+3. `python run.py -e Survival -f ExpSeq -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[100];random_state=[1]" -p "%-US" -n 5 -y ProjectAnalysis,SurvivalAnalysis --hidden`
 
 ### Subset Classification
 
 To determine project combinations that improve performance for all included projects when using `SSM_GENE_CONSEQUENCE` features, the src.SubsetClassification class together with src.analyse.SubsetAnalysis is used.
 
-`python run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r n_estimators=[100];random_state=[1] -n 5 -s SubsetClassification -y SubsetAnalysis --hidden -p %-US`
+`python run.py -e Remission -f SSM_GENE_CONSEQUENCE -o [OUTPUT] -c ensemble.ExtraTreesClassifier -r "n_estimators=[100];random_state=[1]" -n 5 -s SubsetClassification -y SubsetAnalysis --hidden -p "%-US"`
