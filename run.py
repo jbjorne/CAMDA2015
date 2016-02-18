@@ -11,14 +11,13 @@ from src.analyse import mapping
 # mapping.DATA_PATH = DATA_PATH
 # DB_PATH = os.path.join(DATA_PATH, "database/ICGC-18-150514.sqlite")
 
-def getFeatureGroups(names, dummy=False):
-    global DATA_PATH
+def getFeatureGroups(names, dataPath, dummy=False):
     groups = [eval(x) for x in names]
     for i in range(len(groups)): # Initialize classes
         if inspect.isclass(groups[i]):
             groups[i] = groups[i]()
         groups[i].dummy = dummy
-        groups[i].initialize(DATA_PATH)
+        groups[i].initialize(dataPath)
     return groups
 
 if __name__ == "__main__":
@@ -31,7 +30,7 @@ if __name__ == "__main__":
     #groupE.add_argument('-e', "--examples", default=False, action="store_true", dest="examples")
     groupE.add_argument('-e', '--experiment', help='Experiment class', default="RemissionMutTest")
     groupE.add_argument('-f', '--features', help='Feature groups (comma-separated list)', default=None)
-    groupE.add_argument('-d', '--dummy', help='Feature groups used only for filtering (comma-separated list)', default=None)
+    groupE.add_argument('-u', '--dummy', help='Feature groups used only for filtering (comma-separated list)', default=None)
     groupE.add_argument('-p', '--projects', help='Projects used in example generation', default=None)
     groupE.add_argument('-b', '--icgcDB', default=None, dest="icgcDB", help="Optional path for the ICGC database")
     groupE.add_argument('-x', '--extra', default=None)
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     
     actions = splitOptions(options.action, ["build", "classify", "analyse"])
     if options.icgcDB == None:
-        options.icgcDB = options.join(options.dataPath, "ICGC-20.sqlite")
+        options.icgcDB = os.path.join(options.dataPath, "ICGC-20.sqlite")
     mapping.DATA_PATH = options.dataPath
     Stream.openLog(os.path.join(options.output, "log.txt"), clear = "build" in actions)
     print "Options:", options.__dict__
@@ -70,10 +69,10 @@ if __name__ == "__main__":
         e.projects = options.projects
         if options.features != None:
             print "Using feature groups:", options.features
-            e.featureGroups = getFeatureGroups(options.features.split(","))
+            e.featureGroups = getFeatureGroups(options.features.split(","), options.dataPath)
             if options.dummy != None:
                 print "With dummy groups:", options.dummy
-                e.featureGroups = getFeatureGroups(options.dummy.split(","), dummy=True) + e.featureGroups
+                e.featureGroups = getFeatureGroups(options.dummy.split(","), options.dataPath, dummy=True) + e.featureGroups
         e.databasePath = options.icgcDB
         e.writeExamples(options.output)
         e = None
@@ -97,5 +96,5 @@ if __name__ == "__main__":
             print "======================================================"
             exec "from src.analyse." + analysisName + " import " + analysisName
             analysisClass = eval(analysisName)
-            analysisObj = analysisClass(dataPath=DATA_PATH)
+            analysisObj = analysisClass(dataPath=options.dataPath)
             analysisObj.analyse(options.output, hidden=options.hidden)
